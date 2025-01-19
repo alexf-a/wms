@@ -28,3 +28,6 @@ def login_view(request):
 
 def home(request):
     return render(request, 'core/home.html')
+
+def inventory(request):
+    return render(request, 'core/inventory.html')
