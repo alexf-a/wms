@@ -34,3 +34,12 @@ def home_view(request):
 @login_required
 def inventory_view(request):
     return render(request, 'core/inventory.html')
+
+def expand_inventory_view(request):
+    return render(request, 'core/expand_inventory.html')
+
+def create_bin_view(request):
+    return render(request, 'core/create_bin.html')
+
+def add_items_to_bin_view(request):
+    return render(request, 'core/add_items_to_bin.html')
