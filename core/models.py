@@ -18,14 +18,17 @@ class Bin(models.Model):
     width = models.FloatField(blank=True, null=True)
     height = models.FloatField(blank=True, null=True)
 
-    def save(self, *args, **kwargs):
-        if not self.qr_code:
-            qr = qrcode.make(self.name)
-            buffer = BytesIO()
-            qr.save(buffer, format='PNG')
-            file_name = f'{self.name}_qr.png'
-            self.qr_code.save(file_name, ContentFile(buffer.getvalue()), save=False)
-        super().save(*args, **kwargs)
+    def __str__(self):
+        return self.name
+
+class Item(models.Model):
+    name = models.CharField(max_length=255)
+    description = models.TextField()
+    created_on = models.DateTimeField(auto_now_add=True)
+    image = models.ImageField(upload_to='item_images/', blank=True, null=True)
+    bin = models.ForeignKey(Bin, related_name='items', on_delete=models.CASCADE)
 
     def __str__(self):
         return self.name
+
+
