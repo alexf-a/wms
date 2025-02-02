@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -6,6 +5,29 @@
 </head>
 <body>
     <h1>Create Bin</h1>
-    <!-- Add form or content for creating a bin -->
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="name" required><br>
+
+        <label for="description">Description:</label>
+        <textarea id="description" name="description" required></textarea><br>
+
+        <!-- Removed QR Code input field -->
+        
+        <label for="location">Location:</label>
+        <input type="text" id="location" name="location"><br>
+
+        <label for="length">Length:</label>
+        <input type="number" step="0.01" id="length" name="length"><br>
+
+        <label for="width">Width:</label>
+        <input type="number" step="0.01" id="width" name="width"><br>
+
+        <label for="height">Height:</label>
+        <input type="number" step="0.01" id="height" name="height"><br>
+
+        <button type="submit">Create Bin</button>
+    </form>
 </body>
 </html>
