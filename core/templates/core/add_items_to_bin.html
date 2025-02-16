@@ -1,11 +1,14 @@
-
 <!DOCTYPE html>
 <html>
 <head>
     <title>Add Items to Bin</title>
 </head>
 <body>
-    <h1>Add Items to Bin</h1>
-    <!-- Add form or content for adding items to a bin -->
+    <h1>Add an Item to a Bin</h1>
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Add Item</button>
+    </form>
 </body>
 </html>
