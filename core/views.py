@@ -2,7 +2,7 @@ from io import BytesIO
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, authenticate
 from django.contrib.auth.decorators import login_required
-from .forms import WMSUserCreationForm
+from .forms import WMSUserCreationForm, ItemForm
 from .models import WMSUser, Bin
 from .utils import get_qr_code
 import qrcode
@@ -80,4 +80,16 @@ def create_bin_view(request):
     return render(request, 'core/create_bin.html')
 
 def add_items_to_bin_view(request):
-    return render(request, 'core/add_items_to_bin.html')
+    if request.method == 'POST':
+        form = ItemForm(request.POST, request.FILES)
+        if form.is_valid():
+            form.save()
+            return redirect('inventory_view')
+    else:
+        form = ItemForm()
+    return render(request, 'core/add_items_to_bin.html', {'form': form})
+
+def list_bins(request):
+    # Fetch all bins for the current user; adjust filtering as needed.
+    bins = Bin.objects.filter(user=request.user)
+    return render(request, 'core/list_bins.html', {'bins': bins})
