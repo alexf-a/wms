@@ -9,7 +9,24 @@ class WMSUser(User):
         app_label = 'core'
 # Create your models here.
 
+class BinSharedAccess(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    bin = models.ForeignKey('Bin', on_delete=models.CASCADE)
+    # Placeholder for permission levels (e.g., "read", "write", etc.)
+    permission = models.CharField(max_length=50, default='read')
+    # ...existing code or timestamps if needed...
+
+    class Meta:
+        unique_together = ('user', 'bin')
+
 class Bin(models.Model):
+    user = models.ForeignKey(User, related_name='bins', on_delete=models.CASCADE)  # Primary owner
+    shared_users = models.ManyToManyField(
+        User,
+        through='BinSharedAccess',
+        blank=True,
+        related_name='shared_bins'
+    )  # Allow shared access with permissions
     name = models.CharField(max_length=255, unique=True)  # Make name unique
     description = models.TextField()
     qr_code = models.ImageField(upload_to='qr_codes/')
