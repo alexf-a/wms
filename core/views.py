@@ -66,16 +66,17 @@ def create_bin_view(request):
         qr_code.save(buffer, format='PNG')
         file_name = f'{name}_qr.png'
         qr_code_file = ContentFile(buffer.getvalue(), name=file_name)
-        bin = Bin(
+        new_bin = Bin(
+            user=request.user,
             name=name,
             description=description,
             qr_code=qr_code_file,
             location=location,
             length=length,
             width=width,
-            height=height
+            height=height,
         )
-        bin.save()
+        new_bin.save()
         return redirect('inventory_view')
     return render(request, 'core/create_bin.html')
 
