@@ -4,4 +4,6 @@ db.*
 
 */__pycache__
 
-*.png
+*_images
+
+qr_codes
