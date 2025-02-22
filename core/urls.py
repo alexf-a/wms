@@ -4,7 +4,7 @@ from . import views
 from .views import list_bins
 
 urlpatterns = [
-    path('', views.home_view, name='home'),
+    path('', views.home_view, name='home_view'),
     path('register/', views.register_view, name='register'),
     path('login/', auth_views.LoginView.as_view(redirect_authenticated_user=True, template_name='core/auth/login.html', next_page='inventory_view'), name='login'),
     path('inventory/', views.inventory_view, name='inventory_view'),
