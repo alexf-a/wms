@@ -12,4 +12,6 @@ urlpatterns = [
     path('create_bin/', views.create_bin_view, name='create_bin'),
     path('add_items_to_bin/', views.add_items_to_bin_view, name='add_items_to_bin'),
     path('bins/', list_bins, name='list_bins'),
+    path('bin/<int:bin_id>/', views.bin_detail, name='bin_detail'),
+    path('item/<int:item_id>/', views.item_detail, name='item_detail'),
 ]
