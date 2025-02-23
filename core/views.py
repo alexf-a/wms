@@ -1,9 +1,9 @@
 from io import BytesIO
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, authenticate
 from django.contrib.auth.decorators import login_required
 from .forms import WMSUserCreationForm, ItemForm
-from .models import WMSUser, Bin
+from .models import WMSUser, Bin, Item
 from .utils import get_qr_code
 import qrcode
 from qrcode.image.pil import PilImage
@@ -94,3 +94,11 @@ def list_bins(request):
     # Fetch all bins for the current user; adjust filtering as needed.
     bins = Bin.objects.filter(user=request.user)
     return render(request, 'core/list_bins.html', {'bins': bins})
+
+def bin_detail(request, bin_id):
+    bin = get_object_or_404(Bin, id=bin_id)
+    return render(request, 'core/bin_detail.html', {'bin': bin})
+
+def item_detail(request, item_id):
+    item = get_object_or_404(Item, id=item_id)
+    return render(request, 'core/item_detail.html', {'item': item})

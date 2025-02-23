@@ -7,7 +7,7 @@
     <h1>List of Your Bins</h1>
     <ul>
         {% for bin in bins %}
-            <li>{{ bin.name }}</li>
+            <li><a href="{% url 'bin_detail' bin.id %}">{{ bin.name }}</a></li>
         {% empty %}
             <li>No bins available.</li>
         {% endfor %}
