@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ bin.name }} Details</title>
+</head>
+<body>
+    <h1>{{ bin.name }}</h1>
+    <p>{{ bin.description }}</p>
+    <h2>Items in this Bin</h2>
+    <ul>
+        {% for item in bin.items.all %}
+            <li><a href="{% url 'item_detail' item.id %}">{{ item.name }}</a></li>
+        {% empty %}
+            <li>No items available.</li>
+        {% endfor %}
+    </ul>
+    <!-- ...additional layout or links... -->
+</body>
+</html>

@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ item.name }} Details</title>
+</head>
+<body>
+    <h1>{{ item.name }}</h1>
+    <p>{{ item.description }}</p>
+    {% if item.image %}
+        <p><img src="{{ item.image.url }}" alt="{{ item.name }} photo"></p>
+    {% endif %}
+    <!-- Optionally display extra fields such as image or created_on -->
+    <!-- ...additional layout or links... -->
+</body>
+</html>
