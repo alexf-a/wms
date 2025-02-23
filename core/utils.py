@@ -21,7 +21,6 @@ def get_qr_code(  # noqa: PLR0913
 
     Returns:
         qrcode.image.pil.PilImage: The generated QR code image.
-
     """
     data = (
         f"Name: {name}, Description: {description}, Location: {location}, "
