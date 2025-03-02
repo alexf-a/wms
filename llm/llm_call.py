@@ -95,10 +95,20 @@ class LangChainCall(LLMCall):
                 temperature=self.temp,
             )
         else:
-            raise NotImplementedError(f"Model {self.model_id} is not supported. Only Anthropic models are currently supported.")
+            raise NotImplementedError(
+                f"Model {self.model_id} is not supported. Only Anthropic models are currently supported."
+            )
 
-    def _is_anthropic_model(model_id: str) -> bool:
-        raise NotImplementedError
+    def _is_anthropic_model(self, model_id: str) -> bool:
+        """Check if the model ID belongs to Anthropic.
+        
+        Args:
+            model_id: The model identifier to check
+            
+        Returns:
+            bool: True if it's an Anthropic model, False otherwise
+        """
+        return model_id.startswith(("claude-", "anthropic.claude"))
 
     @property
     def lc_prompt_tmplt(self):
