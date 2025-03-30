@@ -1,4 +1,4 @@
-from .model_id import ClaudeModelId
+from .model_id import ClaudeModelID
 from .region import AWSRegion
 
-__all__ = ["ClaudeModelId", "AWSRegion"]
+__all__ = ["ClaudeModelID", "AWSRegion"]
