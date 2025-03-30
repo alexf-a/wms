@@ -1,5 +1,10 @@
+from abc import ABC, ABCMeta
 from enum import Enum
-from abc import ABC
+
+
+# Create a compatible metaclass that inherits from both EnumMeta and ABCMeta
+class EnumABCMeta(type(Enum), ABCMeta):
+    """A metaclass that combines EnumMeta and ABCMeta."""
 
 class ModelID(Enum, ABC):
-    pass
+    """Enumeration of available models."""
