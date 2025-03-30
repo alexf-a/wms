@@ -7,3 +7,7 @@ db.*
 *_images
 
 qr_codes
+
+notebooks
+
+poetry.lock
