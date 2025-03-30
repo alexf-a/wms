@@ -1,43 +1,43 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel
-from aws_utils import AWSRegion, ClaudeModelId
-from model_id import ModelID
-from llm.llm_handler import LLMHandler
+from pydantic import BaseModel, field_serializer
+
+from lib.pydantic_utils import serialize_schema
+
+if TYPE_CHECKING:
+    from llm.model_id import ModelID
 
 
-class LLMCall(BaseModel, ABC):
-    def __init__(
-        self,
-        model_id: ModelID,
-        sys_prompt_tmplt: str | None = None,
-        human_prompt_tmplt: str | None = None,
-        temp: float = 0.7,
-        retry_limit: int | None = None,
-    ) -> None:
-        if sys_prompt_tmplt is None and human_prompt_tmplt is None:
-            msg = "At least one of sys_prompt_tmplt or human_prompt_tmplt must be provided."
-            raise ValueError(msg)
-        self.sys_prompt_tmplt = sys_prompt_tmplt
-        self.human_prompt_tmplt = human_prompt_tmplt
-        self.model_id = model_id
-        self.temp = temp
-        self.retry_limit = retry_limit
-        super().__init__()
+class LLMCall(BaseModel):
+    """A class for defining and executing calls to Language Models (LLMs)."""
+    system_prompt_tmplt: str
+    human_prompt_tmplt: str | None = None
+    output_schema: type[BaseModel] | None = None
+    model_id: ModelID
+    temp: float = 0.7
+    retry_timeout: float | None = None
+    retry_limit: int | None = None
 
-    def to_dict(self) -> dict:
-        raise NotImplementedError
+    model_config = {"arbitrary_types_allowed": True}
 
-    def from_dict(self, data: dict) -> None:
-        raise NotImplementedError
-    
-    def to_json(self) -> str:
-        raise NotImplementedError
-    
-    def from_json(self, data: str) -> None:
-        raise NotImplementedError
-    
+    @field_serializer("model_id")
+    def serialize_model_id(self, model_id: ModelID) -> str:
+        """Convert ModelID enum to its string value for serialization."""
+        return model_id.value
+
+    @field_serializer("output_schema")
+    def serialize_output_schema(self, schema: type[BaseModel] | None) -> dict[str, Any] | None:
+        """Convert Pydantic model class to a serializable representation."""
+        if schema is None:
+            return None
+        return serialize_schema(schema)
+
     def should_retry(self) -> bool:
-        return self.retry_limit is not None
+        """Check if retry configuration is enabled."""
+        return self.retry_limit is not None and self.retry_timeout is not None
+
+
+
+
