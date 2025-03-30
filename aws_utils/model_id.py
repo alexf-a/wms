@@ -1,6 +1,8 @@
-from llm
+from llm.model_id import ModelID
 
-class ClaudeModelId(Enum):
+
+class ClaudeModelId(ModelID):
+    """Claude Model IDs."""
     CLAUDE_3_OPUS = "anthropic.claude-3-opus-20240229"
     CLAUDE_3_SONNET = "anthropic.claude-3-sonnet-20240229"
     CLAUDE_3_HAIKU = "anthropic.claude-3-haiku-20240307"
