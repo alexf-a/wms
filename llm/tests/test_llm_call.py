@@ -1,0 +1,202 @@
+import pytest
+from pydantic import BaseModel
+
+from llm.llm_call import LLMCall
+from llm.model_id import ModelID
+from aws_utils.model_id import ClaudeModelID
+
+
+class DummyOutputSchema(BaseModel):
+    field1: str
+    field2: int
+
+
+@pytest.fixture
+def system_prompt():
+    return "You are a helpful assistant."
+
+
+@pytest.fixture
+def human_prompt():
+    return "Answer this question: {question}"
+
+
+@pytest.fixture
+def temperature():
+    return 0.5
+
+
+@pytest.fixture
+def retry_timeout():
+    return 10.0
+
+
+@pytest.fixture
+def retry_limit():
+    return 3
+
+
+@pytest.fixture
+def model_id():
+    return ClaudeModelID.CLAUDE_3_SONNET
+
+
+@pytest.fixture
+def output_schema():
+    return DummyOutputSchema
+
+
+@pytest.fixture
+def llm_call_params(system_prompt, human_prompt, output_schema, model_id, temperature, retry_timeout, retry_limit):
+    return {
+        "system_prompt_tmplt": system_prompt,
+        "human_prompt_tmplt": human_prompt,
+        "output_schema": output_schema,
+        "model_id": model_id,
+        "temp": temperature,
+        "retry_timeout": retry_timeout,
+        "retry_limit": retry_limit,
+    }
+
+
+@pytest.fixture
+def llm_call_instance(llm_call_params):
+    return LLMCall(**llm_call_params)
+
+
+@pytest.fixture
+def serialized_data(system_prompt, human_prompt, model_id, temperature, retry_timeout, retry_limit):
+    return {
+        "system_prompt_tmplt": system_prompt,
+        "human_prompt_tmplt": human_prompt,
+        "model_id": model_id.value,
+        "temp": temperature,
+        "retry_timeout": retry_timeout,
+        "retry_limit": retry_limit,
+        "output_schema": None,
+    }
+
+
+def test_llm_call_serialization(llm_call_instance, system_prompt, human_prompt, model_id, temperature, retry_timeout, retry_limit):
+    """Test that an LLMCall can be serialized to a dictionary."""
+    serialized = llm_call_instance.model_dump()
+    
+    assert serialized["system_prompt_tmplt"] == system_prompt
+    assert serialized["human_prompt_tmplt"] == human_prompt
+    assert isinstance(serialized["output_schema"], dict)
+    assert "class_name" in serialized["output_schema"]
+    assert "module" in serialized["output_schema"]
+    assert "fields" in serialized["output_schema"]
+    assert serialized["model_id"] == model_id.value
+    assert serialized["temp"] == temperature
+    assert serialized["retry_timeout"] == retry_timeout
+    assert serialized["retry_limit"] == retry_limit
+
+
+def test_llm_call_deserialization(serialized_data, system_prompt, human_prompt, model_id, temperature, retry_timeout, retry_limit):
+    """Test that an LLMCall can be deserialized from a dictionary."""
+    llm_call = LLMCall.model_validate(serialized_data)
+    
+    assert llm_call.system_prompt_tmplt == system_prompt
+    assert llm_call.human_prompt_tmplt == human_prompt
+    assert llm_call.output_schema is None
+    assert llm_call.model_id == model_id
+    assert llm_call.temp == temperature
+    assert llm_call.retry_timeout == retry_timeout
+    assert llm_call.retry_limit == retry_limit
+
+
+def test_model_id_serialization(model_id):
+    """Test that ModelID is properly serialized."""
+    llm_call = LLMCall(
+        system_prompt_tmplt="Test",
+        model_id=model_id,
+    )
+    
+    serialized = llm_call.model_dump()
+    assert serialized["model_id"] == model_id.value
+
+
+def test_model_id_deserialization(model_id):
+    """Test that ModelID is properly deserialized."""
+    data = {
+        "system_prompt_tmplt": "Test",
+        "model_id": model_id.value,
+    }
+    
+    llm_call = LLMCall.model_validate(data)
+    assert llm_call.model_id == model_id
+
+
+def test_output_schema_serialization(model_id, output_schema):
+    """Test that output_schema is properly serialized."""
+    llm_call = LLMCall(
+        system_prompt_tmplt="Test",
+        model_id=model_id,
+        output_schema=output_schema,
+    )
+    
+    serialized = llm_call.model_dump()
+    assert isinstance(serialized["output_schema"], dict)
+    assert "class_name" in serialized["output_schema"]
+    assert serialized["output_schema"]["class_name"] == output_schema.__name__
+    assert "module" in serialized["output_schema"]
+    assert serialized["output_schema"]["module"] == output_schema.__module__
+    assert "fields" in serialized["output_schema"]
+    assert "field1" in serialized["output_schema"]["fields"]
+    assert "field2" in serialized["output_schema"]["fields"]
+
+
+def test_none_values(model_id):
+    """Test that None values are handled correctly."""
+    llm_call = LLMCall(
+        system_prompt_tmplt="Test",
+        model_id=model_id,
+        human_prompt_tmplt=None,
+        output_schema=None,
+        retry_timeout=None,
+        retry_limit=None,
+    )
+    
+    serialized = llm_call.model_dump()
+    assert serialized["human_prompt_tmplt"] is None
+    assert serialized["output_schema"] is None
+    assert serialized["retry_timeout"] is None
+    assert serialized["retry_limit"] is None
+    
+    deserialized = LLMCall.model_validate(serialized)
+    assert deserialized.human_prompt_tmplt is None
+    assert deserialized.output_schema is None
+    assert deserialized.retry_timeout is None
+    assert deserialized.retry_limit is None
+
+
+def test_should_retry_both_params(model_id, retry_timeout, retry_limit):
+    """Test the should_retry method when both params are set."""
+    llm_call = LLMCall(
+        system_prompt_tmplt="Test",
+        model_id=model_id,
+        retry_timeout=retry_timeout,
+        retry_limit=retry_limit,
+    )
+    assert llm_call.should_retry() is True
+
+
+def test_should_retry_limit_only(model_id, retry_limit):
+    """Test the should_retry method when only retry_limit is set."""
+    llm_call = LLMCall(
+        system_prompt_tmplt="Test",
+        model_id=model_id,
+        retry_limit=retry_limit,
+    )
+    assert llm_call.should_retry() is False
+
+
+def test_should_retry_timeout_only(model_id, retry_timeout):
+    """Test the should_retry method when only retry_timeout is set."""
+    llm_call = LLMCall(
+        system_prompt_tmplt="Test",
+        model_id=model_id,
+        retry_timeout=retry_timeout,
+    )
+    assert llm_call.should_retry() is False
