@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from pydantic import BaseModel, field_serializer
 
 from lib.pydantic_utils import serialize_schema
-
-#if TYPE_CHECKING:
-from llm.model_id import ModelID
+from llm.model_id import ModelID  # noqa: TC001
 
 
 class LLMCall(BaseModel):
