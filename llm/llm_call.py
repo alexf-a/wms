@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, field_serializer
+from pydantic import BaseModel, field_serializer, field_validator
 
 from lib.pydantic_utils import serialize_schema
 from llm.model_id import ModelID  # noqa: TC001
+from aws_utils.model_id import ClaudeModelID
 
 
 class LLMCall(BaseModel):
@@ -19,6 +20,13 @@ class LLMCall(BaseModel):
     retry_limit: int | None = None
 
     model_config = {"arbitrary_types_allowed": True}
+
+    @field_validator("model_id", mode="before")
+    def validate_model_id(cls, value: str | ModelID) -> ModelID:  # noqa: N805
+        """If provided model_id is a string, convert it via ModelID constructor."""
+        if isinstance(value, str):
+            return ClaudeModelID(value)
+        return value
 
     @field_serializer("model_id")
     def serialize_model_id(self, model_id: ModelID) -> str:
