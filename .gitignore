@@ -11,3 +11,5 @@ qr_codes
 notebooks
 
 poetry.lock
+
+.vscode
