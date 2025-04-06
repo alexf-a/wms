@@ -247,3 +247,62 @@ def test_should_retry_timeout_only(model_id: ClaudeModelID, retry_timeout: float
         retry_timeout=retry_timeout,
     )
     assert llm_call.should_retry() is False
+
+
+def test_json_structure(
+    llm_call_instance: LLMCall,
+    system_prompt: str,
+    human_prompt: str,
+    model_id: ClaudeModelID,
+    temperature: float,
+    retry_timeout: float,
+    retry_limit: int
+) -> None:
+    """Test that the JSON structure of a serialized LLMCall is correct."""
+    json_data = llm_call_instance.model_dump_json()
+    # First, convert back to dict for easier assertions
+    import json
+    serialized = json.loads(json_data)
+    
+    # Check the structure of the serialized object
+    assert isinstance(serialized, dict)
+    
+    # Check that all expected fields are present
+    expected_fields = [
+        "system_prompt_tmplt", 
+        "human_prompt_tmplt", 
+        "output_schema", 
+        "model_id", 
+        "temp", 
+        "retry_timeout", 
+        "retry_limit"
+    ]
+    for field in expected_fields:
+        assert field in serialized
+    
+    # Check field types
+    assert isinstance(serialized["system_prompt_tmplt"], str)
+    assert isinstance(serialized["human_prompt_tmplt"], str)
+    assert isinstance(serialized["output_schema"], dict)
+    assert isinstance(serialized["model_id"], str)
+    assert isinstance(serialized["temp"], float)
+    assert isinstance(serialized["retry_timeout"], float)
+    assert isinstance(serialized["retry_limit"], int)
+    
+    # Check output_schema structure
+    schema = serialized["output_schema"]
+    assert "class_name" in schema
+    assert "module" in schema
+    assert "fields" in schema
+    
+    fields = schema["fields"]
+    assert "field1" in fields
+    assert "field2" in fields
+    
+    # Check field information structure
+    for field_name in ["field1", "field2"]:
+        field_info = fields[field_name]
+        assert "type" in field_info
+        assert "required" in field_info
+        assert "description" in field_info
+        assert "default" in field_info
