@@ -6,8 +6,8 @@ from pydantic import BaseModel, field_serializer
 
 from lib.pydantic_utils import serialize_schema
 
-if TYPE_CHECKING:
-    from llm.model_id import ModelID
+#if TYPE_CHECKING:
+from llm.model_id import ModelID
 
 
 class LLMCall(BaseModel):
