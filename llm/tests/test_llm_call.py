@@ -38,7 +38,7 @@ def retry_limit():
 
 @pytest.fixture
 def model_id():
-    return ClaudeModelID.CLAUDE_3_SONNET
+    return ClaudeModelID.CLAUDE_3_5_HAIKU
 
 
 @pytest.fixture
