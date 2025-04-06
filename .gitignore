@@ -13,3 +13,5 @@ notebooks
 poetry.lock
 
 .vscode
+
+*.pyc
