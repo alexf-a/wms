@@ -67,8 +67,8 @@ class LangChainHandler(LLMHandler):
     def lc_prompt_tmplt(self) -> ChatPromptTemplate:
         """Property that returns the prompt template."""
         messages = []
-        if self.llm_call.sys_prompt_tmplt is not None:
-            messages.append(SystemMessagePromptTemplate.from_template(self.llm_call.sys_prompt_tmplt))
+        if self.llm_call.system_prompt_tmplt is not None:
+            messages.append(SystemMessagePromptTemplate.from_template(self.llm_call.system_prompt_tmplt))
 
         if self.llm_call.human_prompt_tmplt is not None:
             messages.append(HumanMessagePromptTemplate.from_template(self.llm_call.human_prompt_tmplt))
