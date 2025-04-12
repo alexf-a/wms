@@ -36,21 +36,10 @@ def home_view(request) -> render:
         request: The HTTP request object.
 
     Returns:
-        The rendered home page.
+        The rendered home page with content based on authentication status.
     """
-    return render(request, "core/home.html")
-
-@login_required
-def inventory_view(request) -> render:
-    """Render the inventory page.
-
-    Args:
-        request: The HTTP request object.
-
-    Returns:
-        The rendered inventory page.
-    """
-    return render(request, "core/inventory.html")
+    # Pass authentication status to the template
+    return render(request, "core/home.html", {"is_authenticated": request.user.is_authenticated})
 
 def expand_inventory_view(request) -> render:
     """Render the expand inventory page.
@@ -70,7 +59,7 @@ def create_bin_view(request) -> render:
         request: The HTTP request object.
 
     Returns:
-        The rendered create bin page or a redirect to the inventory page.
+        The rendered create bin page or a redirect to the home page.
     """
     if request.method == "POST":
         name = request.POST["name"]
@@ -104,7 +93,7 @@ def create_bin_view(request) -> render:
             height=height,
         )
         new_bin.save()
-        return redirect("inventory_view")
+        return redirect("home_view")
     return render(request, "core/create_bin.html")
 
 def add_items_to_bin_view(request) -> render:
@@ -114,13 +103,13 @@ def add_items_to_bin_view(request) -> render:
         request: The HTTP request object.
 
     Returns:
-        The rendered add items to bin page or a redirect to the inventory page.
+        The rendered add items to bin page or a redirect to the home page.
     """
     if request.method == "POST":
         form = ItemForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
             form.save()
-            return redirect("inventory_view")
+            return redirect("home_view")
     else:
         form = ItemForm(user=request.user)
     return render(request, "core/add_items_to_bin.html", {"form": form})
