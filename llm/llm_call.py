@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, field_serializer, field_validator
@@ -20,6 +22,26 @@ class LLMCall(BaseModel):
     retry_limit: int | None = None
 
     model_config = {"arbitrary_types_allowed": True}
+
+    @classmethod
+    def from_json(cls, file_path: str | Path) -> LLMCall:
+        """Create an LLMCall instance from a JSON file.
+
+        Args:
+            file_path: The path to the JSON file containing the LLMCall configuration.
+
+        Returns:
+            LLMCall: An instance of LLMCall initialized with the configuration from the JSON file.
+        """
+        # Ensure file_path is a Path object
+        path = Path(file_path) if isinstance(file_path, str) else file_path
+
+        # Read and parse the JSON file
+        with open(path, "r") as file:
+            data = json.load(file)
+
+        # Use Pydantic's model_validate to create the instance
+        return cls.model_validate(data)
 
     @field_validator("model_id", mode="before")
     def validate_model_id(cls, value: str | ModelID) -> ModelID:  # noqa: N805

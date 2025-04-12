@@ -13,4 +13,5 @@ urlpatterns = [
     path("bins/", list_bins, name="list_bins"),
     path("bin/<int:bin_id>/", views.bin_detail, name="bin_detail"),
     path("item/<int:item_id>/", views.item_detail, name="item_detail"),
+    path("find-item/", views.item_search_view, name="item_search"),
 ]
