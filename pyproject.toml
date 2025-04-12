@@ -13,6 +13,7 @@ pillow = "^11.1.0"
 qrcode = "^8.0"
 langchain = "^0.3.19"
 langchain-aws = "^0.2.17"
+ruff = "^0.11.5"
 
 
 [build-system]
