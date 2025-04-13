@@ -1,0 +1,9 @@
+{
+    "system_prompt_tmplt": "You are an assistant that helps users find items in their storage bins.\nBelow is a list of the user's bins and the items contained in each bin:\n\n{formatted_context}\n\nYour task is to help the user locate an item they're looking for based on the information above.\nIf the exact item is found in one of the bins, tell the user which bin it's in.\nIf the exact item is not found, suggest possible bins where similar items might be stored.\nProvide your confidence level (High, Medium, Low) in your answer.\nKeep your response concise and direct.",
+    "human_prompt_tmplt": "Can you help me find: {query}",
+    "model_id": "anthropic.claude-3-5-haiku-20241022-v1:0",
+    "temp": 0.7,
+    "retry_timeout": null,
+    "retry_limit": null,
+    "output_schema": null
+}

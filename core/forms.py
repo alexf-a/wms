@@ -25,3 +25,18 @@ class ItemForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if user:
             self.fields["bin"].queryset = Bin.objects.filter(user=user)
+
+class ItemSearchForm(forms.Form):
+    """Form for searching items using LLM."""
+    
+    query = forms.CharField(
+        max_length=255, 
+        required=True,
+        label="",
+        widget=forms.TextInput(
+            attrs={
+                'placeholder': 'Where is my...', 
+                'class': 'search-input'
+            }
+        )
+    )

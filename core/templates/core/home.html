@@ -2,6 +2,42 @@
 <html>
 <head>
     <title>WMS Home</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            margin-bottom: 10px;
+        }
+        li a {
+            display: inline-block;
+            padding: 10px 15px;
+            background-color: #f0f0f0;
+            text-decoration: none;
+            color: #333;
+            border-radius: 4px;
+        }
+        li a:hover {
+            background-color: #e0e0e0;
+        }
+        .feature-section {
+            margin-top: 20px;
+            border-top: 1px solid #ccc;
+            padding-top: 20px;
+        }
+        .feature-highlight {
+            background-color: #e8f5e9;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 15px;
+        }
+    </style>
 </head>
 <body>
     {% if is_authenticated %}
@@ -10,6 +46,15 @@
             <li><a href="{% url 'list_bins' %}">Explore Inventory</a></li>
             <li><a href="{% url 'expand_inventory' %}">Expand Inventory</a></li>
         </ul>
+        
+        <div class="feature-section">
+            <h2>AI-Powered Features</h2>
+            <div class="feature-highlight">
+                <h3>Find Your Items</h3>
+                <p>Can't remember where you put something? Let our AI help you locate it!</p>
+                <p><a href="{% url 'item_search' %}">Find My Items</a></p>
+            </div>
+        </div>
     {% else %}
         <h1>Welcome</h1>
         <p><a href="{% url 'register' %}">Register</a> or <a href="{% url 'login' %}">Login</a></p>
