@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required
 from .forms import WMSUserCreationForm, ItemForm, ItemSearchForm
 from .models import WMSUser, Bin, Item
 from .utils import get_qr_code
-from ..llm.llm_search import find_item_location
+from llm.llm_search import find_item_location
 import qrcode
 from qrcode.image.pil import PilImage
 from django.core.files.storage import FileSystemStorage
