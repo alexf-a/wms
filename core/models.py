@@ -39,6 +39,7 @@ class Bin(models.Model):
         width (float): The width of the bin.
         height (float): The height of the bin.
     """
+    #TODO: Decide on PK. I am thinking it should be "name"
     user = models.ForeignKey(User, related_name="bins", on_delete=models.CASCADE)
     shared_users = models.ManyToManyField(
         User,
@@ -67,6 +68,7 @@ class Item(models.Model):
         image (ImageField): An optional image of the item.
         bin (Bin): The bin in which the item is stored.
     """
+    #TODO: Decide on PK. I am thinking it should be "name"
     name = models.CharField(max_length=255)
     description = models.TextField()
     created_on = models.DateTimeField(auto_now_add=True)
