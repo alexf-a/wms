@@ -115,3 +115,14 @@ class StructuredLangChainHandler(LangChainHandler):
         """The runnable chain that calls the LLM and parses the output to a structured format."""
         return self.llm_chain
 
+    def query(self, **kwargs: str) -> BaseModel:
+        """Process a query using the configured LLM.
+
+        Args:
+            **kwargs: Keyword arguments to be passed to the LLM prompt template.
+
+        Returns:
+            str: The response from the LLM as a string.
+        """
+        return self.chain.invoke(kwargs)
+
