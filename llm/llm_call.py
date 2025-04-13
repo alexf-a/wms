@@ -6,9 +6,9 @@ from typing import Any
 
 from pydantic import BaseModel, field_serializer, field_validator
 
+from aws_utils.model_id import ClaudeModelID
 from lib.pydantic_utils import serialize_schema
 from llm.model_id import ModelID  # noqa: TC001
-from aws_utils.model_id import ClaudeModelID
 
 
 class LLMCall(BaseModel):
@@ -24,7 +24,7 @@ class LLMCall(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
     @classmethod
-    def from_json(cls, file_path: str | Path) -> LLMCall:
+    def from_json(cls, file_path: str) -> LLMCall:
         """Create an LLMCall instance from a JSON file.
 
         Args:
@@ -34,10 +34,10 @@ class LLMCall(BaseModel):
             LLMCall: An instance of LLMCall initialized with the configuration from the JSON file.
         """
         # Ensure file_path is a Path object
-        path = Path(file_path) if isinstance(file_path, str) else file_path
+        path = Path(file_path)
 
         # Read and parse the JSON file
-        with open(path, "r") as file:
+        with path.open() as file:
             data = json.load(file)
 
         # Use Pydantic's model_validate to create the instance
