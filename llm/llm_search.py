@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 from pydantic import BaseModel
 
 from core.models import Bin, Item
 from llm.llm_call import LLMCall
-from llm.llm_handler import LangChainHandler
+from llm.llm_handler import StructuredLangChainHandler
 
 
 class ItemLocation(BaseModel):
@@ -16,6 +17,8 @@ class ItemLocation(BaseModel):
     confidence: str  # High, Medium, Low
     additional_info: str = ""
 
+    def __str__(self):
+        return f"Item: {self.item_name}\nBin: {self.bin_name}\nConfidence: {self.confidence}\nAdditional Info: {self.additional_info}"
 
 def find_item_location(query: str, user_id: int) -> str:
     """Find the location of an item using LLM.
@@ -57,5 +60,7 @@ def find_item_location(query: str, user_id: int) -> str:
     llm_call = LLMCall.from_json(llm_call_path)
 
     # Create the handler and make the query
-    handler = LangChainHandler(llm_call)
-    return handler.query(query=query, formatted_context=formatted_context)
+    # TODO: Convert to StructuredLangchainHandler
+    handler = StructuredLangChainHandler(llm_call=llm_call, output_schema=ItemLocation)
+    result = cast("ItemLocation", handler.query(query=query, formatted_context=formatted_context))
+    return str(result)
