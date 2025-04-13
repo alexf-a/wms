@@ -1,10 +1,18 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Home</title>
+    <title>WMS Home</title>
 </head>
 <body>
-    <h1>Welcome</h1>
-    <p><a href="{% url 'register' %}">Register</a> or <a href="{% url 'login' %}">Login</a></p>
+    {% if is_authenticated %}
+        <h1>Inventory Management</h1>
+        <ul>
+            <li><a href="{% url 'list_bins' %}">Explore Inventory</a></li>
+            <li><a href="{% url 'expand_inventory' %}">Expand Inventory</a></li>
+        </ul>
+    {% else %}
+        <h1>Welcome</h1>
+        <p><a href="{% url 'register' %}">Register</a> or <a href="{% url 'login' %}">Login</a></p>
+    {% endif %}
 </body>
 </html>
