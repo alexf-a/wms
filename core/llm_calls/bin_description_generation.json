@@ -1,0 +1,8 @@
+{
+    "system_prompt_tmplt": "You are a helpful household assistant specializing in inventory management. Your task is to generate concise and informative descriptions for storage bins. Each description should clearly state the purpose or contents of the bin, such as 'Hand tools', 'Kitchen utensils', 'Office supplies', or 'Ski gear'. The descriptions should be realistic and suitable for personal inventory management. I will provide you with the name of a storage bin, and you will create a fitting description for it. Also provide brief reasoning for how the description fits the bin name.",
+    "human_prompt_tmplt": "Generate a concise description for a storage bin named '{bin_name}'. Also explain your reasoning for how this description fits the bin name.",
+    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+    "temp": 0.7,
+    "retry_timeout": 1,
+    "retry_limit": 10
+}
