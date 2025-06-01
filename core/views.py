@@ -4,7 +4,7 @@ from django.contrib.auth import login, authenticate
 from django.contrib.auth.decorators import login_required
 from .forms import WMSUserCreationForm, ItemForm, ItemSearchForm
 from .models import WMSUser, Bin, Item
-from .utils import get_qr_code
+from .utils import get_qr_code_file
 from llm.llm_search import find_item_location
 import qrcode
 from qrcode.image.pil import PilImage
@@ -70,7 +70,7 @@ def create_bin_view(request) -> render:
         width = request.POST.get("width", None)
         height = request.POST.get("height", None)
 
-        qr_code: PilImage = get_qr_code(
+        qr_code_file: ContentFile = get_qr_code_file(
             name=name,
             description=description,
             location=location,
@@ -78,11 +78,6 @@ def create_bin_view(request) -> render:
             width=width,
             height=height
         )
-              # Save the QR code to a file-like object
-        buffer = BytesIO()
-        qr_code.save(buffer, format="PNG")
-        file_name = f"{name}_qr.png"
-        qr_code_file = ContentFile(buffer.getvalue(), name=file_name)
         new_bin = Bin(
             user=request.user,
             name=name,
