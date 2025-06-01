@@ -53,15 +53,24 @@ class LangChainHandler(LLMHandler):
             llm_call (LLMCall): An LLMCall object containing the configuration for the LLM call.
         """
         self.llm_call = llm_call
+
         self.langchain_client = ChatBedrock(
             model_id=self.llm_call.model_id.value,
             temperature=self.llm_call.temp
         )
+        self._configure_langchain_client()
+
+    def _maybe_configure_retry(self) -> None:
         if self.llm_call.should_retry():
             self.langchain_client = self.langchain_client.with_retry(
                 stop_after_attempt=self.llm_call.retry_limit,
                 wait_exponential_jitter=True
             )
+
+    def _configure_langchain_client(self) -> None:
+        """Configure the LangChain client with structured output and retry settings."""
+        # Apply retry configuration if needed
+        self._maybe_configure_retry()
 
     @property
     def lc_prompt_tmplt(self) -> ChatPromptTemplate:
@@ -106,9 +115,13 @@ class StructuredLangChainHandler(LangChainHandler):
             llm_call (LLMCall): An LLMCall object containing the configuration for the LLM call.
             output_schema (BaseModel): The Pydantic model to use for structuring the LLM output.
         """
-        super().__init__(llm_call)
         self.output_schema = output_schema
+        super().__init__(llm_call=llm_call)
+
+    def _configure_langchain_client(self) -> None:
         self.langchain_client = self.langchain_client.with_structured_output(self.output_schema)
+        super()._configure_langchain_client()
+
 
     @property
     def chain(self) -> Runnable[LanguageModelInput, BaseModel]:
