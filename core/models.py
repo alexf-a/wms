@@ -39,7 +39,6 @@ class Bin(models.Model):
         width (float): The width of the bin.
         height (float): The height of the bin.
     """
-    #TODO: Decide on PK. I am thinking it should be "name"
     user = models.ForeignKey(User, related_name="bins", on_delete=models.CASCADE)
     shared_users = models.ManyToManyField(
         User,
@@ -47,13 +46,16 @@ class Bin(models.Model):
         blank=True,
         related_name="shared_bins"
     )
-    name = models.CharField(max_length=255, unique=True)
-    description = models.TextField()
+    name = models.CharField(max_length=1000)
+    description = models.TextField(max_length=5000)
     qr_code = models.ImageField(upload_to="qr_codes/")
     location = models.CharField(max_length=255, blank=True, null=True)
     length = models.FloatField(blank=True, null=True)
     width = models.FloatField(blank=True, null=True)
     height = models.FloatField(blank=True, null=True)
+
+    class Meta:
+        unique_together = ('user', 'name')
 
     def __str__(self):
         return self.name
