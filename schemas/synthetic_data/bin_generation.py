@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 class BinGenerationOutput(BaseModel):
     """Schema for bin generation output including name, description, and location."""
-    
+
     name: str = Field(
         description="The generated storage bin name, should be short, simple and realistic, maximum 30 characters"
     )
