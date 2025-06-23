@@ -5,9 +5,8 @@ from faker import Faker
 from pathlib import Path
 from core.utils import get_qr_code_file
 from llm.llm_call import LLMCall
-from llm.llm_handler import LangChainHandler
-from .bin_generation_schemas import BinNameOutput, BinDescriptionOutput, BinLocationOutput
-from typing import cast
+from llm.llm_handler import StructuredLangChainHandler
+from .bin_generation_schema import BinGenerationOutput
 
 
 class Command(BaseCommand):
@@ -27,21 +26,18 @@ class Command(BaseCommand):
             self.stdout.write(self.style.ERROR(f"User '{username}' not found."))
             return
 
-        # Get the path to the LLMCall JSON files
+        # Get the path to the LLMCall JSON file for bin generation
         base_dir = Path(__file__).resolve().parent.parent.parent
-        name_llm_call_path = base_dir / "llm_calls" / "bin_name_generation.json"
-        desc_llm_call_path = base_dir / "llm_calls" / "bin_description_generation.json"
-        location_llm_call_path = base_dir / "llm_calls" / "bin_location_generation.json"
+        bin_llm_call_path = base_dir / "llm_calls" / "bin_generation.json"
 
-        # Create the LLMCall instances
-        name_llm_call = LLMCall.from_json(name_llm_call_path)
-        desc_llm_call = LLMCall.from_json(desc_llm_call_path)
-        location_llm_call = LLMCall.from_json(location_llm_call_path)
+        # Create the LLMCall instance
+        bin_llm_call = LLMCall.from_json(bin_llm_call_path)
 
-        # Create the handlers
-        name_handler = LangChainHandler(llm_call=name_llm_call)
-        desc_handler = LangChainHandler(llm_call=desc_llm_call)
-        location_handler = LangChainHandler(llm_call=location_llm_call)
+        # Create the structured handler
+        bin_handler = StructuredLangChainHandler(
+            llm_call=bin_llm_call,
+            output_schema=BinGenerationOutput
+        )
 
         # Get existing bin names for this user to avoid duplicates
         existing_bin_names = set(Bin.objects.filter(user=user).values_list("name", flat=True))
@@ -49,40 +45,38 @@ class Command(BaseCommand):
 
         count = options["count"]
         for _ in range(count):
-            # Generate bin name using LLM, ensuring uniqueness
+            # Generate complete bin information using structured LLM, ensuring uniqueness
             max_attempts = 10
-            name = None
+            bin_data = None
             for attempt in range(max_attempts):
-                # Generate bin name using LLM
-                name_result = name_handler.query(existing_names=existing_names_str)
-                candidate_name = name_result.strip().title()
+                # Generate complete bin using structured LLM
+                result = bin_handler.query(existing_names=existing_names_str)
+                candidate_name = result.name.strip().title()
 
                 # Check if name is unique (case-insensitive)
                 if candidate_name.lower() not in {name.lower() for name in existing_bin_names}:
-                    name = candidate_name
-                    existing_bin_names.add(name)  # Add to set to avoid duplicates in this batch
+                    bin_data = result
+                    existing_bin_names.add(candidate_name)  # Add to set to avoid duplicates in this batch
                     existing_names_str = ", ".join(existing_bin_names)
                     break
 
                 self.stdout.write(self.style.WARNING(f"Attempt {attempt + 1}: Generated duplicate name '{candidate_name}', retrying..."))
 
-            if name is None:
-                self.stdout.write(self.style.ERROR(f"Failed to generate unique name after {max_attempts} attempts. Skipping this bin."))
+            if bin_data is None:
+                self.stdout.write(self.style.ERROR(f"Failed to generate unique bin after {max_attempts} attempts. Skipping this bin."))
                 continue
-            # Post-processing of the name
-            name = name.strip().title()
-            ## remove any special characters or numbers
-            name = "".join(char for char in name if char.isalpha() or char.isspace()).strip()
-            # Generate description based on generated name
-            desc_result = desc_handler.query(bin_name=name)
-            description = desc_result.strip()
 
-            # Generate location using LLM based on bin name and description
-            location_result = location_handler.query(bin_name=name, bin_description=description)
-            # Post-process the location
-            location = location_result.strip().title()
-            ## remove any special characters or numbers
+            # Post-processing of the generated data
+            name = bin_data.name.strip().title()
+            # Remove any special characters or numbers
+            name = "".join(char for char in name if char.isalpha() or char.isspace()).strip()
+
+            description = bin_data.description.strip()
+
+            location = bin_data.location.strip().title()
+            # Remove any special characters or numbers
             location = "".join(char for char in location if char.isalpha() or char.isspace()).strip()
+
             length = round(fake.random_number(digits=2) + fake.random.random(), 2)
             width = round(fake.random_number(digits=2) + fake.random.random(), 2)
             height = round(fake.random_number(digits=2) + fake.random.random(), 2)
