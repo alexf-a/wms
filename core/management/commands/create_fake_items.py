@@ -1,42 +1,50 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from core.models import Bin, Item
-from faker import Faker
-import random
-import requests
+from pathlib import Path
+from llm.llm_call import LLMCall
+from llm.llm_handler import LangChainHandler
 from django.core.files.base import ContentFile
-import os
-from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
-import logging
-import time
+from io import BytesIO
 import boto3
 import base64
 import json
 
+
 class Command(BaseCommand):
-    help = "Create fake items with matching images for testing"
+    help = "Create fake items with realistic names for testing"
 
     def add_arguments(self, parser):
-        parser.add_argument('count', type=int, help="Number of items to create per bin")
-        parser.add_argument('--username', '-u', type=str, required=True, help="Username of the bin owner")
-        parser.add_argument('--all-bins', '-a', action='store_true', help="Create items for all user's bins")
-        parser.add_argument('--bin-name', '-b', type=str, help="Name of specific bin to populate")
+        parser.add_argument("count", type=int, help="Number of items to create per bin")
+        parser.add_argument("--username", "-u", type=str, required=True, help="Username of the bin owner")
+        parser.add_argument("--all-bins", "-a", action="store_true", help="Create items for all user's bins")
+        parser.add_argument("--bin-name", "-b", type=str, help="Name of specific bin to populate")
 
     def handle(self, *args, **options):
-        fake = Faker()
         user_model = get_user_model()
         username = options.get("username")
-        count = options['count']
-        bin_name = options.get('bin_name')
-        all_bins = options.get('all_bins')
-        
+        count = options["count"]
+        bin_name = options.get("bin_name")
+        all_bins = options.get("all_bins")
+
         try:
             user = user_model.objects.get(username=username)
         except user_model.DoesNotExist:
             self.stdout.write(self.style.ERROR(f"User '{username}' not found."))
             return
+
+        # Set up LLM for item generation
+        base_dir = Path(__file__).resolve().parent.parent.parent
+        item_name_llm_call_path = base_dir / "llm_calls" / "item_generation.json"
+        item_desc_llm_call_path = base_dir / "llm_calls" / "item_description_generation.json"
         
+        item_name_llm_call = LLMCall.from_json(item_name_llm_call_path)
+        item_desc_llm_call = LLMCall.from_json(item_desc_llm_call_path)
+        
+        item_name_handler = LangChainHandler(llm_call=item_name_llm_call)
+        item_desc_handler = LangChainHandler(llm_call=item_desc_llm_call)
+
         # Get bins to populate
         if bin_name:
             try:
@@ -50,82 +58,75 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.ERROR(f"No bins found for user '{username}'."))
                 return
         else:
-            bins = Bin.objects.filter(user=user).order_by('?')[:1]
+            bins = Bin.objects.filter(user=user).order_by("?")[:1]
             if not bins:
                 self.stdout.write(self.style.ERROR(f"No bins found for user '{username}'."))
                 return
-        
-        # Define realistic item categories and items
-        item_categories = {
-            "Kitchen": ["Blender", "Toaster", "Coffee Maker", "Food Processor", "Knife Set", 
-                      "Measuring Cups", "Baking Sheet", "Mixing Bowl", "Dutch Oven", "Cutting Board"],
-            "Electronics": ["Headphones", "External Hard Drive", "USB Cable", "Laptop Charger", 
-                          "Power Bank", "Wireless Mouse", "Keyboard", "Webcam", "Bluetooth Speaker", "HDMI Cable"],
-            "Books": ["Fiction Novel", "Cookbook", "Self-Help Book", "Biography", "Reference Book", 
-                    "Magazine Collection", "Comic Book", "Textbook", "Photo Album", "Journal"],
-            "Clothing": ["Winter Coat", "Summer Dress", "Denim Jacket", "Running Shoes", 
-                       "Hiking Boots", "Sweater", "Scarf", "Gloves", "Hat", "Formal Suit"],
-            "Tools": ["Hammer", "Screwdriver Set", "Cordless Drill", "Level", "Measuring Tape", 
-                    "Wrench Set", "Pliers", "Hex Key Set", "Hand Saw", "Power Sander"],
-            "Sports": ["Tennis Racket", "Basketball", "Yoga Mat", "Dumbbells", "Bicycle Pump", 
-                      "Hiking Backpack", "Swimming Goggles", "Golf Clubs", "Running Shoes", "Fitness Tracker"],
-            "Décor": ["Picture Frame", "Wall Clock", "Decorative Pillow", "Vase", "Candle Set", 
-                     "Table Lamp", "Wall Art", "Plant Pot", "Throw Blanket", "Ornamental Box"],
-            "Office": ["Stapler", "Notebook", "Desk Organizer", "Paper Clips", "Sticky Notes", 
-                      "Fountain Pen", "File Folders", "Desk Lamp", "Calculator", "Planner"],
-            "Toys": ["Board Game", "Puzzle", "Action Figure", "Building Blocks", "Remote Control Car", 
-                   "Stuffed Animal", "Card Game", "Art Supplies", "Doll", "Science Kit"],
-            "Seasonal": ["Christmas Ornaments", "Halloween Decorations", "Easter Basket", 
-                       "Valentine's Day Cards", "Birthday Party Supplies", "Fourth of July Flags", 
-                       "Thanksgiving Décor", "New Year's Eve Supplies", "Back-to-School Kit", "Beach Umbrella"]
-        }
-        
-        # Generate fake items for each bin
+
+        # Generate items for each bin
         for storage_bin in bins:
-            category_keys = list(item_categories.keys())
-            
-            # Assign 1-3 primary categories to this bin
-            bin_categories = random.sample(category_keys, min(random.randint(1, 3), len(category_keys)))
-            
             self.stdout.write(self.style.SUCCESS(f"Creating {count} items for bin: {storage_bin.name}"))
-            self.stdout.write(f"  Primary categories: {', '.join(bin_categories)}")
-            
-            for _ in range(count):
-                # 80% chance to pick from primary categories, 20% chance for random category
-                if random.random() < 0.8:
-                    category = random.choice(bin_categories)
-                else:
-                    category = random.choice(category_keys)
+            self.stdout.write(f"  Description: {storage_bin.description}")
+
+            # Get existing item names for this bin to avoid duplicates
+            existing_item_names = set(
+                Item.objects.filter(bin=storage_bin).values_list("name", flat=True)
+            )
+
+            for i in range(count):
+                # Generate item name using LLM, ensuring uniqueness
+                max_attempts = 10
+                item_name = None
+                for attempt in range(max_attempts):
+                    # Create list of existing items for context
+                    existing_items_str = ", ".join(existing_item_names) if existing_item_names else "None"
                     
-                # Get a random item name from the category
-                available_items = item_categories[category]
-                item_name = random.choice(available_items)
-                
-                # Add some variation to make items unique
-                if random.random() < 0.7:  # 70% chance to add variation
-                    variation = random.choice([
-                        f"{fake.color_name()} ",
-                        f"{fake.word().capitalize()} ",
-                        f"Vintage ",
-                        f"Small ",
-                        f"Large ",
-                        f"Premium ",
-                        f"Old ",
-                        f"New ",
-                        f"{fake.company_suffix()} "
-                    ])
-                    item_name = f"{variation}{item_name}"
-                
-                description = fake.paragraph(nb_sentences=3)
-                
+                    # Generate item name using LLM
+                    name_result = item_name_handler.query(
+                        bin_name=storage_bin.name, 
+                        bin_description=storage_bin.description,
+                        existing_items=existing_items_str
+                    )
+                    candidate_name = name_result.strip().title()
+
+                    # Check if name is unique (case-insensitive)
+                    if candidate_name.lower() not in {name.lower() for name in existing_item_names}:
+                        item_name = candidate_name
+                        existing_item_names.add(item_name)
+                        break
+
+                    self.stdout.write(
+                        self.style.WARNING(
+                            f"Attempt {attempt + 1}: Generated duplicate name '{candidate_name}', retrying..."
+                        )
+                    )
+
+                if item_name is None:
+                    self.stdout.write(
+                        self.style.ERROR(
+                            f"Failed to generate unique name after {max_attempts} attempts. Skipping this item."
+                        )
+                    )
+                    continue
+
+                # Clean up the item name
+                item_name = "".join(char for char in item_name if char.isalpha() or char.isspace()).strip()
+
+                # Generate description using LLM
+                description_result = item_desc_handler.query(
+                    item_name=item_name,
+                    bin_name=storage_bin.name,
+                    bin_description=storage_bin.description
+                )
+                description = description_result.strip()
+
                 # Create the item
                 item = Item(
                     name=item_name,
                     description=description,
                     bin=storage_bin
                 )
-                item.save()
-                
+
                 # Generate image via AWS Bedrock using text-to-image
                 image_success = False
                 try:
@@ -146,74 +147,69 @@ class Command(BaseCommand):
                     if "images" in result and result["images"]:
                         img_b64 = result["images"][0]
                         img_data = base64.b64decode(img_b64)
+                        
+                        # Load the image and resize it to half size
+                        img = Image.open(BytesIO(img_data))
+                        original_width, original_height = img.size
+                        new_width = original_width // 2
+                        new_height = original_height // 2
+                        img_resized = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+                        
+                        # Save the resized image
+                        output = BytesIO()
+                        img_resized.save(output, format="JPEG", quality=90)
+                        output.seek(0)
+                        
                         file_name = f"{item_name.replace(' ', '_')}.jpg"
-                        item.image.save(file_name, ContentFile(img_data), save=True)
+                        item.image.save(file_name, ContentFile(output.read()), save=False)
                         image_success = True
                     else:
                         raise ValueError("No images returned from Bedrock.")
                 except Exception as e:
                     self.stdout.write(self.style.WARNING(f"Failed to generate image via Bedrock for {item_name}: {str(e)}"))
 
-                # If downloading failed, generate a placeholder image with item name
+                # If Bedrock failed, generate a simple placeholder image with item name
                 if not image_success:
                     try:
-                        # Create a colored background image based on category
-                        width, height = 400, 300
-                        bg_color = category_colors.get(category, (200, 200, 200))  # Default gray if category not found
-                        img = Image.new('RGB', (width, height), color=bg_color)
-                        
-                        # Add text
+                        width, height = 200, 150
+                        img = Image.new("RGB", (width, height), color=(240, 240, 240))
                         draw = ImageDraw.Draw(img)
-                        
-                        # Draw item name in center
-                        text_color = (30, 30, 30)  # Dark gray, nearly black
-                        
-                        # Calculate font size based on text length
-                        font_size = min(36, int(300 / (len(item_name) / 10)))  # Adjust font size based on text length
-                        
+
+                        # Add text
+                        text_color = (60, 60, 60)
+                        font_size = min(12, int(150 / (len(item_name) / 8)))
+
                         try:
-                            # Try to use ImageFont if available
-                            try:
-                                font = ImageFont.truetype("Arial", font_size)
-                            except IOError:
-                                font = ImageFont.load_default()
-                                
-                            # Draw text in the center
-                            text_width, text_height = draw.textbbox((0, 0), item_name, font=font)[2:4]
-                            position = ((width - text_width) // 2, (height - text_height) // 2)
-                            draw.text(position, item_name, fill=text_color, font=font)
-                            
-                            # Draw category name at bottom
-                            category_position = (10, height - 30)
-                            draw.text(category_position, category, fill=text_color, font=font)
-                        except AttributeError:
-                            # Fallback for older PIL versions
-                            text_width, text_height = width//2, height//3
-                            position = ((width - text_width) // 2, (height - text_height) // 2)
-                            draw.text(position, item_name, fill=text_color)
-                            
-                            # Draw category name at bottom
-                            category_position = (10, height - 30)
-                            draw.text(category_position, category, fill=text_color)
-                        
+                            font = ImageFont.truetype("Arial", font_size)
+                        except OSError:
+                            font = ImageFont.load_default()
+
+                        # Draw item name in center
+                        text_bbox = draw.textbbox((0, 0), item_name, font=font)
+                        text_width = text_bbox[2] - text_bbox[0]
+                        text_height = text_bbox[3] - text_bbox[1]
+                        position = ((width - text_width) // 2, (height - text_height) // 2)
+                        draw.text(position, item_name, fill=text_color, font=font)
+
                         # Save the image
                         output = BytesIO()
-                        img.save(output, format='JPEG', quality=90)
+                        img.save(output, format="JPEG", quality=90)
                         output.seek(0)
-                        
-                        file_name = f"{item_name.replace(' ', '_')}_generated.jpg"
-                        item.image.save(file_name, ContentFile(output.read()), save=True)
+
+                        file_name = f"{item_name.replace(' ', '_')}_placeholder.jpg"
+                        item.image.save(file_name, ContentFile(output.read()), save=False)
                         image_success = True
+
                     except Exception as e:
-                        # Delete the item if we couldn't create an image
-                        item.delete()
-                        self.stdout.write(self.style.ERROR(f"Failed to generate image for {item_name}, item not created: {str(e)}"))
-                        continue  # Skip to the next item
-                
-                if not image_success:
-                    # This is a safeguard in case both methods fail - delete the item
-                    item.delete()
-                    self.stdout.write(self.style.ERROR(f"Could not create or download an image for {item_name}. Item not created."))
+                        self.stdout.write(
+                            self.style.WARNING(f"Failed to generate placeholder image for {item_name}: {str(e)}")
+                        )
+
+                # Only save the item if we successfully created an image
+                if image_success:
+                    item.save()
+                    self.stdout.write(self.style.SUCCESS(f"  Created Item: {item.name}"))
+                else:
+                    # Delete the item if we couldn't create any image
+                    self.stdout.write(self.style.ERROR(f"Could not create any image for {item_name}. Item not created."))
                     continue
-                    
-                self.stdout.write(self.style.SUCCESS(f"  Created Item: {item.name} in {category} category"))
