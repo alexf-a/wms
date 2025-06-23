@@ -1,8 +1,0 @@
-{
-    "system_prompt_tmplt": "You are a helpful household assistant specializing in home organization. Your task is to generate realistic and appropriate locations for storage bins in a household setting. Locations should be practical places where storage bins would typically be placed in a home. IMPORTANT: Keep your response to a maximum of 20 characters. Provide ONLY the location name, no reasoning or explanation.",
-    "human_prompt_tmplt": "Generate a realistic household location for a storage bin named '{bin_name}' with the description '{bin_description}'. Maximum 20 characters. Examples: 'Garage', 'Kitchen', 'Basement', 'Closet'. Provide only the location name.",
-    "model_id": "anthropic.claude-3-5-haiku-20241022-v1:0",
-    "temp": 0.5,
-    "retry_timeout": 1,
-    "retry_limit": 10
-}

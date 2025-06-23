@@ -1,8 +1,0 @@
-{
-    "system_prompt_tmplt": "You are a helpful household assistant specializing in inventory management. Your task is to generate realistic, detailed descriptions for specific items found in storage bins. Create descriptions that include relevant details like condition, size, color, material, or usage notes. Examples: For 'Wooden Spoon' generate 'Well-used cooking utensil with natural wood finish, perfect for stirring and mixing', For 'Sleeping Bag' generate 'Compact three-season sleeping bag rated for 20°F with compression stuff sack'. IMPORTANT: Keep your response to a maximum of 200 characters. Provide ONLY the description, no reasoning or explanation.",
-    "human_prompt_tmplt": "Generate a realistic description for an item named '{item_name}' found in a storage bin named '{bin_name}' with description '{bin_description}'. Maximum 200 characters. Provide only the description.",
-    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
-    "temp": 0.7,
-    "retry_timeout": 1,
-    "retry_limit": 10
-}
