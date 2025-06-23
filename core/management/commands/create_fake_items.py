@@ -3,7 +3,9 @@ from django.contrib.auth import get_user_model
 from core.models import Bin, Item
 from pathlib import Path
 from llm.llm_call import LLMCall
-from llm.llm_handler import LangChainHandler
+from llm.llm_handler import StructuredLangChainHandler
+from llm.claude4_xml_parser import Claude4XMLParsingError
+from .item_generation_schema import ItemGenerationOutput
 from django.core.files.base import ContentFile
 from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
@@ -36,14 +38,14 @@ class Command(BaseCommand):
 
         # Set up LLM for item generation
         base_dir = Path(__file__).resolve().parent.parent.parent
-        item_name_llm_call_path = base_dir / "llm_calls" / "item_generation.json"
-        item_desc_llm_call_path = base_dir / "llm_calls" / "item_description_generation.json"
+        item_llm_call_path = base_dir / "llm_calls" / "item_generation.json"
         
-        item_name_llm_call = LLMCall.from_json(item_name_llm_call_path)
-        item_desc_llm_call = LLMCall.from_json(item_desc_llm_call_path)
+        item_llm_call = LLMCall.from_json(item_llm_call_path)
         
-        item_name_handler = LangChainHandler(llm_call=item_name_llm_call)
-        item_desc_handler = LangChainHandler(llm_call=item_desc_llm_call)
+        item_handler = StructuredLangChainHandler(
+            llm_call=item_llm_call,
+            output_schema=ItemGenerationOutput
+        )
 
         # Get bins to populate
         if bin_name:
@@ -74,51 +76,59 @@ class Command(BaseCommand):
             )
 
             for i in range(count):
-                # Generate item name using LLM, ensuring uniqueness
+                # Generate complete item using LLM, ensuring uniqueness
                 max_attempts = 10
-                item_name = None
+                item_data = None
                 for attempt in range(max_attempts):
                     # Create list of existing items for context
                     existing_items_str = ", ".join(existing_item_names) if existing_item_names else "None"
                     
-                    # Generate item name using LLM
-                    name_result = item_name_handler.query(
-                        bin_name=storage_bin.name, 
-                        bin_description=storage_bin.description,
-                        existing_items=existing_items_str
-                    )
-                    candidate_name = name_result.strip().title()
-
-                    # Check if name is unique (case-insensitive)
-                    if candidate_name.lower() not in {name.lower() for name in existing_item_names}:
-                        item_name = candidate_name
-                        existing_item_names.add(item_name)
-                        break
-
-                    self.stdout.write(
-                        self.style.WARNING(
-                            f"Attempt {attempt + 1}: Generated duplicate name '{candidate_name}', retrying..."
+                    try:
+                        # Generate complete item using structured LLM
+                        result = item_handler.query(
+                            bin_name=storage_bin.name, 
+                            bin_description=storage_bin.description,
+                            existing_items=existing_items_str
                         )
-                    )
+                        candidate_name = result.name.strip().title()
 
-                if item_name is None:
+                        # Check if name is unique (case-insensitive)
+                        if candidate_name.lower() not in {name.lower() for name in existing_item_names}:
+                            item_data = result
+                            existing_item_names.add(candidate_name)
+                            break
+
+                        self.stdout.write(
+                            self.style.WARNING(
+                                f"Attempt {attempt + 1}: Generated duplicate name '{candidate_name}', retrying..."
+                            )
+                        )
+                    except Claude4XMLParsingError as e:
+                        self.stdout.write(
+                            self.style.WARNING(
+                                f"Attempt {attempt + 1}: XML parsing failed ({e}), retrying..."
+                            )
+                        )
+                        continue
+                    except Exception as e:
+                        self.stdout.write(
+                            self.style.WARNING(
+                                f"Attempt {attempt + 1}: Unexpected error ({e}), retrying..."
+                            )
+                        )
+                        continue
+
+                if item_data is None:
                     self.stdout.write(
                         self.style.ERROR(
-                            f"Failed to generate unique name after {max_attempts} attempts. Skipping this item."
+                            f"Failed to generate unique item after {max_attempts} attempts. Skipping this item."
                         )
                     )
                     continue
 
-                # Clean up the item name
-                item_name = "".join(char for char in item_name if char.isalpha() or char.isspace()).strip()
-
-                # Generate description using LLM
-                description_result = item_desc_handler.query(
-                    item_name=item_name,
-                    bin_name=storage_bin.name,
-                    bin_description=storage_bin.description
-                )
-                description = description_result.strip()
+                # Clean up the item name and description
+                item_name = "".join(char for char in item_data.name if char.isalpha() or char.isspace()).strip()
+                description = item_data.description.strip()
 
                 # Create the item
                 item = Item(
