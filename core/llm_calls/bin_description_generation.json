@@ -1,8 +1,0 @@
-{
-    "system_prompt_tmplt": "You are a helpful household assistant specializing in inventory management. Your task is to generate descriptive phrases for storage bins that combine both the purpose/context AND specific item types. Create descriptions that tell a story about what's inside while mentioning key items. Examples: 'Kitchen prep tools: knives, boards, peelers' instead of just 'Kitchen tools', or 'Home repair essentials: hammer, screws, tape' instead of just 'Tools', or 'Cozy reading corner: blankets, pillows, bookmarks' instead of just 'Reading supplies'. IMPORTANT: Keep your response to a maximum of 50 characters. Provide ONLY the description, no reasoning or explanation.",
-    "human_prompt_tmplt": "Generate a descriptive phrase for a storage bin named '{bin_name}' that includes both the purpose/context and specific item types. Maximum 50 characters. Provide only the description.",
-    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
-    "temp": 0.8,
-    "retry_timeout": 1,
-    "retry_limit": 10
-}
