@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING
 
 from langchain_core.output_parsers import BaseOutputParser, XMLOutputParser
+from pydantic import BaseModel
 
-if TYPE_CHECKING:
-    from pydantic import BaseModel
+
+class Claude4XMLParsingError(Exception):
+    """Exception raised when Claude 4 XML function call parsing fails."""
 
 
 class Claude4XMLFunctionCallParser(BaseOutputParser):
@@ -61,11 +62,15 @@ class Claude4XMLFunctionCallParser(BaseOutputParser):
             BaseModel: A Pydantic model instance with the parsed parameters.
 
         Raises:
-            ValueError: If the text doesn't contain valid function calls or parsing fails.
+            Claude4XMLParsingError: If the text doesn't contain valid function calls or parsing fails.
         """
-        parsed_data: dict = self._xml_parser.parse(text)
-        extracted_params = self._extract_parameters(parsed_data)
-        return self._output_schema(**self._extract_parameters(parsed_data))
+        try:
+            parsed_data: dict = self._xml_parser.parse(text)
+            extracted_params = self._extract_parameters(parsed_data)
+            return self._output_schema(**extracted_params)
+        except Exception as e:
+            msg = f"Failed to parse Claude 4 XML function call: {e}"
+            raise Claude4XMLParsingError(msg) from e
 
     def _extract_parameters(self, parsed_data: dict) -> dict:
         """Extract parameters from the parsed XML data.
@@ -95,7 +100,8 @@ class Claude4XMLFunctionCallParser(BaseOutputParser):
             flat_params = {}
             for entry in parameters:
                 if not isinstance(entry, dict):
-                    raise ValueError("Invalid parameter entry format.")
+                    msg = "Invalid parameter entry format."
+                    raise TypeError(msg)
                 flat_params.update(entry)
         else:
             flat_params = parameters
