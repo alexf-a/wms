@@ -5,7 +5,7 @@ from pathlib import Path
 from llm.llm_call import LLMCall
 from llm.llm_handler import StructuredLangChainHandler
 from llm.claude4_xml_parser import Claude4XMLParsingError
-from .item_generation_schema import ItemGenerationOutput
+from schemas.synthetic_data.item_generation import ItemGenerationOutput
 from django.core.files.base import ContentFile
 from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO

@@ -3,22 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import cast
 
-from pydantic import BaseModel
-
 from core.models import Bin, Item
 from llm.llm_call import LLMCall
 from llm.llm_handler import StructuredLangChainHandler
+from schemas.llm_search import ItemLocation
 
-
-class ItemLocation(BaseModel):
-    """Model for the response from the LLM describing item locations."""
-    item_name: str
-    bin_name: str
-    confidence: str  # High, Medium, Low
-    additional_info: str = ""
-
-    def __str__(self):
-        return f"Item: {self.item_name}\nBin: {self.bin_name}\nConfidence: {self.confidence}\nAdditional Info: {self.additional_info}"
 
 def find_item_location(query: str, user_id: int) -> str:
     """Find the location of an item using LLM.
