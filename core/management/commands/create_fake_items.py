@@ -4,6 +4,7 @@ from core.models import Bin, Item
 from pathlib import Path
 from llm.llm_call import LLMCall
 from llm.llm_handler import StructuredLangChainHandler
+from llm.claude4_xml_parser import Claude4XMLParsingError
 from .item_generation_schema import ItemGenerationOutput
 from django.core.files.base import ContentFile
 from PIL import Image, ImageDraw, ImageFont
@@ -82,25 +83,40 @@ class Command(BaseCommand):
                     # Create list of existing items for context
                     existing_items_str = ", ".join(existing_item_names) if existing_item_names else "None"
                     
-                    # Generate complete item using structured LLM
-                    result = item_handler.query(
-                        bin_name=storage_bin.name, 
-                        bin_description=storage_bin.description,
-                        existing_items=existing_items_str
-                    )
-                    candidate_name = result.name.strip().title()
-
-                    # Check if name is unique (case-insensitive)
-                    if candidate_name.lower() not in {name.lower() for name in existing_item_names}:
-                        item_data = result
-                        existing_item_names.add(candidate_name)
-                        break
-
-                    self.stdout.write(
-                        self.style.WARNING(
-                            f"Attempt {attempt + 1}: Generated duplicate name '{candidate_name}', retrying..."
+                    try:
+                        # Generate complete item using structured LLM
+                        result = item_handler.query(
+                            bin_name=storage_bin.name, 
+                            bin_description=storage_bin.description,
+                            existing_items=existing_items_str
                         )
-                    )
+                        candidate_name = result.name.strip().title()
+
+                        # Check if name is unique (case-insensitive)
+                        if candidate_name.lower() not in {name.lower() for name in existing_item_names}:
+                            item_data = result
+                            existing_item_names.add(candidate_name)
+                            break
+
+                        self.stdout.write(
+                            self.style.WARNING(
+                                f"Attempt {attempt + 1}: Generated duplicate name '{candidate_name}', retrying..."
+                            )
+                        )
+                    except Claude4XMLParsingError as e:
+                        self.stdout.write(
+                            self.style.WARNING(
+                                f"Attempt {attempt + 1}: XML parsing failed ({e}), retrying..."
+                            )
+                        )
+                        continue
+                    except Exception as e:
+                        self.stdout.write(
+                            self.style.WARNING(
+                                f"Attempt {attempt + 1}: Unexpected error ({e}), retrying..."
+                            )
+                        )
+                        continue
 
                 if item_data is None:
                     self.stdout.write(

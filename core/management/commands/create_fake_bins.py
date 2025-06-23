@@ -6,6 +6,7 @@ from pathlib import Path
 from core.utils import get_qr_code_file
 from llm.llm_call import LLMCall
 from llm.llm_handler import StructuredLangChainHandler
+from llm.claude4_xml_parser import Claude4XMLParsingError
 from .bin_generation_schema import BinGenerationOutput
 
 
@@ -49,18 +50,33 @@ class Command(BaseCommand):
             max_attempts = 10
             bin_data = None
             for attempt in range(max_attempts):
-                # Generate complete bin using structured LLM
-                result = bin_handler.query(existing_names=existing_names_str)
-                candidate_name = result.name.strip().title()
+                try:
+                    # Generate complete bin using structured LLM
+                    result = bin_handler.query(existing_names=existing_names_str)
+                    candidate_name = result.name.strip().title()
 
-                # Check if name is unique (case-insensitive)
-                if candidate_name.lower() not in {name.lower() for name in existing_bin_names}:
-                    bin_data = result
-                    existing_bin_names.add(candidate_name)  # Add to set to avoid duplicates in this batch
-                    existing_names_str = ", ".join(existing_bin_names)
-                    break
+                    # Check if name is unique (case-insensitive)
+                    if candidate_name.lower() not in {name.lower() for name in existing_bin_names}:
+                        bin_data = result
+                        existing_bin_names.add(candidate_name)  # Add to set to avoid duplicates in this batch
+                        existing_names_str = ", ".join(existing_bin_names)
+                        break
 
-                self.stdout.write(self.style.WARNING(f"Attempt {attempt + 1}: Generated duplicate name '{candidate_name}', retrying..."))
+                    self.stdout.write(self.style.WARNING(f"Attempt {attempt + 1}: Generated duplicate name '{candidate_name}', retrying..."))
+                except Claude4XMLParsingError as e:
+                    self.stdout.write(
+                        self.style.WARNING(
+                            f"Attempt {attempt + 1}: XML parsing failed ({e}), retrying..."
+                        )
+                    )
+                    continue
+                except Exception as e:
+                    self.stdout.write(
+                        self.style.WARNING(
+                            f"Attempt {attempt + 1}: Unexpected error ({e}), retrying..."
+                        )
+                    )
+                    continue
 
             if bin_data is None:
                 self.stdout.write(self.style.ERROR(f"Failed to generate unique bin after {max_attempts} attempts. Skipping this bin."))
