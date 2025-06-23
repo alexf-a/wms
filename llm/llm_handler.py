@@ -10,6 +10,8 @@ from langchain.prompts import (
 )
 from langchain_aws.chat_models.bedrock import ChatBedrock
 from langchain_core.output_parsers import StrOutputParser
+from aws_utils.model_id import ClaudeModelID
+from llm.claude4_xml_parser import Claude4XMLFunctionCallParser
 
 if TYPE_CHECKING:
     from langchain.schema.runnable import Runnable
@@ -119,13 +121,29 @@ class StructuredLangChainHandler(LangChainHandler):
         super().__init__(llm_call=llm_call)
 
     def _configure_langchain_client(self) -> None:
-        self.langchain_client = self.langchain_client.with_structured_output(self.output_schema)
-        super()._configure_langchain_client()
+        # Check if this is Claude 4 Sonnet which uses XML-style function calling
+        if self.llm_call.model_id == ClaudeModelID.CLAUDE_4_SONNET:
+            # Claude 4 Sonnet uses its own XML-style function calling format
+            self.langchain_client = self.langchain_client.bind_tools([self.output_schema])
+        else:
+            # Try to use with_structured_output for other models
+            try:
+                self.langchain_client = self.langchain_client.with_structured_output(self.output_schema)
+            except (AttributeError, NotImplementedError, Exception):
+                # Fall back to tool calling if structured output isn't supported
+                self.langchain_client = self.langchain_client.bind_tools([self.output_schema])
 
+        super()._configure_langchain_client()
 
     @property
     def chain(self) -> Runnable[LanguageModelInput, BaseModel]:
         """The runnable chain that calls the LLM and parses the output to a structured format."""
+        # For Claude 4 Sonnet, use the custom XML parser
+        if self.llm_call.model_id == ClaudeModelID.CLAUDE_4_SONNET:
+            claude4_parser = Claude4XMLFunctionCallParser(self.output_schema)
+            return self.llm_chain | claude4_parser
+
+        # For other models, return the llm_chain directly (structured output already configured)
         return self.llm_chain
 
     def query(self, **kwargs: str) -> BaseModel:
@@ -135,7 +153,7 @@ class StructuredLangChainHandler(LangChainHandler):
             **kwargs: Keyword arguments to be passed to the LLM prompt template.
 
         Returns:
-            str: The response from the LLM as a string.
+            BaseModel: The response from the LLM as a structured Pydantic object.
         """
         return self.chain.invoke(kwargs)
 
