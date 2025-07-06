@@ -1,15 +1,17 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from langchain.prompts import (
     ChatPromptTemplate,
     HumanMessagePromptTemplate,
     SystemMessagePromptTemplate,
+    MessagesPlaceholder,
 )
 from langchain_aws.chat_models.bedrock import ChatBedrock
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.messages import SystemMessage, HumanMessage
 from aws_utils.model_id import ClaudeModelID
 from llm.claude4_xml_parser import Claude4XMLFunctionCallParser
 
@@ -55,6 +57,7 @@ class LangChainHandler(LLMHandler):
             llm_call (LLMCall): An LLMCall object containing the configuration for the LLM call.
         """
         self.llm_call = llm_call
+        self._additional_messages: list[SystemMessage | HumanMessage] = []
 
         self.langchain_client = ChatBedrock(
             model_id=self.llm_call.model_id.value,
@@ -74,15 +77,41 @@ class LangChainHandler(LLMHandler):
         # Apply retry configuration if needed
         self._maybe_configure_retry()
 
+    def add_message(self, role: str, content: list[dict[str, Any]]) -> None:
+        """Add a message to the handler's message chain.
+
+        Args:
+            role: The role of the message ("user" or "system")
+            content: List of content dictionaries for LangChain multimodal input
+
+        Raises:
+            ValueError: If role is not "user" or "system"
+        """
+        if role not in ("user", "system"):
+            error_msg = f"Invalid role '{role}'. Must be 'user' or 'system'"
+            raise ValueError(error_msg)
+
+        if role == "system":
+            self._additional_messages.append(SystemMessage(content=content))
+        else:  # role == "user"
+            self._additional_messages.append(HumanMessage(content=content))
+
     @property
     def lc_prompt_tmplt(self) -> ChatPromptTemplate:
         """Property that returns the prompt template."""
         messages = []
+        
+        # Add system prompt template if exists
         if self.llm_call.system_prompt_tmplt is not None:
             messages.append(SystemMessagePromptTemplate.from_template(self.llm_call.system_prompt_tmplt))
 
+        # Add human prompt template if exists
         if self.llm_call.human_prompt_tmplt is not None:
             messages.append(HumanMessagePromptTemplate.from_template(self.llm_call.human_prompt_tmplt))
+
+        # Add placeholder for additional messages if they exist
+        if self._additional_messages:
+            messages.append(MessagesPlaceholder(variable_name="additional_messages"))
 
         return ChatPromptTemplate.from_messages(messages)
 
@@ -105,6 +134,11 @@ class LangChainHandler(LLMHandler):
         Returns:
             str: The response from the LLM as a string.
         """
+        # Add additional messages to kwargs if they exist
+        if self._additional_messages:
+            kwargs["additional_messages"] = self._additional_messages
+
+        # Use the chain with the modified template that includes additional messages
         return self.chain.invoke(kwargs)
 
 
@@ -155,5 +189,10 @@ class StructuredLangChainHandler(LangChainHandler):
         Returns:
             BaseModel: The response from the LLM as a structured Pydantic object.
         """
+        # Add additional messages to kwargs if they exist
+        if self._additional_messages:
+            kwargs["additional_messages"] = self._additional_messages
+
+        # Use the chain with the modified template that includes additional messages
         return self.chain.invoke(kwargs)
 
