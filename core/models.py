@@ -3,6 +3,9 @@ from django.db import models
 import qrcode
 from django.core.files.base import ContentFile
 from io import BytesIO
+import base64
+from pathlib import Path
+from schemas.item_search_input import ItemSearchInput
 
 class WMSUser(User):
     """Custom user model extending Django's built-in User model."""
@@ -79,4 +82,30 @@ class Item(models.Model):
 
     def __str__(self):
         return self.name
+
+    def to_search_input(self) -> ItemSearchInput:
+        """Convert this Item instance to an ItemSearchInput for LLM search.
+        
+        Returns:
+            ItemSearchInput: A Pydantic model with item data ready for LLM search
+        """
+        image = None
+        
+        # If item has an image, encode it to base64
+        if self.image:
+            try:
+                image_path = Path(self.image.path)
+                with image_path.open("rb") as image_file:
+                    image_data = image_file.read()
+                    image = base64.b64encode(image_data).decode("utf-8")
+            except (FileNotFoundError, AttributeError):
+                # If image file doesn't exist or can't be read, skip it
+                pass
+        
+        return ItemSearchInput(
+            name=self.name,
+            description=self.description,
+            bin_name=self.bin.name,
+            image=image
+        )
 
