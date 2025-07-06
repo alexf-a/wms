@@ -1,5 +1,6 @@
 from io import BytesIO
 from django.shortcuts import render, redirect, get_object_or_404
+from django.http import HttpRequest
 from django.contrib.auth import login, authenticate
 from django.contrib.auth.decorators import login_required
 from .forms import WMSUserCreationForm, ItemForm, ItemSearchForm
@@ -42,7 +43,7 @@ def home_view(request) -> render:
     # Pass authentication status to the template
     return render(request, "core/home.html", {"is_authenticated": request.user.is_authenticated})
 
-def expand_inventory_view(request) -> render:
+def expand_inventory_view(request: HttpRequest) -> render:
     """Render the expand inventory page.
 
     Args:
@@ -53,7 +54,8 @@ def expand_inventory_view(request) -> render:
     """
     return render(request, "core/expand_inventory.html")
 
-def create_bin_view(request) -> render:
+@login_required
+def create_bin_view(request: HttpRequest) -> render:
     """Handle the creation of a new bin.
 
     Args:
@@ -92,7 +94,7 @@ def create_bin_view(request) -> render:
         return redirect("home_view")
     return render(request, "core/create_bin.html")
 
-def add_items_to_bin_view(request) -> render:
+def add_items_to_bin_view(request: HttpRequest) -> render:
     """Handle adding items to a bin.
 
     Args:
@@ -110,7 +112,7 @@ def add_items_to_bin_view(request) -> render:
         form = ItemForm(user=request.user)
     return render(request, "core/add_items_to_bin.html", {"form": form})
 
-def list_bins(request) -> render:
+def list_bins(request: HttpRequest) -> render:
     """List all bins for the current user.
 
     Args:
@@ -122,7 +124,7 @@ def list_bins(request) -> render:
     bins = Bin.objects.filter(user=request.user)
     return render(request, "core/list_bins.html", {"bins": bins})
 
-def bin_detail(request, bin_id: int) -> render:
+def bin_detail(request: HttpRequest, bin_id: int) -> render:
     """Display the details of a specific bin.
 
     Args:
@@ -132,10 +134,10 @@ def bin_detail(request, bin_id: int) -> render:
     Returns:
         The rendered bin detail page.
     """
-    bin = get_object_or_404(Bin, id=bin_id)
-    return render(request, "core/bin_detail.html", {"bin": bin})
+    _bin = get_object_or_404(Bin, id=bin_id)
+    return render(request, "core/bin_detail.html", {"bin": _bin})
 
-def item_detail(request, item_id: int) -> render:
+def item_detail(request: HttpRequest, item_id: int) -> render:
     """Display the details of a specific item.
 
     Args:
@@ -149,26 +151,25 @@ def item_detail(request, item_id: int) -> render:
     return render(request, "core/item_detail.html", {"item": item})
 
 @login_required
-def item_search_view(request) -> render:
-    """
-    Handle item search using LLM.
-    
+def item_search_view(request: HttpRequest) -> render:
+    """Handle item search using LLM.
+
     Args:
         request: The HTTP request object.
-        
+
     Returns:
         The rendered search page with results if query provided.
     """
     result = None
-    
+
     if request.method == "POST":
         form = ItemSearchForm(request.POST)
         if form.is_valid():
             query = form.cleaned_data['query']
-            result = find_item_location(query, request.user.id)
+            result = str(find_item_location(query, request.user.id))
     else:
         form = ItemSearchForm()
-    
+
     return render(request, "core/item_search.html", {
         "form": form,
         "result": result
