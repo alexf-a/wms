@@ -24,6 +24,7 @@ build-backend = "poetry.core.masonry.api"
 select = ["ALL"]
 ignore = [
     "D100", # Docstring for modules
+    "D105", # Docstring for magic methods
     "D413", # Blank line at end of docstring
     "D204", # Blank line after docstring
     "COM812" # Trailing comma in function def
