@@ -63,16 +63,6 @@ class Bin(models.Model):
     def __str__(self):
         return self.name
 
-    def to_search_prompt(self) -> str:
-        """Format this Bin and its items as a string for LLM search context using ItemSearchInput.to_prompt."""
-        item_qs = self.items.all()
-        prompt = f"Bin: {self.name} (located at: {self.location or 'Unknown location'})\n"
-        if item_qs.exists():
-            prompt += "Contains items:\n" + str([item.to_search_input().to_prompt() for item in item_qs])
-        else:
-            prompt += "Contains no items\n"
-        return prompt + "\n\n\n"
-
 class Item(models.Model):
     """Model representing an item stored in a bin.
 
