@@ -5,7 +5,7 @@ from django.core.files.base import ContentFile
 from io import BytesIO
 import base64
 from pathlib import Path
-from schemas.item_search_input import ItemSearchInput
+from schemas import ItemSearchInput
 
 class WMSUser(User):
     """Custom user model extending Django's built-in User model."""
@@ -90,17 +90,17 @@ class Item(models.Model):
     image = models.ImageField(upload_to="item_images/", blank=True, null=True)
     bin = models.ForeignKey(Bin, related_name="items", on_delete=models.CASCADE)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
     def to_search_input(self) -> ItemSearchInput:
         """Convert this Item instance to an ItemSearchInput for LLM search.
-        
+
         Returns:
             ItemSearchInput: A Pydantic model with item data ready for LLM search
         """
         image = None
-        
+
         # If item has an image, encode it to base64
         if self.image:
             try:
@@ -111,7 +111,7 @@ class Item(models.Model):
             except (FileNotFoundError, AttributeError):
                 # If image file doesn't exist or can't be read, skip it
                 pass
-        
+
         return ItemSearchInput(
             name=self.name,
             description=self.description,
