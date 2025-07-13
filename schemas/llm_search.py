@@ -25,6 +25,18 @@ class ItemSearchCandidate(BaseModel):
         ..., description="Confidence score between 0 and 1 (inclusive)", ge=0.0, le=1.0
     )
 
+class ItemSearchCandidates(BaseModel):
+    """Model representing a list of item search candidates."""
+    candidates: list[ItemSearchCandidate] = Field(
+        default_factory=list, description="List of item search candidates"
+    )
+
+    def __str__(self) -> str:
+        """Return a string representation of the item search candidates."""
+        return "\n".join(
+            [candidate.model_dump_json() for candidate in self.candidates]
+        )
+
 
 class ItemSearchInput(BaseModel):
     """Pydantic model representing item data for LLM search input.
