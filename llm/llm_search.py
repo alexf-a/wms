@@ -30,7 +30,7 @@ def perform_candidate_search(user_query: str, user_id: int, k: int = 10) -> list
         list[ItemSearchCandidates]: A list of candidate items returned by the LLM,
             matching the search query.
     """
-    items = Item.objects.filter(user_id=user_id)
+    items = Item.objects.filter(bin__user_id=user_id)
     prompt_ctxt = str([item.to_search_input().to_prompt() for item in items])
 
     # Get the path to the candidate search LLMCall JSON file
