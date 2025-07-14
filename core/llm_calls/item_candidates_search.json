@@ -1,5 +1,5 @@
 {
-  "system_prompt_tmplt": "You are an expert assistant for a storage management system. Given a user's query and a JSON-formatted context list of options from which to make your choices, return up to {k} candidate items that best match the user_query. For each candidate, provide the item name, the bin name, and a confidence score between 0 and 1 (inclusive). Return the results as a JSON array of objects, each with 'name', 'bin_name', and 'confidence'.",
+  "system_prompt_tmplt": "You are an expert assistant for a storage management system. Given a user's query and a JSON-formatted context list of options from which to make your choices, return up to {k} candidate items that best match the user_query.",
   "human_prompt_tmplt": "User query: {user_query}\n\nContext:\n{formatted_context}\n\nReturn up to {k} candidate items as described above.",
   "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
   "temp": 0.7,
