@@ -1,7 +1,7 @@
 {
   "system_prompt_tmplt": "You are an expert assistant for a storage management system. Given a user's query and a JSON-formatted context list of options from which to make your choices, return up to {k} candidate items that best match the user_query.",
   "human_prompt_tmplt": "User query: {user_query}\n\nContext:\n{formatted_context}\n\nReturn up to {k} candidate items as described above.",
-  "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+  "model_id": "anthropic.claude-3-5-haiku-20241022-v1:0",
   "temp": 0.7,
   "retry_timeout": 1,
   "retry_limit": 5
