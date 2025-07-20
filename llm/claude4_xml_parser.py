@@ -1,12 +1,13 @@
 """Custom output parser for Claude 4's XML-style function calling format."""
 
 from __future__ import annotations
-
-import re
+import json
+import contextlib
+import logging
 
 from langchain_core.output_parsers import BaseOutputParser, XMLOutputParser
 from pydantic import BaseModel
-
+logger = logging.getLogger(__name__)
 
 class Claude4XMLParsingError(Exception):
     """Exception raised when Claude 4 XML function call parsing fails."""
@@ -34,10 +35,13 @@ class Claude4XMLFunctionCallParser(BaseOutputParser):
         
         Args:
             output_schema: The Pydantic model class to validate and structure the output.
+                Will only be able to parse outputs for Pydantic models that have a maximum of one level of nesting.
+                An output schema property can be a BaseModel or a list of BaseModels, but no further nesting is supported.
         """
         super().__init__()
-        self._output_schema = output_schema
+        # No custom tag setup; use default XML parser
         self._xml_parser = XMLOutputParser()
+        self._output_schema = output_schema
 
     @property
     def output_schema(self) -> type[BaseModel]:
@@ -67,9 +71,15 @@ class Claude4XMLFunctionCallParser(BaseOutputParser):
         try:
             parsed_data: dict = self._xml_parser.parse(text)
             extracted_params = self._extract_parameters(parsed_data)
+            # If any param is a JSON-like string, try to decode it
+            for key, val in list(extracted_params.items()):
+                if isinstance(val, str) and val.strip().startswith(("[", "{")):
+                    with contextlib.suppress(json.JSONDecodeError):
+                        extracted_params[key] = json.loads(val)
             return self._output_schema(**extracted_params)
         except Exception as e:
             msg = f"Failed to parse Claude 4 XML function call: {e}"
+            logger.exception("Failed to parse and create output schema from text: %s", text)
             raise Claude4XMLParsingError(msg) from e
 
     def _extract_parameters(self, parsed_data: dict) -> dict:
