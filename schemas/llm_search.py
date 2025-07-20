@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field, TypeAdapter
+from pydantic import BaseModel, Field
 
 
 class ItemLocation(BaseModel):
@@ -58,4 +58,7 @@ class ItemSearchInput(BaseModel):
         data = self.model_dump(exclude=exclude_fields)
         if "image" not in exclude_fields and data.get("image") is not None:
             data["image"] = "[Image provided below]"
-        return TypeAdapter(type(self)).dump_json(data).decode()
+        # Create a new ItemSearchInput instance with modified data
+        prompt_model = ItemSearchInput(**data)
+        # Return JSON string from the new instance, excluding original excluded fields
+        return prompt_model.model_dump_json(exclude=exclude_fields)
