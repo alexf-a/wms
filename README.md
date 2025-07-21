@@ -1,14 +1,10 @@
 # wms
-A web-native and LLM-enhanced app for organizing and finding your sh*t!
+A web-native app for organizing and finding your sh*t!
 
-As we accumulate stuff, many of us face the same challenges: We frantically place our items in bins, we place the bins in long-term storage and then we forget two important pieces of information:
+Personal storage comes with two major pain points:
+1) Storage unit transparency: We are unsure what items exist in individual units of storage (such as bins, lockers, sheds, etc.)
+2) Individual item location: We are unsure of the whereabouts of particular items. 
 
-1) The contents of each bin
-2) In which bin we've placed some individual item that we are looking for. 
-
-The intention behind WMS is two-fold:
-
-1) Visibility into the contents of our storage units, which are heavily inconvenient to manually search through.
-2) Guidance on where to find individual items. 
-
-1 can be accomplished through a simple QR-code system. I intend to accomplish 2 with AI-enablement.
+WMS seeks to address both pain-points:
+1) Storage unit transparency is increased through a simple digital inventory system
+2) Items are located through advanced search capabilities, using image and natural language inputs for user convenience. 
