@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any
+import json
 
+from pydantic import TypeAdapter
 from langchain.prompts import (
     ChatPromptTemplate,
     HumanMessagePromptTemplate,
@@ -149,35 +151,40 @@ class StructuredLangChainHandler(LangChainHandler):
 
         Args:
             llm_call (LLMCall): An LLMCall object containing the configuration for the LLM call.
+                # Note: The LLMCall system prompt template will be modified to include the output schema.
+                 It should not contain any instructions about the output format.
             output_schema (BaseModel): The Pydantic model to use for structuring the LLM output.
         """
         self.output_schema = output_schema
+        # merge with existing system prompt
+        base = llm_call.system_prompt_tmplt.rstrip() if llm_call.system_prompt_tmplt else ""
+        if llm_call.model_id == ClaudeModelID.CLAUDE_4_SONNET:
+            instr = (
+                "Please structure your XML output to match the following JSON schema. "
+                "Make sure your XML output is recursively parseable "
+                "(do not put JSON text inside of XML tags):\n{schema_str}"
+            )
+        else:
+            instr = "Please format your output to match the following JSON schema:\n{schema_str}"
+        llm_call.system_prompt_tmplt = (base + "\n\n" + instr).strip()
         super().__init__(llm_call=llm_call)
 
     def _configure_langchain_client(self) -> None:
-        # Check if this is Claude 4 Sonnet which uses XML-style function calling
-        if self.llm_call.model_id == ClaudeModelID.CLAUDE_4_SONNET:
-            # Claude 4 Sonnet uses its own XML-style function calling format
+        # Always use structured_output for all models (disable Claude 4 XML fallback)
+        try:
+            self.langchain_client = self.langchain_client.with_structured_output(self.output_schema)
+        except (AttributeError, NotImplementedError, Exception):
+            # Fall back to tool binding if structured_output isn't supported
             self.langchain_client = self.langchain_client.bind_tools([self.output_schema])
-        else:
-            # Try to use with_structured_output for other models
-            try:
-                self.langchain_client = self.langchain_client.with_structured_output(self.output_schema)
-            except (AttributeError, NotImplementedError, Exception):
-                # Fall back to tool calling if structured output isn't supported
-                self.langchain_client = self.langchain_client.bind_tools([self.output_schema])
 
         super()._configure_langchain_client()
 
     @property
     def chain(self) -> Runnable[LanguageModelInput, BaseModel]:
         """The runnable chain that calls the LLM and parses the output to a structured format."""
-        # For Claude 4 Sonnet, use the custom XML parser
         if self.llm_call.model_id == ClaudeModelID.CLAUDE_4_SONNET:
-            claude4_parser = Claude4XMLFunctionCallParser(self.output_schema)
-            return self.llm_chain | claude4_parser
-
-        # For other models, return the llm_chain directly (structured output already configured)
+            parser = Claude4XMLFunctionCallParser(self.output_schema)
+            return self.llm_chain | parser
         return self.llm_chain
 
     def query(self, **kwargs: str) -> BaseModel:
@@ -189,6 +196,10 @@ class StructuredLangChainHandler(LangChainHandler):
         Returns:
             BaseModel: The response from the LLM as a structured Pydantic object.
         """
+        # generate JSON schema dict for the output model and serialize to string
+        schema_dict = TypeAdapter(self.output_schema).json_schema()
+        schema_str = json.dumps(schema_dict, indent=2)
+        kwargs["schema_str"] = schema_str
         # Add additional messages to kwargs if they exist
         if self._additional_messages:
             kwargs["additional_messages"] = self._additional_messages
