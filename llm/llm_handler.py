@@ -182,9 +182,10 @@ class StructuredLangChainHandler(LangChainHandler):
     @property
     def chain(self) -> Runnable[LanguageModelInput, BaseModel]:
         """The runnable chain that calls the LLM and parses the output to a structured format."""
-        if self.llm_call.model_id == ClaudeModelID.CLAUDE_4_SONNET:
-            parser = Claude4XMLFunctionCallParser(self.output_schema)
-            return self.llm_chain | parser
+        # Uncomment the following lines of structured output fails with Claude 4 models
+        # if self.llm_call.model_id == ClaudeModelID.CLAUDE_4_SONNET:
+        #     parser = Claude4XMLFunctionCallParser(self.output_schema)
+        #     return self.llm_chain | parser
         return self.llm_chain
 
     def query(self, **kwargs: str) -> BaseModel:
