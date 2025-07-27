@@ -3,8 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import cast
 
-from core.models import Item
-from llm.llm_call import LLMCall
+from core.models import Bin, Item
+from lib.llm.llm_call import LLMCall
 from lib.llm.llm_handler import StructuredLangChainHandler
 from schemas.llm_search import ItemLocation, ItemSearchCandidates
 

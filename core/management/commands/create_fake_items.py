@@ -2,9 +2,9 @@ from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from core.models import Bin, Item
 from pathlib import Path
-from llm.llm_call import LLMCall
+from lib.llm.llm_call import LLMCall
 from lib.llm.llm_handler import StructuredLangChainHandler
-from llm.claude4_xml_parser import Claude4XMLParsingError
+from lib.llm.claude4_xml_parser import Claude4XMLParsingError
 from schemas.synthetic_data.item_generation import ItemGenerationOutput
 from django.core.files.base import ContentFile
 from PIL import Image, ImageDraw, ImageFont

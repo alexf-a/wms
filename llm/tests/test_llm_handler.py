@@ -11,7 +11,7 @@ from langchain.schema.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel
 
 from aws_utils.model_id import ClaudeModelID
-from llm.llm_call import LLMCall
+from lib.llm.llm_call import LLMCall
 from lib.llm.llm_handler import LangChainHandler, StructuredLangChainHandler
 
 
