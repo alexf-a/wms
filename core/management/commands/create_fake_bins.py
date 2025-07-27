@@ -2,11 +2,10 @@ from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from core.models import Bin
 from faker import Faker
-from pathlib import Path
 from core.utils import get_qr_code_file
-from lib.llm.llm_call import LLMCall
 from lib.llm.llm_handler import StructuredLangChainHandler
 from lib.llm.claude4_xml_parser import Claude4XMLParsingError
+from lib.llm.utils import get_llm_call
 from schemas.synthetic_data.bin_generation import BinGenerationOutput
 
 
@@ -28,11 +27,7 @@ class Command(BaseCommand):
             return
 
         # Get the path to the LLMCall JSON file for bin generation
-        base_dir = Path(__file__).resolve().parent.parent.parent
-        bin_llm_call_path = base_dir / "llm_calls" / "bin_generation.json"
-
-        # Create the LLMCall instance
-        bin_llm_call = LLMCall.from_json(bin_llm_call_path)
+        bin_llm_call = get_llm_call("synthetic_data/bin_generation")
 
         # Create the structured handler
         bin_handler = StructuredLangChainHandler(

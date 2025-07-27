@@ -1,10 +1,9 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from core.models import Bin, Item
-from pathlib import Path
-from lib.llm.llm_call import LLMCall
 from lib.llm.llm_handler import StructuredLangChainHandler
 from lib.llm.claude4_xml_parser import Claude4XMLParsingError
+from lib.llm.utils import get_llm_call
 from schemas.synthetic_data.item_generation import ItemGenerationOutput
 from django.core.files.base import ContentFile
 from PIL import Image, ImageDraw, ImageFont
@@ -37,10 +36,7 @@ class Command(BaseCommand):
             return
 
         # Set up LLM for item generation
-        base_dir = Path(__file__).resolve().parent.parent.parent
-        item_llm_call_path = base_dir / "llm_calls" / "item_generation.json"
-        
-        item_llm_call = LLMCall.from_json(item_llm_call_path)
+        item_llm_call = get_llm_call("synthetic_data/item_generation")
         
         item_handler = StructuredLangChainHandler(
             llm_call=item_llm_call,
