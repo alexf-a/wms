@@ -174,3 +174,44 @@ def item_search_view(request: HttpRequest) -> render:
         "form": form,
         "result": result
     })
+
+@login_required
+def auto_generate_item_view(request: HttpRequest) -> render:
+    """Handle auto-generation of item features from uploaded image.
+
+    This view processes an uploaded image and selected bin to auto-generate
+    name and description using LLM, then redirects to confirmation page.
+
+    Args:
+        request: The HTTP request object containing image and bin selection.
+
+    Returns:
+        The rendered confirmation page with auto-generated features or
+        redirect back to add items page with error message.
+    """
+    # Implementation will include:
+    # 1. Image upload validation
+    # 2. LLM call to generate name and description from image
+    # 3. Store temporary data for confirmation page
+    # 4. Redirect to confirmation view
+    return render(request, "core/auto_generate_item.html")
+
+@login_required
+def confirm_item_view(request: HttpRequest) -> render:
+    """Handle confirmation and editing of auto-generated item features.
+
+    This view displays the auto-generated item features (name, description)
+    along with the uploaded image and allows the user to edit before saving.
+
+    Args:
+        request: The HTTP request object.
+
+    Returns:
+        The rendered confirmation page or redirect to add items page after saving.
+    """
+    # Implementation will include:
+    # 1. Display auto-generated features with image preview
+    # 2. Allow editing of name and description
+    # 3. Save item to database on confirmation
+    # 4. Handle back/retry functionality
+    return render(request, "core/confirm_item.html")
