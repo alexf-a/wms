@@ -111,9 +111,8 @@ class LangChainHandler(LLMHandler):
         if self.llm_call.human_prompt_tmplt is not None:
             messages.append(HumanMessagePromptTemplate.from_template(self.llm_call.human_prompt_tmplt))
 
-        # Add placeholder for additional messages if they exist
-        if self._additional_messages:
-            messages.append(MessagesPlaceholder(variable_name="additional_messages"))
+        # Always add placeholder for additional messages to support dynamic message injection
+        messages.append(MessagesPlaceholder(variable_name="additional_messages", optional=True))
 
         return ChatPromptTemplate.from_messages(messages)
 
@@ -136,9 +135,11 @@ class LangChainHandler(LLMHandler):
         Returns:
             str: The response from the LLM as a string.
         """
-        # Add additional messages to kwargs if they exist
+        # Ensure additional_messages is always present for the MessagesPlaceholder
+        kwargs["additional_messages"] = kwargs.get("additional_messages", [])
         if self._additional_messages:
-            kwargs["additional_messages"] = self._additional_messages
+            # Append handler's messages to any passed in via kwargs
+            kwargs["additional_messages"] = self._additional_messages + kwargs["additional_messages"]
 
         # Use the chain with the modified template that includes additional messages
         return self.chain.invoke(kwargs)
@@ -202,9 +203,35 @@ class StructuredLangChainHandler(LangChainHandler):
         schema_str = json.dumps(schema_dict, indent=2)
         kwargs["schema_str"] = schema_str
         # Add additional messages to kwargs if they exist
+        kwargs["additional_messages"] = kwargs.get("additional_messages", [])
         if self._additional_messages:
-            kwargs["additional_messages"] = self._additional_messages
+            # Append new additional messages to existing ones
+            kwargs["additional_messages"] = self._additional_messages + kwargs["additional_messages"]
 
         # Use the chain with the modified template that includes additional messages
         return self.chain.invoke(kwargs)
+
+    def query_with_image(self, image_data: str, mime_type: str = "image/jpeg", **kwargs: str) -> BaseModel:
+        """Process a query with an image using the configured LLM.
+
+        Args:
+            image_data: Base64-encoded image data.
+            mime_type: MIME type of the image (default: "image/jpeg").
+            **kwargs: Keyword arguments to be passed to the LLM prompt template.
+
+        Returns:
+            BaseModel: The response from the LLM as a structured Pydantic object.
+        """
+        # Create temporary image message for this query only
+        image_message = HumanMessage(content=[{
+            "type": "image",
+            "source_type": "base64",
+            "data": image_data,
+            "mime_type": mime_type
+        }])
+
+        return self.query(
+            additional_messages=[image_message],
+            **kwargs
+        )
 

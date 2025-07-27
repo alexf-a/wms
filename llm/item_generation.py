@@ -3,6 +3,7 @@ from __future__ import annotations
 
 # Standard library imports
 import base64
+from functools import lru_cache
 from io import BytesIO
 from pathlib import Path
 from typing import BinaryIO
@@ -11,15 +12,27 @@ from typing import BinaryIO
 import pillow_heif
 from django.core.files.base import ContentFile
 from PIL import Image as PILImage
+
+# Local application imports
+from core.models import Bin, Item
+from llm.llm_call import LLMCall
+from llm.llm_handler import StructuredLangChainHandler
 from schemas.item_generation import GeneratedItem
 
 # Register HEIF/HEIC opener for Pillow
 pillow_heif.register_heif_opener()
 
-# Local application imports
-from core.models import Item, Bin
-from llm.llm_call import LLMCall
-from llm.llm_handler import StructuredLangChainHandler
+
+@lru_cache(maxsize=1)
+def _get_cached_handler() -> StructuredLangChainHandler:
+    """Get a cached StructuredLangChainHandler for item generation.
+
+    Returns:
+        StructuredLangChainHandler: Cached handler instance.
+    """
+    json_path = Path(__file__).resolve().parent.parent / "core" / "llm_calls" / "item_image_generation.json"
+    llm_call = LLMCall.from_json(str(json_path))
+    return StructuredLangChainHandler(llm_call=llm_call, output_schema=GeneratedItem)
 
 
 
@@ -47,15 +60,9 @@ def get_item_from_img(image_file: BinaryIO, bin_obj: Bin) -> Item:
     buffer.close()
     image_data = base64.b64encode(thumb_bytes).decode("utf-8")
 
-    # Load LLM call config for item generation
-    json_path = Path(__file__).resolve().parent.parent / "core" / "llm_calls" / "item_image_generation.json"
-    llm_call = LLMCall.from_json(str(json_path))
-
-    # Initialize Structured handler with output schema
-    handler = StructuredLangChainHandler(llm_call=llm_call, output_schema=GeneratedItem)
-
-    # Query LLM with image data
-    result: GeneratedItem = handler.query(image_data=image_data)
+    # Get cached handler and query with image
+    handler = _get_cached_handler()
+    result: GeneratedItem = handler.query_with_image(image_data)
 
     # Create new Item instance
     item = Item(
