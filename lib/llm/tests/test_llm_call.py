@@ -4,7 +4,7 @@ import pytest
 from pydantic import BaseModel
 
 from aws_utils.model_id import ClaudeModelID
-from llm.llm_call import LLMCall
+from lib.llm.llm_call import LLMCall
 
 
 class DummyOutputSchema(BaseModel):

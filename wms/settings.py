@@ -130,3 +130,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Add these lines at the end (or where appropriate):
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# LLM Configuration
+LLM_CALLS_DIR = os.path.join(BASE_DIR, 'llm_calls')
