@@ -113,7 +113,7 @@ class TestLangChainHandler:
 
             # Check it's a ChatPromptTemplate with the right messages
             messages = prompt_template.messages
-            expected_message_count = 2
+            expected_message_count = 3  # system, human, and MessagesPlaceholder
             assert len(messages) == expected_message_count
 
             # Check system message
@@ -123,6 +123,10 @@ class TestLangChainHandler:
             # Check human message
             assert isinstance(messages[1], HumanMessagePromptTemplate)
             assert messages[1].prompt.template == llm_call.human_prompt_tmplt
+            
+            # Check MessagesPlaceholder
+            assert isinstance(messages[2], MessagesPlaceholder)
+            assert messages[2].variable_name == "additional_messages"
 
     def test_llm_chain_property(self, llm_call: LLMCall) -> None:
         """Test that the llm_chain property returns a correctly configured Runnable."""
@@ -154,7 +158,11 @@ class TestLangChainHandler:
                 result = handler.query(question="What is the capital of France?")
 
                 # Verify the chain was invoked with the correct parameters
-                mock_chain.invoke.assert_called_once_with({"question": "What is the capital of France?"})
+                expected_kwargs = {
+                    "question": "What is the capital of France?",
+                    "additional_messages": []  # Always included, even when empty
+                }
+                mock_chain.invoke.assert_called_once_with(expected_kwargs)
                 assert result == "Expected response"
 
     def test_add_message_user_role(self, llm_call: LLMCall) -> None:
@@ -206,18 +214,18 @@ class TestLangChainHandler:
                 handler.add_message("invalid", [{"type": "text", "text": "test"}])
 
     def test_lc_prompt_tmplt_with_additional_messages(self, llm_call: LLMCall) -> None:
-        """Test that the prompt template includes MessagesPlaceholder when additional messages exist."""
+        """Test that the prompt template always includes MessagesPlaceholder."""
         with patch("llm.llm_handler.ChatBedrock"):
             handler = LangChainHandler(llm_call)
             
-            # Initially, no MessagesPlaceholder should be present
-            initial_template = handler.lc_prompt_tmplt
-            assert len(initial_template.messages) == 2
+            # The template should always include MessagesPlaceholder
+            template = handler.lc_prompt_tmplt
+            assert len(template.messages) == 3
             
             # Add a message
             handler.add_message("user", [{"type": "text", "text": "test"}])
             
-            # Now MessagesPlaceholder should be included
+            # Template should still be the same
             updated_template = handler.lc_prompt_tmplt
             assert len(updated_template.messages) == 3
             
@@ -283,6 +291,77 @@ class TestLangChainHandler:
             assert len(template.messages) == 3
             assert isinstance(template.messages[2], MessagesPlaceholder)
 
+    def test_query_with_image(self, llm_call: LLMCall) -> None:
+        """Test that query_with_image method correctly handles image data."""
+        with patch("llm.llm_handler.ChatBedrock"):
+            handler = LangChainHandler(llm_call)
+            
+            # Mock the chain
+            with patch.object(LangChainHandler, "chain") as mock_chain:
+                mock_chain.invoke.return_value = "Image analysis response"
+                
+                # Call query_with_image
+                image_data = "base64_encoded_image_data"
+                mime_type = "image/png"
+                result = handler.query_with_image(
+                    image_data=image_data,
+                    mime_type=mime_type,
+                    question="What do you see in this image?"
+                )
+                
+                # Verify the chain was called with the correct arguments
+                mock_chain.invoke.assert_called_once()
+                call_args = mock_chain.invoke.call_args[0][0]
+                
+                # Verify query parameters were passed
+                assert call_args["question"] == "What do you see in this image?"
+                
+                # Verify additional_messages contains the image message
+                assert "additional_messages" in call_args
+                additional_messages = call_args["additional_messages"]
+                assert len(additional_messages) == 1
+                
+                # Verify the image message structure
+                image_message = additional_messages[0]
+                assert isinstance(image_message, HumanMessage)
+                assert len(image_message.content) == 1
+                
+                image_content = image_message.content[0]
+                assert image_content["type"] == "image"
+                assert image_content["source_type"] == "base64"
+                assert image_content["data"] == image_data
+                assert image_content["mime_type"] == mime_type
+                
+                # Verify the response
+                assert result == "Image analysis response"
+
+    def test_query_with_image_default_mime_type(self, llm_call: LLMCall) -> None:
+        """Test that query_with_image uses default MIME type when not specified."""
+        with patch("llm.llm_handler.ChatBedrock"):
+            handler = LangChainHandler(llm_call)
+            
+            with patch.object(LangChainHandler, "chain") as mock_chain:
+                mock_chain.invoke.return_value = "Default MIME type response"
+                
+                # Call query_with_image without specifying mime_type
+                image_data = "base64_encoded_image_data"
+                result = handler.query_with_image(
+                    image_data=image_data,
+                    question="Analyze this image"
+                )
+                
+                # Verify the chain was called
+                mock_chain.invoke.assert_called_once()
+                call_args = mock_chain.invoke.call_args[0][0]
+                
+                # Verify the image message uses default MIME type
+                additional_messages = call_args["additional_messages"]
+                image_message = additional_messages[0]
+                image_content = image_message.content[0]
+                assert image_content["mime_type"] == "image/jpeg"  # Default value
+                
+                assert result == "Default MIME type response"
+
 
 class TestStructuredLangChainHandler:
     """Test cases for the StructuredLangChainHandler class."""
@@ -347,8 +426,15 @@ class TestStructuredLangChainHandler:
                 # Call the query method
                 result = handler.query(question="What is structured output?")
 
-                # Verify chain was invoked and returned structured output
-                mock_chain.invoke.assert_called_once_with({"question": "What is structured output?"})
+                # Verify chain was invoked with the correct parameters
+                mock_chain.invoke.assert_called_once()
+                call_args = mock_chain.invoke.call_args[0][0]
+                
+                # Check that required parameters are present
+                assert call_args["question"] == "What is structured output?"
+                assert "schema_str" in call_args  # Schema should be included
+                assert call_args["additional_messages"] == []  # Empty but present
+                
                 assert result == mock_structured_output
                 assert isinstance(result, DummyOutputSchema)
                 assert result.field1 == "test"
@@ -389,11 +475,14 @@ class TestStructuredLangChainHandler:
                 result = handler.query(question="Extract data from the image")
                 
                 # Verify additional_messages were passed
-                expected_kwargs = {
-                    "question": "Extract data from the image",
-                    "additional_messages": handler._additional_messages
-                }
-                mock_chain.invoke.assert_called_once_with(expected_kwargs)
+                mock_chain.invoke.assert_called_once()
+                call_args = mock_chain.invoke.call_args[0][0]
+                
+                # Check that required parameters are present
+                assert call_args["question"] == "Extract data from the image"
+                assert "schema_str" in call_args  # Schema should be included
+                assert call_args["additional_messages"] == handler._additional_messages
+                
                 assert result == expected_output
 
     def test_structured_handler_multiple_images(
@@ -428,6 +517,93 @@ class TestStructuredLangChainHandler:
                 # Verify all messages passed to chain
                 assert mock_chain.invoke.call_args[0][0]["additional_messages"] == handler._additional_messages
                 assert result == expected_output
+
+    def test_structured_query_with_image(
+        self, structured_llm_call: LLMCall, output_schema: type[DummyOutputSchema]
+    ) -> None:
+        """Test that StructuredLangChainHandler query_with_image method returns structured output."""
+        with patch("langchain_aws.chat_models.bedrock.ChatBedrock"):
+            handler = StructuredLangChainHandler(structured_llm_call, output_schema)
+            
+            # Mock the chain
+            expected_output = DummyOutputSchema(field1="structured_image_analysis", field2=777)
+            
+            with patch.object(StructuredLangChainHandler, "chain") as mock_chain:
+                mock_chain.invoke.return_value = expected_output
+                
+                # Call query_with_image
+                image_data = "base64_encoded_structured_image_data"
+                mime_type = "image/png"
+                result = handler.query_with_image(
+                    image_data=image_data,
+                    mime_type=mime_type,
+                    context="Analyze this image for structured data",
+                    format_request="Extract key information"
+                )
+                
+                # Verify the chain was called with the correct arguments
+                mock_chain.invoke.assert_called_once()
+                call_args = mock_chain.invoke.call_args[0][0]
+                
+                # Verify query parameters were passed
+                assert call_args["context"] == "Analyze this image for structured data"
+                assert call_args["format_request"] == "Extract key information"
+                assert "schema_str" in call_args  # Schema should be included
+                
+                # Verify additional_messages contains the image message
+                assert "additional_messages" in call_args
+                additional_messages = call_args["additional_messages"]
+                assert len(additional_messages) == 1
+                
+                # Verify the image message structure
+                image_message = additional_messages[0]
+                assert isinstance(image_message, HumanMessage)
+                assert len(image_message.content) == 1
+                
+                image_content = image_message.content[0]
+                assert image_content["type"] == "image"
+                assert image_content["source_type"] == "base64"
+                assert image_content["data"] == image_data
+                assert image_content["mime_type"] == mime_type
+                
+                # Verify the response is structured
+                assert result == expected_output
+                assert isinstance(result, DummyOutputSchema)
+                assert result.field1 == "structured_image_analysis"
+                assert result.field2 == 777
+
+    def test_structured_query_with_image_default_mime_type(
+        self, structured_llm_call: LLMCall, output_schema: type[DummyOutputSchema]
+    ) -> None:
+        """Test that StructuredLangChainHandler query_with_image uses default MIME type when not specified."""
+        with patch("langchain_aws.chat_models.bedrock.ChatBedrock"):
+            handler = StructuredLangChainHandler(structured_llm_call, output_schema)
+            
+            expected_output = DummyOutputSchema(field1="default_mime_structured", field2=333)
+            
+            with patch.object(StructuredLangChainHandler, "chain") as mock_chain:
+                mock_chain.invoke.return_value = expected_output
+                
+                # Call query_with_image without specifying mime_type
+                image_data = "base64_encoded_image_data"
+                result = handler.query_with_image(
+                    image_data=image_data,
+                    instruction="Extract structured data from this image"
+                )
+                
+                # Verify the chain was called
+                mock_chain.invoke.assert_called_once()
+                call_args = mock_chain.invoke.call_args[0][0]
+                
+                # Verify the image message uses default MIME type
+                additional_messages = call_args["additional_messages"]
+                image_message = additional_messages[0]
+                image_content = image_message.content[0]
+                assert image_content["mime_type"] == "image/jpeg"  # Default value
+                
+                # Verify structured output
+                assert result == expected_output
+                assert isinstance(result, DummyOutputSchema)
 
 
 # No direct tests for the abstract LLMHandler class since it can't be instantiated,
