@@ -5,7 +5,7 @@ from faker import Faker
 from pathlib import Path
 from core.utils import get_qr_code_file
 from llm.llm_call import LLMCall
-from llm.llm_handler import StructuredLangChainHandler
+from lib.llm.llm_handler import StructuredLangChainHandler
 from llm.claude4_xml_parser import Claude4XMLParsingError
 from schemas.synthetic_data.bin_generation import BinGenerationOutput
 

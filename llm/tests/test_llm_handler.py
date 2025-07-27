@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 from aws_utils.model_id import ClaudeModelID
 from llm.llm_call import LLMCall
-from llm.llm_handler import LangChainHandler, StructuredLangChainHandler
+from lib.llm.llm_handler import LangChainHandler, StructuredLangChainHandler
 
 
 class DummyOutputSchema(BaseModel):

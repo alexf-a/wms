@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from langchain_core.language_models.chat_models import BaseChatModel
     from pydantic import BaseModel
 
-    from llm.llm_call import LLMCall
+    from lib.llm.llm_call import LLMCall
 
 
 class LLMHandler(ABC):
