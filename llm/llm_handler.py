@@ -144,6 +144,30 @@ class LangChainHandler(LLMHandler):
         # Use the chain with the modified template that includes additional messages
         return self.chain.invoke(kwargs)
 
+    def query_with_image(self, image_data: str, mime_type: str = "image/jpeg", **kwargs: str) -> str:
+        """Process a query with an image using the configured LLM.
+
+        Args:
+            image_data: Base64-encoded image data.
+            mime_type: MIME type of the image (default: "image/jpeg").
+            **kwargs: Keyword arguments to be passed to the LLM prompt template.
+
+        Returns:
+            str: The response from the LLM as a string.
+        """
+        # Create temporary image message for this query only
+        image_message = HumanMessage(content=[{
+            "type": "image",
+            "source_type": "base64",
+            "data": image_data,
+            "mime_type": mime_type
+        }])
+
+        return self.query(
+            additional_messages=[image_message],
+            **kwargs
+        )
+
 
 class StructuredLangChainHandler(LangChainHandler):
     """Handler for LLM calls that structures the output using a Pydantic model."""
