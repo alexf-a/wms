@@ -14,4 +14,6 @@ urlpatterns = [
     path("bin/<int:bin_id>/", views.bin_detail, name="bin_detail"),
     path("item/<int:item_id>/", views.item_detail, name="item_detail"),
     path("find-item/", views.item_search_view, name="item_search"),
+    path("auto-generate-item/", views.auto_generate_item_view, name="auto_generate_item"),
+    path("confirm-item/", views.confirm_item_view, name="confirm_item"),
 ]

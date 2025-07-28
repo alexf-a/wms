@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 from functools import lru_cache
 from io import BytesIO
+from pathlib import Path
 from typing import BinaryIO
 
 # Third-party imports
@@ -71,6 +72,9 @@ def get_item_from_img(image_file: BinaryIO, bin_obj: Bin) -> Item:
 
     # Save image to item.image
     image_name = getattr(image_file, "name", "uploaded_image")
+    # Extract just the filename to avoid path traversal issues
+    if image_name != "uploaded_image":
+        image_name = Path(image_name).name
     content_file = ContentFile(base64.b64decode(image_data), name=image_name)
     item.image = content_file
 
