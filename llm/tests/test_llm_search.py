@@ -10,12 +10,12 @@ from schemas.llm_search import (
     ItemSearchCandidate,
     ItemLocation,
 )
-from llm.llm_search import get_item_location, HIGH_CONFIDENCE_THRESHOLD
+from lib.llm.llm_search import get_item_location, HIGH_CONFIDENCE_THRESHOLD
 
 
 def setup_monkeypatch(monkeypatch, dummy_instances):
     """Patch LLMCall, StructuredLangChainHandler, and Item.objects.filter for testing."""
-    import llm.llm_search as module
+    import lib.llm.llm_search as module
 
     # Patch LLMCall.from_json to avoid loading files
     monkeypatch.setattr(module.LLMCall, "from_json", lambda path: None)
@@ -64,7 +64,7 @@ def test_follow_up_query_called(monkeypatch, confidences):
     B) no candidate has high confidence
     """
     from unittest.mock import Mock
-    from llm.llm_search import _should_return_early
+    from lib.llm.llm_search import _should_return_early
 
     dummy_instances = []
     setup_monkeypatch(monkeypatch, dummy_instances)
@@ -81,7 +81,7 @@ def test_follow_up_query_called(monkeypatch, confidences):
     assert not should_return_early, "Should NOT return early for multiple/no high-confidence candidates"
 
     # Mock _should_return_early to verify it's called with correct arguments and returns False
-    import llm.llm_search as module
+    import lib.llm.llm_search as module
     mock_should_return_early = Mock(return_value=should_return_early)
     monkeypatch.setattr(module, "_should_return_early", mock_should_return_early)
 
@@ -117,7 +117,7 @@ def test_follow_up_query_called(monkeypatch, confidences):
 def test_single_high_confidence_direct_return(monkeypatch, high_confidence):
     """Ensure get_item_location returns direct ItemLocation for exactly one high-confidence candidate without follow-up."""
     from unittest.mock import Mock
-    from llm.llm_search import HIGH_CONFIDENCE_THRESHOLD, _should_return_early
+    from lib.llm.llm_search import HIGH_CONFIDENCE_THRESHOLD, _should_return_early
 
     dummy_instances = []
     setup_monkeypatch(monkeypatch, dummy_instances)
@@ -131,7 +131,7 @@ def test_single_high_confidence_direct_return(monkeypatch, high_confidence):
     should_return_early: bool = _should_return_early(candidates_model)
     assert should_return_early, "Should return early for exactly one high-confidence candidate"
         # Mock _should_return_early to verify it's called with correct arguments and returns True
-    import llm.llm_search as module
+    import lib.llm.llm_search as module
     mock_should_return_early = Mock(return_value=should_return_early)
     monkeypatch.setattr(module, "_should_return_early", mock_should_return_early)
 
@@ -166,7 +166,7 @@ def test_single_high_confidence_direct_return(monkeypatch, high_confidence):
 ])
 def test_should_return_early_helper(confidences, expected):
     """Test helper function for early return logic based on candidate confidences."""
-    from llm.llm_search import _should_return_early
+    from lib.llm.llm_search import _should_return_early
 
     # Build ItemSearchCandidates from confidences
     candidates = [
@@ -191,7 +191,7 @@ def test_should_return_early_helper(confidences, expected):
 ])
 def test_perform_candidate_search_wiring(monkeypatch, scenario, confidences, expects_location_call) -> None:
     """Test that perform_candidate_search and get_item_location properly use global LLMCalls with correct arguments."""
-    from llm.llm_search import perform_candidate_search, get_item_location
+    from lib.llm.llm_search import perform_candidate_search, get_item_location
     from typing import Any, Dict, Optional
     
     # Mock the global LLMCall instances
@@ -261,7 +261,7 @@ def test_perform_candidate_search_wiring(monkeypatch, scenario, confidences, exp
     MockHandler.__init__ = tracked_init
     
     # Apply monkey patches
-    import llm.llm_search as module
+    import lib.llm.llm_search as module
     monkeypatch.setattr(module, "CANDIDATES_LLM_CALL", mock_candidates_llm_call)
     monkeypatch.setattr(module, "LOCATION_LLM_CALL", mock_location_llm_call)
     monkeypatch.setattr(module, "StructuredLangChainHandler", MockHandler)
@@ -343,8 +343,8 @@ def test_perform_candidate_search_wiring(monkeypatch, scenario, confidences, exp
 
 def test_find_item_location_orchestration(monkeypatch):
     """Test that find_item_location calls perform_candidate_search and get_item_location in sequence."""
-    from llm.llm_search import find_item_location
-    import llm.llm_search as module
+    from lib.llm.llm_search import find_item_location
+    import lib.llm.llm_search as module
     from unittest.mock import Mock, call
     
     # Create mock candidates result
