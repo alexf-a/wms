@@ -1,15 +1,10 @@
 
-from __future_# Local application imports
-from core.models import Bin, Item
-from lib.llm.llm_call import LLMCall
-from lib.llm.llm_handler import StructuredLangChainHandler
-from schemas.item_generation import GeneratedItemort annotations
+from __future__ import annotations
 
 # Standard library imports
 import base64
 from functools import lru_cache
 from io import BytesIO
-from pathlib import Path
 from typing import BinaryIO
 
 # Third-party imports
@@ -19,8 +14,8 @@ from PIL import Image as PILImage
 
 # Local application imports
 from core.models import Bin, Item
-from lib.llm.llm_call import LLMCall
 from lib.llm.llm_handler import StructuredLangChainHandler
+from lib.llm.utils import get_llm_call
 from schemas.item_generation import GeneratedItem
 
 # Register HEIF/HEIC opener for Pillow
@@ -34,8 +29,7 @@ def _get_cached_handler() -> StructuredLangChainHandler:
     Returns:
         StructuredLangChainHandler: Cached handler instance.
     """
-    json_path = Path(__file__).resolve().parent.parent / "core" / "llm_calls" / "item_image_generation.json"
-    llm_call = LLMCall.from_json(str(json_path))
+    llm_call = get_llm_call("item_generation/item_image_generation")
     return StructuredLangChainHandler(llm_call=llm_call, output_schema=GeneratedItem)
 
 

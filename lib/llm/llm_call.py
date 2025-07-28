@@ -8,7 +8,6 @@ from pydantic import BaseModel, field_serializer, field_validator
 
 from aws_utils.model_id import ClaudeModelID
 from lib.pydantic_utils import serialize_schema
-from aws_utils.region import BEDROCK_REGION
 from lib.llm.model_id import ModelID  # noqa: TC001
 
 
