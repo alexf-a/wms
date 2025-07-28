@@ -1,0 +1,9 @@
+
+{
+    "system_prompt_tmplt": "You are a helpful household assistant specializing in inventory management. Your task is to generate an item name and description based on an image and the storage bin context. Item names should be concise and realistic (max 30 characters). Descriptions should include relevant details such as purpose, condition, size, color, material, or usage notes (max 200 characters).",
+    "human_prompt_tmplt": "Given the image data (base64): '{image_data}',generate a suitable item name and a description.",
+    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+    "temp": 0.9,
+    "retry_timeout": 1,
+    "retry_limit": 10
+}
