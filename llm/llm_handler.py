@@ -2,20 +2,16 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any
-import json
 
-from pydantic import TypeAdapter
 from langchain.prompts import (
     ChatPromptTemplate,
     HumanMessagePromptTemplate,
-    SystemMessagePromptTemplate,
     MessagesPlaceholder,
+    SystemMessagePromptTemplate,
 )
 from langchain_aws.chat_models.bedrock import ChatBedrock
+from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.messages import SystemMessage, HumanMessage
-from aws_utils.model_id import ClaudeModelID
-from llm.claude4_xml_parser import Claude4XMLFunctionCallParser
 
 if TYPE_CHECKING:
     from langchain.schema.runnable import Runnable
@@ -33,6 +29,7 @@ class LLMHandler(ABC):
     """
 
     llm_call: LLMCall
+
     @abstractmethod
     def query(self, **kwargs: str) -> str | BaseModel:
         """Process a query using the configured LLM.
@@ -44,15 +41,14 @@ class LLMHandler(ABC):
             str | BaseModel: The response from the LLM, either as a string or structured data.
         """
 
+
 class LangChainHandler(LLMHandler):
     """Handler for LLM calls using the LangChain framework."""
+
     langchain_client: BaseChatModel
     chain: Runnable[LanguageModelInput, str | BaseModel]
 
-    def __init__(
-            self,
-            llm_call: LLMCall
-    ) -> None:
+    def __init__(self, llm_call: LLMCall) -> None:
         """Initialize the LLMHandler with an LLMCall and a Langchain ChatBedrock client.
 
         Args:
@@ -61,18 +57,12 @@ class LangChainHandler(LLMHandler):
         self.llm_call = llm_call
         self._additional_messages: list[SystemMessage | HumanMessage] = []
 
-        self.langchain_client = ChatBedrock(
-            model_id=self.llm_call.model_id.value,
-            temperature=self.llm_call.temp
-        )
+        self.langchain_client = ChatBedrock(model_id=self.llm_call.model_id.value, temperature=self.llm_call.temp)
         self._configure_langchain_client()
 
     def _maybe_configure_retry(self) -> None:
         if self.llm_call.should_retry():
-            self.langchain_client = self.langchain_client.with_retry(
-                stop_after_attempt=self.llm_call.retry_limit,
-                wait_exponential_jitter=True
-            )
+            self.langchain_client = self.langchain_client.with_retry(stop_after_attempt=self.llm_call.retry_limit, wait_exponential_jitter=True)
 
     def _configure_langchain_client(self) -> None:
         """Configure the LangChain client with structured output and retry settings."""
@@ -102,7 +92,7 @@ class LangChainHandler(LLMHandler):
     def lc_prompt_tmplt(self) -> ChatPromptTemplate:
         """Property that returns the prompt template."""
         messages = []
-        
+
         # Add system prompt template if exists
         if self.llm_call.system_prompt_tmplt is not None:
             messages.append(SystemMessagePromptTemplate.from_template(self.llm_call.system_prompt_tmplt))
@@ -156,42 +146,22 @@ class LangChainHandler(LLMHandler):
             str: The response from the LLM as a string.
         """
         # Create temporary image message for this query only
-        image_message = HumanMessage(content=[{
-            "type": "image",
-            "source_type": "base64",
-            "data": image_data,
-            "mime_type": mime_type
-        }])
+        image_message = HumanMessage(content=[{"type": "image", "source_type": "base64", "data": image_data, "mime_type": mime_type}])
 
-        return self.query(
-            additional_messages=[image_message],
-            **kwargs
-        )
+        return self.query(additional_messages=[image_message], **kwargs)
 
 
 class StructuredLangChainHandler(LangChainHandler):
     """Handler for LLM calls that structures the output using a Pydantic model."""
+
     def __init__(self, llm_call: LLMCall, output_schema: BaseModel) -> None:
         """Initialize the handler with an LLM call and an output schema.
 
         Args:
             llm_call (LLMCall): An LLMCall object containing the configuration for the LLM call.
-                # Note: The LLMCall system prompt template will be modified to include the output schema.
-                 It should not contain any instructions about the output format.
             output_schema (BaseModel): The Pydantic model to use for structuring the LLM output.
         """
         self.output_schema = output_schema
-        # merge with existing system prompt
-        base = llm_call.system_prompt_tmplt.rstrip() if llm_call.system_prompt_tmplt else ""
-        if llm_call.model_id == ClaudeModelID.CLAUDE_4_SONNET:
-            instr = (
-                "Please structure your XML output to match the following JSON schema. "
-                "Make sure your XML output is recursively parseable "
-                "(do not put JSON text inside of XML tags):\n{schema_str}"
-            )
-        else:
-            instr = "Please format your output to match the following JSON schema:\n{schema_str}"
-        llm_call.system_prompt_tmplt = (base + "\n\n" + instr).strip()
         super().__init__(llm_call=llm_call)
 
     def _configure_langchain_client(self) -> None:
@@ -207,10 +177,6 @@ class StructuredLangChainHandler(LangChainHandler):
     @property
     def chain(self) -> Runnable[LanguageModelInput, BaseModel]:
         """The runnable chain that calls the LLM and parses the output to a structured format."""
-        # Uncomment the following lines of structured output fails with Claude 4 models
-        # if self.llm_call.model_id == ClaudeModelID.CLAUDE_4_SONNET:
-        #     parser = Claude4XMLFunctionCallParser(self.output_schema)
-        #     return self.llm_chain | parser
         return self.llm_chain
 
     def query(self, **kwargs: str) -> BaseModel:
@@ -222,10 +188,6 @@ class StructuredLangChainHandler(LangChainHandler):
         Returns:
             BaseModel: The response from the LLM as a structured Pydantic object.
         """
-        # generate JSON schema dict for the output model and serialize to string
-        schema_dict = TypeAdapter(self.output_schema).json_schema()
-        schema_str = json.dumps(schema_dict, indent=2)
-        kwargs["schema_str"] = schema_str
         # Add additional messages to kwargs if they exist
         kwargs["additional_messages"] = kwargs.get("additional_messages", [])
         if self._additional_messages:
@@ -247,15 +209,6 @@ class StructuredLangChainHandler(LangChainHandler):
             BaseModel: The response from the LLM as a structured Pydantic object.
         """
         # Create temporary image message for this query only
-        image_message = HumanMessage(content=[{
-            "type": "image",
-            "source_type": "base64",
-            "data": image_data,
-            "mime_type": mime_type
-        }])
+        image_message = HumanMessage(content=[{"type": "image", "source_type": "base64", "data": image_data, "mime_type": mime_type}])
 
-        return self.query(
-            additional_messages=[image_message],
-            **kwargs
-        )
-
+        return self.query(additional_messages=[image_message], **kwargs)
