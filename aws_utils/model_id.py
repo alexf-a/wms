@@ -1,4 +1,4 @@
-from llm.model_id import ModelID
+from lib.llm.model_id import ModelID
 
 
 class ClaudeModelID(ModelID):

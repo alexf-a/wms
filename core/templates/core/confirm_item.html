@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Confirm Item</title>
+</head>
+<body>
+    <h1>Confirm Auto-Generated Item</h1>
+    <p>Review and edit the AI-generated information before saving</p>
+    
+    {% if messages %}
+        {% for message in messages %}
+            <div style="padding: 10px; margin: 10px 0; border: 1px solid; border-radius: 4px;">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div style="display: flex; gap: 20px;">
+        <!-- Image Preview -->
+        <div style="flex: 1;">
+            <h3>Item Image</h3>
+            {% if item.image %}
+                <img src="{{ item.image.url }}" alt="{{ item.name }}" 
+                     style="max-width: 100%; max-height: 300px; border-radius: 4px;">
+            {% else %}
+                <p>No image available</p>
+            {% endif %}
+        </div>
+
+        <!-- Form -->
+        <div style="flex: 2;">
+            <form method="post">
+                {% csrf_token %}
+                {{ form.as_p }}
+                
+                <div style="margin-top: 20px;">
+                    <button type="submit" name="regenerate" style="margin-right: 10px;">Try Again</button>
+                    <button type="submit" name="confirm">Confirm & Save Item</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div style="margin-top: 20px; padding: 15px; background-color: #fff3cd; border-radius: 4px;">
+        <h3>Review the generated information:</h3>
+        <ul>
+            <li>Check that the item name is accurate and descriptive</li>
+            <li>Verify the description captures the important details</li>
+            <li>Confirm the correct bin is selected</li>
+            <li>Edit any information as needed before confirming</li>
+        </ul>
+    </div>
+</body>
+</html>

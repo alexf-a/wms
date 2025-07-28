@@ -1,15 +1,13 @@
-from io import BytesIO
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpRequest
-from django.contrib.auth import login, authenticate
+from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
-from .forms import WMSUserCreationForm, ItemForm, ItemSearchForm
-from .models import WMSUser, Bin, Item
+from django.contrib import messages
+from .forms import WMSUserCreationForm, ItemForm, ItemSearchForm, AutoGenerateItemForm, ConfirmItemForm
+from .models import Bin, Item
 from .utils import get_qr_code_file
-from llm.llm_search import find_item_location
-import qrcode
-from qrcode.image.pil import PilImage
-from django.core.files.storage import FileSystemStorage
+from lib.llm.llm_search import find_item_location
+from lib.llm.item_generation import get_item_from_img
 from django.core.files.base import ContentFile
 
 def register_view(request) -> render:
@@ -173,4 +171,91 @@ def item_search_view(request: HttpRequest) -> render:
     return render(request, "core/item_search.html", {
         "form": form,
         "result": result
+    })
+
+@login_required
+def auto_generate_item_view(request: HttpRequest) -> render:
+    """Handle auto-generation of item features from uploaded image.
+
+    This view processes an uploaded image and selected bin to auto-generate
+    name and description using LLM, then redirects to confirmation page.
+
+    Args:
+        request: The HTTP request object containing image and bin selection.
+
+    Returns:
+        The rendered auto-generation page or redirect to confirmation page.
+    """
+    if request.method == "POST":
+        form = AutoGenerateItemForm(request.POST, request.FILES, user=request.user)
+        if form.is_valid():
+            image = form.cleaned_data["image"]
+            bin_obj = form.cleaned_data["bin"]
+            
+            try:
+                # Use the item generation function to create the item
+                item = get_item_from_img(image.file, bin_obj)
+                
+                # Store item ID in session for confirmation view
+                request.session["generated_item_id"] = item.id
+                messages.success(request, "Item features auto-generated successfully!")
+                return redirect("confirm_item")
+                
+            except Exception as e:
+                messages.error(request, f"Failed to generate item features: {str(e)}")
+                
+    else:
+        form = AutoGenerateItemForm(user=request.user)
+    
+    return render(request, "core/auto_generate_item.html", {"form": form})
+
+@login_required
+def confirm_item_view(request: HttpRequest) -> render:
+    """Handle confirmation and editing of auto-generated item features.
+
+    This view displays the auto-generated item features (name, description)
+    along with the uploaded image and allows the user to edit before saving.
+
+    Args:
+        request: The HTTP request object.
+
+    Returns:
+        The rendered confirmation page or redirect to add items page after saving.
+    """
+    # Get the generated item from session
+    item_id = request.session.get("generated_item_id")
+    if not item_id:
+        messages.error(request, "No generated item found. Please start over.")
+        return redirect("auto_generate_item")
+    
+    try:
+        item = get_object_or_404(Item, id=item_id, bin__user=request.user)
+    except Item.DoesNotExist:
+        messages.error(request, "Generated item not found.")
+        return redirect("auto_generate_item")
+    
+    if request.method == "POST":
+        form = ConfirmItemForm(request.POST, instance=item, user=request.user)
+        if form.is_valid():
+            if "confirm" in request.POST:
+                # Save the confirmed item
+                form.save()
+                # Clear session
+                if "generated_item_id" in request.session:
+                    del request.session["generated_item_id"]
+                messages.success(request, f"Item '{item.name}' has been added successfully!")
+                return redirect("home_view")
+            if "regenerate" in request.POST:
+                # Delete the current item and redirect to regenerate
+                item.delete()
+                if "generated_item_id" in request.session:
+                    del request.session["generated_item_id"]
+                messages.info(request, "Item deleted. Please upload image again.")
+                return redirect("auto_generate_item")
+    else:
+        form = ConfirmItemForm(instance=item, user=request.user)
+    
+    return render(request, "core/confirm_item.html", {
+        "form": form,
+        "item": item
     })

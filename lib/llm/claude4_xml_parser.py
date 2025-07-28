@@ -1,4 +1,7 @@
-"""Custom output parser for Claude 4's XML-style function calling format."""
+"""Custom output parser for Claude 4's XML-style function calling format.
+This module was created as a workaround for structured output failure with LangChain and Claude 4 models.
+See https://github.com/langchain-ai/langchain-aws/issues/521#issuecomment-3047492505
+"""
 
 from __future__ import annotations
 import json

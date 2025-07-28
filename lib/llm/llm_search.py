@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import cast
 
-from core.models import Item
-from llm.llm_call import LLMCall
-from llm.llm_handler import StructuredLangChainHandler
+from core.models import Bin, Item
+from lib.llm.llm_handler import StructuredLangChainHandler
+from lib.llm.utils import get_llm_call
 from schemas.llm_search import ItemLocation, ItemSearchCandidates
 
 #TODO: Replace perform_candidate_search with a more efficient search algorithm
@@ -14,9 +13,8 @@ from schemas.llm_search import ItemLocation, ItemSearchCandidates
 HIGH_CONFIDENCE_THRESHOLD = 0.8
 
 # Initialize LLMCall instances as global variables to avoid reloading them every time
-base_dir = Path(__file__).resolve().parent
-CANDIDATES_LLM_CALL = LLMCall.from_json(base_dir / ".." / "core" / "llm_calls" / "item_candidates_search.json")
-LOCATION_LLM_CALL = LLMCall.from_json(base_dir / ".." / "core" / "llm_calls" / "item_location_search.json")
+CANDIDATES_LLM_CALL = get_llm_call("item_search/item_candidates_search")
+LOCATION_LLM_CALL = get_llm_call("item_search/item_location_search")
 
 def _should_return_early(candidates: ItemSearchCandidates) -> bool:
     """Determine if there is exactly one high-confidence candidate."""
