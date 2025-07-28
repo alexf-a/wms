@@ -5,7 +5,7 @@ from typing import cast
 
 from core.models import Item
 from llm.llm_call import LLMCall
-from llm.llm_handler import StructuredLangChainHandler
+from lib.llm.llm_handler import StructuredLangChainHandler
 from schemas.llm_search import ItemLocation, ItemSearchCandidates
 
 #TODO: Replace perform_candidate_search with a more efficient search algorithm
