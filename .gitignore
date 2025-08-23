@@ -19,3 +19,4 @@ poetry.lock
 .data
 
 .debugging
+lightsail/containers.json
