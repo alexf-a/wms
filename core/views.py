@@ -1,16 +1,23 @@
-from django.shortcuts import render, redirect, get_object_or_404
-from django.http import HttpRequest
+from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from .forms import WMSUserCreationForm, ItemForm, ItemSearchForm, AutoGenerateItemForm, ConfirmItemForm
+from django.http import HttpRequest, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+
+from lib.llm.item_generation import get_item_from_img
+from lib.llm.llm_search import find_item_location
+
+from .forms import (
+    AutoGenerateItemForm,
+    ConfirmItemForm,
+    ItemForm,
+    ItemSearchForm,
+    WMSUserCreationForm,
+)
 from .models import Bin, Item
 from .utils import get_qr_code_file
-from lib.llm.llm_search import find_item_location
-from lib.llm.item_generation import get_item_from_img
-from django.core.files.base import ContentFile
 
-def register_view(request) -> render:
+def register_view(request: HttpRequest) -> render:
     """Handle user registration.
 
     Args:
@@ -29,7 +36,7 @@ def register_view(request) -> render:
         form = WMSUserCreationForm()
     return render(request, "core/auth/register.html", {"form": form})
 
-def home_view(request) -> render:
+def home_view(request: HttpRequest) -> render:
     """Render the home page.
 
     Args:
@@ -70,13 +77,13 @@ def create_bin_view(request: HttpRequest) -> render:
         width = request.POST.get("width", None)
         height = request.POST.get("height", None)
 
-        qr_code_file: ContentFile = get_qr_code_file(
+        qr_code_file = get_qr_code_file(
             name=name,
             description=description,
             location=location,
             length=length,
             width=width,
-            height=height
+            height=height,
         )
         new_bin = Bin(
             user=request.user,
@@ -163,7 +170,7 @@ def item_search_view(request: HttpRequest) -> render:
     if request.method == "POST":
         form = ItemSearchForm(request.POST)
         if form.is_valid():
-            query = form.cleaned_data['query']
+            query = form.cleaned_data["query"]
             result = str(find_item_location(query, request.user.id))
     else:
         form = ItemSearchForm()
@@ -201,8 +208,8 @@ def auto_generate_item_view(request: HttpRequest) -> render:
                 messages.success(request, "Item features auto-generated successfully!")
                 return redirect("confirm_item")
                 
-            except Exception as e:
-                messages.error(request, f"Failed to generate item features: {str(e)}")
+            except RuntimeError as e:  # Narrowed example; adjust to specific exceptions raised by get_item_from_img
+                messages.error(request, f"Failed to generate item features: {e!s}")
                 
     else:
         form = AutoGenerateItemForm(user=request.user)
@@ -259,3 +266,11 @@ def confirm_item_view(request: HttpRequest) -> render:
         "form": form,
         "item": item
     })
+
+
+def healthcheck_view(_: HttpRequest) -> JsonResponse:  # pragma: no cover - trivial
+    """Lightweight healthcheck endpoint.
+
+    Returns 200 with minimal JSON without hitting database.
+    """
+    return JsonResponse({"status": "ok"})
