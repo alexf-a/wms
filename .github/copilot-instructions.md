@@ -42,14 +42,34 @@ This project deploys to AWS Lightsail Container Service using a container image 
 - `gunicorn.conf.py`: Server tuning (workers via `WEB_CONCURRENCY` override or `(2*cores)+1`, threading, timeouts, logging). Also ensures `DJANGO_SETTINGS_MODULE` is set from the environment.
 - `lightsail/containers.example.json`: Template for the real (ignored) `lightsail/containers.json` containing env vars (single source of truth for `PORT`, `DEBUG`, `ALLOWED_HOSTS`, `SECRET_KEY`, DB_* vars, `DJANGO_SETTINGS_MODULE`, optional `WEB_CONCURRENCY`).
 - `lightsail/public-endpoint.json`: Defines public endpoint and health check path (update to `/healthz/` if you switch from `/`).
-- `Makefile`: Automation targets for build & deploy (`docker-build`, `create`, `push`, `deploy`, `up`, `down`). Validates presence of `lightsail/containers.json` before deploy.
+- `Makefile`: Automation targets for build & deploy (`docker-build`, `create`, `push`, `deploy`, `up`, `down`, `setup`, `install-lightsailctl-fix`). Includes workarounds for lightsailctl bugs #95 and #100. Validates presence of `lightsail/containers.json` before deploy. Uses patched lightsailctl and explicit linux/amd64 platform.
 - `core/views.py` & `core/urls.py`: Provide the lightweight health check endpoint at `/healthz/` (JSON `{"status": "ok"}`).
 
 ### Build & Deploy Workflow
-1. Ensure `lightsail/containers.json` exists (real secrets file, ignored by git).
-2. Build image locally: `make docker-build`
-3. Push image to Lightsail registry: `make push`
-4. (First time) Create service: `make create`
-5. Deploy new version: `make deploy` or combined shortcut `make up`
+
+**IMPORTANT**: The official lightsailctl has bugs that prevent image pushing. Use the patched version from [PR #102](https://github.com/aws/lightsailctl/pull/102).
+
+#### Prerequisites
+1. Install patched lightsailctl: `make install-lightsailctl-fix`
+2. Ensure `lightsail/containers.json` exists (real secrets file, ignored by git).
+
+#### Deployment Steps
+1. **First-time setup**: 
+   - Run `make setup` (installs patched lightsailctl, builds, creates service)
+   - Update `ALLOWED_HOSTS` in `lightsail/containers.json` with the URL from the output
+   - Run `make setup-deploy` (pushes and deploys)
+2. **Regular deployments**: `make up` (builds, pushes, and deploys)
+
+#### Manual Steps
+1. Build image with correct platform: `make docker-build` (uses linux/amd64)
+2. Create service (first time): `make create`
+3. Get the URL from the Lightsail console output, and add it as `ALLOWED_HOSTS` in `lightsail/containers.json`.
+4. Push image to Lightsail registry: `make push` (uses patched lightsailctl)
+5. Deploy new version: `make deploy`
 6. Tear down (stop billing): `make down` (deletes service; recreate later with `make create && make deploy`).
+
+#### Troubleshooting
+- If you get "image push response does not contain the image digest" error, run `make install-lightsailctl-fix`
+- The Makefile automatically uses `--platform linux/amd64` to ensure Lightsail compatibility
+- Patched lightsailctl is installed to `~/go/bin/` and automatically added to PATH
 
