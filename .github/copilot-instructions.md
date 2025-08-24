@@ -32,3 +32,24 @@ WMS seeks to address both pain-points:
 1. Make smaller, incremental changes to the codebase. Make these changes one-at-a-time, then ask for feedback.
 2. Clean up all testing and debugging code after implementation goals have been met.
 
+## Deployment Process (Lightsail Containers)
+
+This project deploys to AWS Lightsail Container Service using a container image built from the repository. Configuration is environment‑driven and centralized.
+
+### Key Files
+- `Dockerfile`: Builds the production image (Poetry install, collectstatic, non‑root user).
+- `docker-entrypoint.sh`: Runtime bootstrap (verifies `PORT` env, runs migrations opportunistically, then `gunicorn`).
+- `gunicorn.conf.py`: Server tuning (workers via `WEB_CONCURRENCY` override or `(2*cores)+1`, threading, timeouts, logging). Also ensures `DJANGO_SETTINGS_MODULE` is set from the environment.
+- `lightsail/containers.example.json`: Template for the real (ignored) `lightsail/containers.json` containing env vars (single source of truth for `PORT`, `DEBUG`, `ALLOWED_HOSTS`, `SECRET_KEY`, DB_* vars, `DJANGO_SETTINGS_MODULE`, optional `WEB_CONCURRENCY`).
+- `lightsail/public-endpoint.json`: Defines public endpoint and health check path (update to `/healthz/` if you switch from `/`).
+- `Makefile`: Automation targets for build & deploy (`docker-build`, `create`, `push`, `deploy`, `up`, `down`). Validates presence of `lightsail/containers.json` before deploy.
+- `core/views.py` & `core/urls.py`: Provide the lightweight health check endpoint at `/healthz/` (JSON `{"status": "ok"}`).
+
+### Build & Deploy Workflow
+1. Ensure `lightsail/containers.json` exists (real secrets file, ignored by git).
+2. Build image locally: `make docker-build`
+3. Push image to Lightsail registry: `make push`
+4. (First time) Create service: `make create`
+5. Deploy new version: `make deploy` or combined shortcut `make up`
+6. Tear down (stop billing): `make down` (deletes service; recreate later with `make create && make deploy`).
+
