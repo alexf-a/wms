@@ -14,7 +14,7 @@ ARCH_TAG?=amd64
 # Install with: cd /tmp && git clone https://github.com/paxan/lightsailctl.git -b paxan/image-push-bug-fixes && cd lightsailctl && go install ./...
 export PATH := $(PATH):$(HOME)/go/bin
 
-.PHONY: docker-build deploy up down create push install-lightsailctl-fix
+.PHONY: docker-build deploy up down create push install-lightsailctl-fix sync-env local-up
 
 docker-build:
 	# Build with explicit platform to ensure compatibility with Lightsail
@@ -75,6 +75,15 @@ setup-deploy: push deploy
 
 down:
 	aws lightsail delete-container-service --region $(REGION) --service-name $(SVC)
+ 
+sync-env:
+	@mkdir -p .cache
+	@jq -r '.web.environment | to_entries | map("\(.key)=\(.value)") | .[]' lightsail/containers.json > .cache/.env
+	# Override DEBUG for local development
+	@sed -i '' -e 's/^DEBUG=.*/DEBUG=True/' .cache/.env || true
+
+local-up: sync-env
+	@docker-compose up --build
 
 # Help target to document the bug fix
 help:
