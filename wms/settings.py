@@ -36,6 +36,24 @@ if DEBUG:
     # Force empty for dev; Django implicitly allows localhost variants
     ALLOWED_HOSTS = []
 
+# CSRF trusted origins
+_trusted = os.getenv("CSRF_TRUSTED_ORIGINS", "")
+CSRF_TRUSTED_ORIGINS = [u.strip() for u in _trusted.split(",") if u.strip()]
+
+# Logging configuration to surface CSRF failures
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "loggers": {
+        "django.security.csrf": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+    },
+}
+
 
 # Application definition
 
@@ -99,6 +117,7 @@ if all([DB_NAME, DB_USER, DB_PASSWORD, DB_HOST]):
             "PASSWORD": DB_PASSWORD,
             "HOST": DB_HOST,
             "PORT": DB_PORT or "5432",
+            "OPTIONS": {"sslmode": os.getenv("PGSSLMODE", "require")},
         }
     }
 else:
@@ -162,4 +181,4 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 # LLM Configuration
-LLM_CALLS_DIR = os.path.join(BASE_DIR, 'llm_calls')
+LLM_CALLS_DIR = BASE_DIR / "llm_calls"
