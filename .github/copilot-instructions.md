@@ -59,6 +59,7 @@ This project deploys to AWS Lightsail Container Service using a container image 
    - Update `ALLOWED_HOSTS` in `lightsail/containers.json` with the URL from the output
    - Run `make setup-deploy` (pushes and deploys)
 2. **Regular deployments**: `make up` (builds, pushes, and deploys)
+3. **Local deployment (debugging)**: `make local-up`
 
 #### Manual Steps
 1. Build image with correct platform: `make docker-build` (uses linux/amd64)

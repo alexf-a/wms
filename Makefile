@@ -79,11 +79,13 @@ down:
 sync-env:
 	@mkdir -p .cache
 	@jq -r '.web.environment | to_entries | map("\(.key)=\(.value)") | .[]' lightsail/containers.json > .cache/.env
+	@echo "PGSSLMODE=require" >> .cache/.env
 	# Override DEBUG for local development
 	@sed -i '' -e 's/^DEBUG=.*/DEBUG=True/' .cache/.env || true
+	@sed -i '' -e 's/^DB_NAME=.*/DB_NAME=local/' .cache/.env || true
 
 local-up: sync-env
-	@docker-compose up --build
+	@docker-compose up --build -d
 
 # Help target to document the bug fix
 help:
