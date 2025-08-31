@@ -1,3 +1,5 @@
+import logging
+logger = logging.getLogger(__name__)
 from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
@@ -31,7 +33,8 @@ def register_view(request: HttpRequest) -> render:
         if form.is_valid():
             user = form.save()
             login(request, user)
-            return redirect("home_view")
+        # DEBUG: log form errors
+        logger.error("Registration form errors: %s", form.errors)
     else:
         form = WMSUserCreationForm()
     return render(request, "core/auth/register.html", {"form": form})
