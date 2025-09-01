@@ -27,6 +27,9 @@ WMS seeks to address both pain-points:
 - **Ruff**: Use Ruff for linting and code quality checks. Follow the project's linting rules and fix any issues reported by Ruff.
 - **Google Docstrings**: Use Google-style docstrings for all public methods and classes.
 - **Testing**: All tests are written using pytest. Use the `test_*.py` naming convention for test files and organize tests in the `tests/` directory. Ensure that all new features and bug fixes are covered by tests.
+- **Debugging**:
+   - Always search the web first for similar issues and solutions, using resources like GitHub Issues, Stack Overflow, etc.
+   - When using the AWS CLI to produce outputs, ensure that the cli-pager is disabled.
 
 ## Coding Instructions
 1. Make smaller, incremental changes to the codebase. Make these changes one-at-a-time, then ask for feedback.
@@ -55,11 +58,14 @@ This project deploys to AWS Lightsail Container Service using a container image 
 
 #### Deployment Steps
 1. **First-time setup**: 
-   - Run `make setup` (installs patched lightsailctl, builds, creates service)
-   - Update `ALLOWED_HOSTS` in `lightsail/containers.json` with the URL from the output
-   - Run `make setup-deploy` (pushes and deploys)
+   - Run `make install-lightsailctl-fix`
+   - Run `make create` with your desired args.
+   - Update `HOST_SUFFIX` in `Makefile` to use the URL from the output. Use the suffix after the service name (e.g. `us-west-2.cs.amazonlightsail.com`)
+   - Run `make up`
 2. **Regular deployments**: `make up` (builds, pushes, and deploys)
 3. **Local deployment (debugging)**: `make local-up`
+
+Note: `make` commands will modify your containers.json file.
 
 #### Manual Steps
 1. Build image with correct platform: `make docker-build` (uses linux/amd64)
