@@ -69,6 +69,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "core.middleware.HealthCheckMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -182,3 +183,6 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 # LLM Configuration
 LLM_CALLS_DIR = BASE_DIR / "llm_calls"
+
+# Health Check Configuration
+HEALTH_CHECK_PATH = "/healthz/"
