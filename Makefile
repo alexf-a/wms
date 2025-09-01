@@ -1,8 +1,11 @@
-SVC?=wms
+SVC?=wms-dev
 REGION?=us-west-2
 POWER?=nano
 SCALE?=1
+# Path to Lightsail containers spec
 CONTAINERS?=lightsail/containers.json
+ # Host suffix for ALLOWED_HOSTS and CSRF_TRUSTED_ORIGINS
+HOST_SUFFIX?=csf5750j52mvw.us-west-2.cs.amazonlightsail.com
 # Docker platform architecture - Lightsail only supports linux/amd64
 PLATFORM?=linux/amd64
 # Image tag suffix based on architecture
@@ -14,7 +17,7 @@ ARCH_TAG?=amd64
 # Install with: cd /tmp && git clone https://github.com/paxan/lightsailctl.git -b paxan/image-push-bug-fixes && cd lightsailctl && go install ./...
 export PATH := $(PATH):$(HOME)/go/bin
 
-.PHONY: docker-build deploy up down create push install-lightsailctl-fix sync-env local-up
+.PHONY: docker-build deploy up down create push install-lightsailctl-fix sync-env local-up update-hosts update-image
 
 docker-build:
 	# Build with explicit platform to ensure compatibility with Lightsail
@@ -43,10 +46,6 @@ install-lightsailctl-fix:
 push:
 	# Use the patched lightsailctl with specified platform image to avoid digest extraction issues
 	aws lightsail push-container-image --region $(REGION) --service-name $(SVC) --label web --image $(SVC):$(ARCH_TAG)
-	@echo "Updating containers.json with pushed image..."
-	$(eval IMAGE_NAME := $(shell aws lightsail get-container-images --region $(REGION) --service-name $(SVC) --query 'containerImages[0].image' --output text))
-	@sed -i.bak 's|"image": ":.*"|"image": "$(IMAGE_NAME)"|' lightsail/containers.json
-	@echo "Updated image reference to: $(IMAGE_NAME)"
 
 deploy:
 	@if [ ! -f $(CONTAINERS) ]; then echo "$(CONTAINERS) missing"; exit 1; fi
@@ -54,24 +53,22 @@ deploy:
 		--region $(REGION) \
 		--service-name $(SVC) \
 		--containers file://$(CONTAINERS) \
-		--public-endpoint file://lightsail/public-endpoint.json
+		--public-endpoint file://lightsail/public-endpoint.json \
+		--no-cli-pager
 
-up: docker-build push deploy
+update-hosts:
+	@echo "Updating ALLOWED_HOSTS to $(SVC).$(HOST_SUFFIX)"
+	@sed -i.bak -E 's/"ALLOWED_HOSTS": "[^"]*"/"ALLOWED_HOSTS": "$(SVC).$(HOST_SUFFIX)"/' $(CONTAINERS)
+	@echo "Updating CSRF_TRUSTED_ORIGINS to https://$(SVC).$(HOST_SUFFIX)"
+	@sed -i.bak -E 's|"CSRF_TRUSTED_ORIGINS": "[^"]*"|"CSRF_TRUSTED_ORIGINS": "https://$(SVC).$(HOST_SUFFIX)"|' $(CONTAINERS)
 
-# Complete setup for new environments (installs patched lightsailctl)
-setup: install-lightsailctl-fix docker-build create
-	@echo ""
-	@echo "⚠️  IMPORTANT: Update lightsail/containers.json with the service URL before continuing..."
-	@echo "Add the URL from the create command output to ALLOWED_HOSTS in lightsail/containers.json"
-	@echo "Then run: make push deploy"
-	@echo ""
-	@aws lightsail get-container-services --region $(REGION) --query 'containerServices[0].url' --output text
+update-image:
+	@echo "Updating containers.json with pushed image..."
+	$(eval IMAGE_NAME := $(shell aws lightsail get-container-images --region $(REGION) --service-name $(SVC) --query 'containerImages[0].image' --output text))
+	@sed -i.bak 's|"image": ":.*"|"image": "$(IMAGE_NAME)"|' lightsail/containers.json
+	@echo "Updated image reference to: $(IMAGE_NAME)"
 
-# Complete deployment after URL configuration
-setup-deploy: push deploy
-	@echo ""
-	@echo "🎉 Deployment complete!"
-	@aws lightsail get-container-services --region $(REGION) --query 'containerServices[0].{state:state,url:url}' --output table
+up: docker-build push update-image update-hosts deploy
 
 down:
 	aws lightsail delete-container-service --region $(REGION) --service-name $(SVC)
