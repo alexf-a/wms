@@ -170,16 +170,61 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Add these lines at the end (or where appropriate):
-MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+# Media Files Configuration
+# Environment-driven: Use S3 in production, local storage in development
+USE_S3 = os.getenv("USE_S3", "true").lower() in {"1", "true", "yes"}
+
+if USE_S3:
+    # Determine bucket based on DEBUG setting
+    AWS_STORAGE_BUCKET_NAME = "wms-media-dev-alexa" if DEBUG else "wms-media-prod-alexa"
+
+    # Hardcoded region (us-west-2 is reliable and commonly used)
+    AWS_S3_REGION_NAME = "us-west-2"
+
+    # Django 4.2+ STORAGES configuration for S3
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3.S3Storage",
+            "OPTIONS": {
+                "access_key": os.getenv("AWS_ACCESS_KEY_ID"),
+                "secret_key": os.getenv("AWS_SECRET_ACCESS_KEY"),
+                "bucket_name": AWS_STORAGE_BUCKET_NAME,
+                "region_name": AWS_S3_REGION_NAME,
+                "file_overwrite": False,
+                "default_acl": None,
+                "verify": True,
+                "signature_version": "s3v4",
+                "object_parameters": {
+                    "CacheControl": "max-age=86400",  # 1 day cache
+                    "StorageClass": "STANDARD",  # Can change to INTELLIGENT_TIERING later
+                },
+            },
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
+
+    # Media URL configuration for S3
+    MEDIA_URL = f"https://{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com/"
+else:
+    # Local storage (development)
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
+    MEDIA_URL = "/media/"
+    MEDIA_ROOT = BASE_DIR / "media"
 
 # LLM Configuration
 LLM_CALLS_DIR = BASE_DIR / "llm_calls"
