@@ -1,4 +1,4 @@
-SVC?=wms-dev
+SVC?=wms
 REGION?=us-west-2
 POWER?=nano
 SCALE?=1
