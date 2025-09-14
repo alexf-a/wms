@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from typing import cast
 
-from core.models import Bin, Item
+from django.conf import settings
+
+from aws_utils.region import AWSRegion
+from core.models import Item
 from lib.llm.llm_handler import StructuredLangChainHandler
 from lib.llm.utils import get_llm_call
 from schemas.llm_search import ItemLocation, ItemSearchCandidates
@@ -15,6 +18,9 @@ HIGH_CONFIDENCE_THRESHOLD = 0.8
 # Initialize LLMCall instances as global variables to avoid reloading them every time
 CANDIDATES_LLM_CALL = get_llm_call("item_search/item_candidates_search")
 LOCATION_LLM_CALL = get_llm_call("item_search/item_location_search")
+
+
+
 
 def _should_return_early(candidates: ItemSearchCandidates) -> bool:
     """Determine if there is exactly one high-confidence candidate."""
@@ -47,7 +53,8 @@ def perform_candidate_search(user_query: str, user_id: int, k: int = 10) -> Item
     prompt_ctxt = get_item_search_context(items)
 
     # Create the StructuredLangChainHandler using the global LLMCall instance
-    candidates_handler = StructuredLangChainHandler(llm_call=CANDIDATES_LLM_CALL, output_schema=ItemSearchCandidates)
+    region = AWSRegion(settings.AWS_BEDROCK_REGION_NAME)
+    candidates_handler = StructuredLangChainHandler(llm_call=CANDIDATES_LLM_CALL, output_schema=ItemSearchCandidates, region=region)
     results: ItemSearchCandidates = candidates_handler.query(user_query=user_query, formatted_context=prompt_ctxt, k=k)
     # Query for item candidates
     return cast("ItemSearchCandidates", results)
@@ -78,7 +85,8 @@ def get_item_location(candidates: ItemSearchCandidates, user_id: int, user_query
     formatted_context = get_item_search_context(relevant_items)
 
     # Create the StructuredLangChainHandler using the global LLMCall instance
-    location_handler = StructuredLangChainHandler(llm_call=LOCATION_LLM_CALL, output_schema=ItemLocation)
+    region = AWSRegion(settings.AWS_BEDROCK_REGION_NAME)
+    location_handler = StructuredLangChainHandler(llm_call=LOCATION_LLM_CALL, output_schema=ItemLocation, region=region)
 
     result = location_handler.query(query=user_query, formatted_context=formatted_context)
     return cast("ItemLocation", result)
