@@ -6,6 +6,7 @@ from io import BytesIO
 import base64
 from pathlib import Path
 from schemas import ItemSearchInput
+from .upload_paths import user_qr_code_upload_path, user_item_image_upload_path
 
 class WMSUser(User):
     """Custom user model extending Django's built-in User model."""
@@ -51,7 +52,7 @@ class Bin(models.Model):
     )
     name = models.CharField(max_length=1000)
     description = models.TextField(max_length=5000)
-    qr_code = models.ImageField(upload_to="qr_codes/")
+    qr_code = models.ImageField(upload_to=user_qr_code_upload_path)
     location = models.CharField(max_length=255, blank=True, null=True)
     length = models.FloatField(blank=True, null=True)
     width = models.FloatField(blank=True, null=True)
@@ -77,7 +78,7 @@ class Item(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField()
     created_on = models.DateTimeField(auto_now_add=True)
-    image = models.ImageField(upload_to="item_images/", blank=True, null=True)
+    image = models.ImageField(upload_to=user_item_image_upload_path, blank=True, null=True)
     bin = models.ForeignKey(Bin, related_name="items", on_delete=models.CASCADE)
 
     def __str__(self) -> str:
