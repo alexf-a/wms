@@ -10,10 +10,12 @@ from typing import BinaryIO
 
 # Third-party imports
 import pillow_heif
+from django.conf import settings
 from django.core.files.base import ContentFile
 from PIL import Image as PILImage
 
 # Local application imports
+from aws_utils.region import AWSRegion
 from core.models import Bin, Item
 from lib.llm.llm_handler import StructuredLangChainHandler
 from lib.llm.utils import get_llm_call
@@ -31,7 +33,10 @@ def _get_cached_handler() -> StructuredLangChainHandler:
         StructuredLangChainHandler: Cached handler instance.
     """
     llm_call = get_llm_call("item_generation/item_image_generation")
-    return StructuredLangChainHandler(llm_call=llm_call, output_schema=GeneratedItem)
+    # Get the region from Django settings, defaulting to US_WEST_2
+    region_name = settings.AWS_BEDROCK_REGION_NAME
+    region = AWSRegion(region_name)
+    return StructuredLangChainHandler(llm_call=llm_call, output_schema=GeneratedItem, region=region)
 
 
 
