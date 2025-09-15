@@ -23,7 +23,7 @@ WMS seeks to address both pain-points:
 ## Development Guidelines
 - **Django Core**: Follow Django best practices for models, views, and forms.
 - **LLM Functionality**: Use the LLMHandler for all LLM queries, and ensure that LLMCall objects are used to encapsulate query parameters.
-- **Poetry**: Use Poetry for environment management, project configuration and to run scripts and tests. Ensure that the `pyproject.toml` file is updated with any new dependencies. Run all commands and scrips with `poetry run`
+- **Poetry**: Use Poetry for environment management, project configuration and to run scripts and tests. Ensure that the `pyproject.toml` file is updated with any new dependencies. Run all commands and scripts with `poetry run`
 - **Ruff**: Use Ruff for linting and code quality checks. Follow the project's linting rules and fix any issues reported by Ruff.
 - **Google Docstrings**: Use Google-style docstrings for all public methods and classes.
 - **Testing**: All tests are written using pytest. Use the `test_*.py` naming convention for test files and organize tests in the `tests/` directory. Ensure that all new features and bug fixes are covered by tests.
@@ -74,6 +74,9 @@ Note: `make` commands will modify your containers.json file.
 4. Push image to Lightsail registry: `make push` (uses patched lightsailctl)
 5. Deploy new version: `make deploy`
 6. Tear down (stop billing): `make down` (deletes service; recreate later with `make create && make deploy`).
+
+#### Storage
+Static files are stored in an S3 bucket. See `settings.py` for configuration.
 
 #### Troubleshooting
 - If you get "image push response does not contain the image digest" error, run `make install-lightsailctl-fix`
