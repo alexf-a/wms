@@ -196,7 +196,7 @@ if USE_S3:
                 "secret_key": os.getenv("AWS_SECRET_ACCESS_KEY"),
                 "bucket_name": AWS_STORAGE_BUCKET_NAME,
                 "region_name": AWS_S3_REGION_NAME,
-                "file_overwrite": False,
+                "file_overwrite": True,  # Allow overwriting to avoid exists check
                 "default_acl": None,
                 "verify": True,
                 "signature_version": "s3v4",
