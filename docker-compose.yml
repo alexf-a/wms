@@ -1,0 +1,13 @@
+version: "3.8"
+services:
+  web:
+    build:
+      context: .
+    image: wms:amd64
+    ports:
+      - "8000:8000"
+    # Load all common env vars from Lightsail containers.json
+    env_file:
+      - .cache/.env
+    entrypoint:
+      - "/app/docker-entrypoint.sh"

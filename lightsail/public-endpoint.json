@@ -1,0 +1,5 @@
+{
+  "containerName": "web",
+  "containerPort": 8000,
+  "healthCheck": { "path": "/healthz/", "successCodes": "200-399" }
+}

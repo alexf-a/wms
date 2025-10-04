@@ -23,12 +23,63 @@ WMS seeks to address both pain-points:
 ## Development Guidelines
 - **Django Core**: Follow Django best practices for models, views, and forms.
 - **LLM Functionality**: Use the LLMHandler for all LLM queries, and ensure that LLMCall objects are used to encapsulate query parameters.
-- **Poetry**: Use Poetry for environment management, project configuration and to run scripts and tests. Ensure that the `pyproject.toml` file is updated with any new dependencies.
+- **Poetry**: Use Poetry for environment management, project configuration and to run scripts and tests. Ensure that the `pyproject.toml` file is updated with any new dependencies. Run all commands and scripts with `poetry run`
 - **Ruff**: Use Ruff for linting and code quality checks. Follow the project's linting rules and fix any issues reported by Ruff.
 - **Google Docstrings**: Use Google-style docstrings for all public methods and classes.
 - **Testing**: All tests are written using pytest. Use the `test_*.py` naming convention for test files and organize tests in the `tests/` directory. Ensure that all new features and bug fixes are covered by tests.
+- **Debugging**:
+   - Always search the web first for similar issues and solutions, using resources like GitHub Issues, Stack Overflow, etc.
+   - When using the AWS CLI to produce outputs, ensure that the cli-pager is disabled.
 
 ## Coding Instructions
 1. Make smaller, incremental changes to the codebase. Make these changes one-at-a-time, then ask for feedback.
 2. Clean up all testing and debugging code after implementation goals have been met.
+
+## Deployment Process (Lightsail Containers)
+
+This project deploys to AWS Lightsail Container Service using a container image built from the repository. Configuration is environment‑driven and centralized.
+
+### Key Files
+- `Dockerfile`: Builds the production image (Poetry install, collectstatic, non‑root user).
+- `docker-entrypoint.sh`: Runtime bootstrap (verifies `PORT` env, runs migrations opportunistically, then `gunicorn`).
+- `gunicorn.conf.py`: Server tuning (workers via `WEB_CONCURRENCY` override or `(2*cores)+1`, threading, timeouts, logging). Also ensures `DJANGO_SETTINGS_MODULE` is set from the environment.
+- `lightsail/containers.example.json`: Template for the real (ignored) `lightsail/containers.json` containing env vars (single source of truth for `PORT`, `DEBUG`, `ALLOWED_HOSTS`, `SECRET_KEY`, DB_* vars, `DJANGO_SETTINGS_MODULE`, optional `WEB_CONCURRENCY`).
+- `lightsail/public-endpoint.json`: Defines public endpoint and health check path (update to `/healthz/` if you switch from `/`).
+- `Makefile`: Automation targets for build & deploy (`docker-build`, `create`, `push`, `deploy`, `up`, `down`, `setup`, `install-lightsailctl-fix`). Includes workarounds for lightsailctl bugs #95 and #100. Validates presence of `lightsail/containers.json` before deploy. Uses patched lightsailctl and explicit linux/amd64 platform.
+- `core/views.py` & `core/urls.py`: Provide the lightweight health check endpoint at `/healthz/` (JSON `{"status": "ok"}`).
+
+### Build & Deploy Workflow
+
+**IMPORTANT**: The official lightsailctl has bugs that prevent image pushing. Use the patched version from [PR #102](https://github.com/aws/lightsailctl/pull/102).
+
+#### Prerequisites
+1. Install patched lightsailctl: `make install-lightsailctl-fix`
+2. Ensure `lightsail/containers.json` exists (real secrets file, ignored by git).
+
+#### Deployment Steps
+1. **First-time setup**: 
+   - Run `make install-lightsailctl-fix`
+   - Run `make create` with your desired args.
+   - Update `HOST_SUFFIX` in `Makefile` to use the URL from the output. Use the suffix after the service name (e.g. `us-west-2.cs.amazonlightsail.com`)
+   - Run `make up`
+2. **Regular deployments**: `make up` (builds, pushes, and deploys)
+3. **Local deployment (debugging)**: `make local-up`
+
+Note: `make` commands will modify your containers.json file.
+
+#### Manual Steps
+1. Build image with correct platform: `make docker-build` (uses linux/amd64)
+2. Create service (first time): `make create`
+3. Get the URL from the Lightsail console output, and add it as `ALLOWED_HOSTS` in `lightsail/containers.json`.
+4. Push image to Lightsail registry: `make push` (uses patched lightsailctl)
+5. Deploy new version: `make deploy`
+6. Tear down (stop billing): `make down` (deletes service; recreate later with `make create && make deploy`).
+
+#### Storage
+Static files are stored in an S3 bucket. See `settings.py` for configuration.
+
+#### Troubleshooting
+- If you get "image push response does not contain the image digest" error, run `make install-lightsailctl-fix`
+- The Makefile automatically uses `--platform linux/amd64` to ensure Lightsail compatibility
+- Patched lightsailctl is installed to `~/go/bin/` and automatically added to PATH
 

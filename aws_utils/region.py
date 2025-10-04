@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class AWSRegion(Enum):
     """Enumeration of AWS regions."""
     US_EAST_1 = "us-east-1"           # US East (N. Virginia)

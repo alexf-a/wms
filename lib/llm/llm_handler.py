@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from langchain_core.language_models.chat_models import BaseChatModel
     from pydantic import BaseModel
 
+    from aws_utils.region import AWSRegion
     from lib.llm.llm_call import LLMCall
 
 
@@ -48,16 +49,21 @@ class LangChainHandler(LLMHandler):
     langchain_client: BaseChatModel
     chain: Runnable[LanguageModelInput, str | BaseModel]
 
-    def __init__(self, llm_call: LLMCall) -> None:
+    def __init__(self, llm_call: LLMCall, region: AWSRegion) -> None:
         """Initialize the LLMHandler with an LLMCall and a Langchain ChatBedrock client.
 
         Args:
             llm_call (LLMCall): An LLMCall object containing the configuration for the LLM call.
+            region (AWSRegion): The AWS region to use for the ChatBedrock client.
         """
         self.llm_call = llm_call
         self._additional_messages: list[SystemMessage | HumanMessage] = []
 
-        self.langchain_client = ChatBedrock(model_id=self.llm_call.model_id.value, temperature=self.llm_call.temp)
+        self.langchain_client = ChatBedrock(
+            model_id=self.llm_call.model_id.value,
+            temperature=self.llm_call.temp,
+            region=region.value
+        )
         self._configure_langchain_client()
 
     def _maybe_configure_retry(self) -> None:
@@ -154,15 +160,16 @@ class LangChainHandler(LLMHandler):
 class StructuredLangChainHandler(LangChainHandler):
     """Handler for LLM calls that structures the output using a Pydantic model."""
 
-    def __init__(self, llm_call: LLMCall, output_schema: BaseModel) -> None:
+    def __init__(self, llm_call: LLMCall, output_schema: BaseModel, region: AWSRegion) -> None:
         """Initialize the handler with an LLM call and an output schema.
 
         Args:
             llm_call (LLMCall): An LLMCall object containing the configuration for the LLM call.
             output_schema (BaseModel): The Pydantic model to use for structuring the LLM output.
+            region (AWSRegion): The AWS region to use for the ChatBedrock client.
         """
         self.output_schema = output_schema
-        super().__init__(llm_call=llm_call)
+        super().__init__(llm_call=llm_call, region=region)
 
     def _configure_langchain_client(self) -> None:
         # Always use structured_output for all models (disable Claude 4 XML fallback)

@@ -1,11 +1,12 @@
+import base64
+
 from django.contrib.auth.models import User
 from django.db import models
-import qrcode
-from django.core.files.base import ContentFile
-from io import BytesIO
-import base64
-from pathlib import Path
+
 from schemas import ItemSearchInput
+
+from .upload_paths import user_item_image_upload_path, user_qr_code_upload_path
+
 
 class WMSUser(User):
     """Custom user model extending Django's built-in User model."""
@@ -51,14 +52,14 @@ class Bin(models.Model):
     )
     name = models.CharField(max_length=1000)
     description = models.TextField(max_length=5000)
-    qr_code = models.ImageField(upload_to="qr_codes/")
+    qr_code = models.ImageField(upload_to=user_qr_code_upload_path)
     location = models.CharField(max_length=255, blank=True, null=True)
     length = models.FloatField(blank=True, null=True)
     width = models.FloatField(blank=True, null=True)
     height = models.FloatField(blank=True, null=True)
 
     class Meta:
-        unique_together = ('user', 'name')
+        unique_together = ("user", "name")
 
     def __str__(self):
         return self.name
@@ -77,7 +78,7 @@ class Item(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField()
     created_on = models.DateTimeField(auto_now_add=True)
-    image = models.ImageField(upload_to="item_images/", blank=True, null=True)
+    image = models.ImageField(upload_to=user_item_image_upload_path, blank=True, null=True)
     bin = models.ForeignKey(Bin, related_name="items", on_delete=models.CASCADE)
 
     def __str__(self) -> str:
@@ -94,12 +95,11 @@ class Item(models.Model):
         # If item has an image, encode it to base64
         if self.image:
             try:
-                image_path = Path(self.image.path)
-                with image_path.open("rb") as image_file:
+                with self.image.open("rb") as image_file:
                     image_data = image_file.read()
                     image = base64.b64encode(image_data).decode("utf-8")
-            except (FileNotFoundError, AttributeError):
-                # If image file doesn't exist or can't be read, skip it
+            except (FileNotFoundError, AttributeError, OSError, ValueError):
+                # If image file can't be accessed or read, skip it
                 pass
 
         return ItemSearchInput(

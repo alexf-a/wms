@@ -16,6 +16,9 @@ langchain = "0.3.27"
 langchain-aws = "0.2.29"
 ruff = "^0.11.5"
 pytest = "^8.4.1"
+gunicorn = "^22.0.0"
+whitenoise = "^6.7.0"
+django-storages = {extras = ["boto3"], version = "^1.14.6"}
 
 
 [build-system]

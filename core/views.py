@@ -1,16 +1,27 @@
-from django.shortcuts import render, redirect, get_object_or_404
-from django.http import HttpRequest
+import logging
+
+from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from .forms import WMSUserCreationForm, ItemForm, ItemSearchForm, AutoGenerateItemForm, ConfirmItemForm
+from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+
+from lib.llm.item_generation import get_item_from_img
+from lib.llm.llm_search import find_item_location
+
+from .forms import (
+    AutoGenerateItemForm,
+    ConfirmItemForm,
+    ItemForm,
+    ItemSearchForm,
+    WMSUserCreationForm,
+)
 from .models import Bin, Item
 from .utils import get_qr_code_file
-from lib.llm.llm_search import find_item_location
-from lib.llm.item_generation import get_item_from_img
-from django.core.files.base import ContentFile
 
-def register_view(request) -> render:
+logger = logging.getLogger(__name__)
+
+def register_view(request: HttpRequest) -> HttpResponse:
     """Handle user registration.
 
     Args:
@@ -24,12 +35,12 @@ def register_view(request) -> render:
         if form.is_valid():
             user = form.save()
             login(request, user)
-            return redirect("home_view")
+        logger.error("Registration form errors: %s", form.errors)
     else:
         form = WMSUserCreationForm()
     return render(request, "core/auth/register.html", {"form": form})
 
-def home_view(request) -> render:
+def home_view(request: HttpRequest) -> HttpResponse:
     """Render the home page.
 
     Args:
@@ -41,7 +52,7 @@ def home_view(request) -> render:
     # Pass authentication status to the template
     return render(request, "core/home.html", {"is_authenticated": request.user.is_authenticated})
 
-def expand_inventory_view(request: HttpRequest) -> render:
+def expand_inventory_view(request: HttpRequest) -> HttpResponse:
     """Render the expand inventory page.
 
     Args:
@@ -53,7 +64,7 @@ def expand_inventory_view(request: HttpRequest) -> render:
     return render(request, "core/expand_inventory.html")
 
 @login_required
-def create_bin_view(request: HttpRequest) -> render:
+def create_bin_view(request: HttpRequest) -> HttpResponse:
     """Handle the creation of a new bin.
 
     Args:
@@ -70,13 +81,13 @@ def create_bin_view(request: HttpRequest) -> render:
         width = request.POST.get("width", None)
         height = request.POST.get("height", None)
 
-        qr_code_file: ContentFile = get_qr_code_file(
+        qr_code_file = get_qr_code_file(
             name=name,
             description=description,
             location=location,
             length=length,
             width=width,
-            height=height
+            height=height,
         )
         new_bin = Bin(
             user=request.user,
@@ -92,7 +103,7 @@ def create_bin_view(request: HttpRequest) -> render:
         return redirect("home_view")
     return render(request, "core/create_bin.html")
 
-def add_items_to_bin_view(request: HttpRequest) -> render:
+def add_items_to_bin_view(request: HttpRequest) -> HttpResponse:
     """Handle adding items to a bin.
 
     Args:
@@ -110,7 +121,7 @@ def add_items_to_bin_view(request: HttpRequest) -> render:
         form = ItemForm(user=request.user)
     return render(request, "core/add_items_to_bin.html", {"form": form})
 
-def list_bins(request: HttpRequest) -> render:
+def list_bins(request: HttpRequest) -> HttpResponse:
     """List all bins for the current user.
 
     Args:
@@ -122,7 +133,7 @@ def list_bins(request: HttpRequest) -> render:
     bins = Bin.objects.filter(user=request.user)
     return render(request, "core/list_bins.html", {"bins": bins})
 
-def bin_detail(request: HttpRequest, bin_id: int) -> render:
+def bin_detail(request: HttpRequest, bin_id: int) -> HttpResponse:
     """Display the details of a specific bin.
 
     Args:
@@ -135,7 +146,7 @@ def bin_detail(request: HttpRequest, bin_id: int) -> render:
     _bin = get_object_or_404(Bin, id=bin_id)
     return render(request, "core/bin_detail.html", {"bin": _bin})
 
-def item_detail(request: HttpRequest, item_id: int) -> render:
+def item_detail(request: HttpRequest, item_id: int) -> HttpResponse:
     """Display the details of a specific item.
 
     Args:
@@ -149,7 +160,7 @@ def item_detail(request: HttpRequest, item_id: int) -> render:
     return render(request, "core/item_detail.html", {"item": item})
 
 @login_required
-def item_search_view(request: HttpRequest) -> render:
+def item_search_view(request: HttpRequest) -> HttpResponse:
     """Handle item search using LLM.
 
     Args:
@@ -163,7 +174,7 @@ def item_search_view(request: HttpRequest) -> render:
     if request.method == "POST":
         form = ItemSearchForm(request.POST)
         if form.is_valid():
-            query = form.cleaned_data['query']
+            query = form.cleaned_data["query"]
             result = str(find_item_location(query, request.user.id))
     else:
         form = ItemSearchForm()
@@ -174,7 +185,7 @@ def item_search_view(request: HttpRequest) -> render:
     })
 
 @login_required
-def auto_generate_item_view(request: HttpRequest) -> render:
+def auto_generate_item_view(request: HttpRequest) -> HttpResponse:
     """Handle auto-generation of item features from uploaded image.
 
     This view processes an uploaded image and selected bin to auto-generate
@@ -191,26 +202,26 @@ def auto_generate_item_view(request: HttpRequest) -> render:
         if form.is_valid():
             image = form.cleaned_data["image"]
             bin_obj = form.cleaned_data["bin"]
-            
+
             try:
                 # Use the item generation function to create the item
                 item = get_item_from_img(image.file, bin_obj)
-                
+
                 # Store item ID in session for confirmation view
                 request.session["generated_item_id"] = item.id
                 messages.success(request, "Item features auto-generated successfully!")
                 return redirect("confirm_item")
-                
-            except Exception as e:
-                messages.error(request, f"Failed to generate item features: {str(e)}")
-                
+
+            except Exception as e:  # noqa: BLE001
+                messages.error(request, f"Failed to generate item features: {e!s}")
+
     else:
         form = AutoGenerateItemForm(user=request.user)
-    
+
     return render(request, "core/auto_generate_item.html", {"form": form})
 
 @login_required
-def confirm_item_view(request: HttpRequest) -> render:
+def confirm_item_view(request: HttpRequest) -> HttpResponse:
     """Handle confirmation and editing of auto-generated item features.
 
     This view displays the auto-generated item features (name, description)
@@ -227,13 +238,13 @@ def confirm_item_view(request: HttpRequest) -> render:
     if not item_id:
         messages.error(request, "No generated item found. Please start over.")
         return redirect("auto_generate_item")
-    
+
     try:
         item = get_object_or_404(Item, id=item_id, bin__user=request.user)
     except Item.DoesNotExist:
         messages.error(request, "Generated item not found.")
         return redirect("auto_generate_item")
-    
+
     if request.method == "POST":
         form = ConfirmItemForm(request.POST, instance=item, user=request.user)
         if form.is_valid():
@@ -254,8 +265,16 @@ def confirm_item_view(request: HttpRequest) -> render:
                 return redirect("auto_generate_item")
     else:
         form = ConfirmItemForm(instance=item, user=request.user)
-    
+
     return render(request, "core/confirm_item.html", {
         "form": form,
         "item": item
     })
+
+
+def healthcheck_view(_: HttpRequest) -> JsonResponse:  # pragma: no cover - trivial
+    """Lightweight healthcheck endpoint.
+
+    Returns 200 with minimal JSON without hitting database.
+    """
+    return JsonResponse({"status": "ok"})
