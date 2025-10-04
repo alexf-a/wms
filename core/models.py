@@ -4,7 +4,6 @@ import qrcode
 from django.core.files.base import ContentFile
 from io import BytesIO
 import base64
-from pathlib import Path
 from schemas import ItemSearchInput
 from .upload_paths import user_qr_code_upload_path, user_item_image_upload_path
 
@@ -95,12 +94,11 @@ class Item(models.Model):
         # If item has an image, encode it to base64
         if self.image:
             try:
-                image_path = Path(self.image.path)
-                with image_path.open("rb") as image_file:
+                with self.image.open("rb") as image_file:
                     image_data = image_file.read()
                     image = base64.b64encode(image_data).decode("utf-8")
-            except (FileNotFoundError, AttributeError):
-                # If image file doesn't exist or can't be read, skip it
+            except (FileNotFoundError, AttributeError, OSError, ValueError):
+                # If image file can't be accessed or read, skip it
                 pass
 
         return ItemSearchInput(
