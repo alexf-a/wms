@@ -1,16 +1,18 @@
-from django.core.management.base import BaseCommand
-from django.contrib.auth import get_user_model
-from core.models import Bin, Item
-from lib.llm.llm_handler import StructuredLangChainHandler
-from lib.llm.claude4_xml_parser import Claude4XMLParsingError
-from lib.llm.utils import get_llm_call
-from schemas.synthetic_data.item_generation import ItemGenerationOutput
-from django.core.files.base import ContentFile
-from PIL import Image, ImageDraw, ImageFont
-from io import BytesIO
-import boto3
 import base64
 import json
+from io import BytesIO
+
+import boto3
+from django.contrib.auth import get_user_model
+from django.core.files.base import ContentFile
+from django.core.management.base import BaseCommand
+from PIL import Image, ImageDraw, ImageFont
+
+from core.models import Bin, Item
+from lib.llm.claude4_xml_parser import Claude4XMLParsingError
+from lib.llm.llm_handler import StructuredLangChainHandler
+from lib.llm.utils import get_llm_call
+from schemas.synthetic_data.item_generation import ItemGenerationOutput
 
 
 class Command(BaseCommand):
@@ -37,7 +39,7 @@ class Command(BaseCommand):
 
         # Set up LLM for item generation
         item_llm_call = get_llm_call("synthetic_data/item_generation")
-        
+
         item_handler = StructuredLangChainHandler(
             llm_call=item_llm_call,
             output_schema=ItemGenerationOutput
@@ -78,11 +80,11 @@ class Command(BaseCommand):
                 for attempt in range(max_attempts):
                     # Create list of existing items for context
                     existing_items_str = ", ".join(existing_item_names) if existing_item_names else "None"
-                    
+
                     try:
                         # Generate complete item using structured LLM
                         result = item_handler.query(
-                            bin_name=storage_bin.name, 
+                            bin_name=storage_bin.name,
                             bin_description=storage_bin.description,
                             existing_items=existing_items_str
                         )
@@ -149,30 +151,30 @@ class Command(BaseCommand):
                         accept="application/json",
                         body=json.dumps(body)
                     )
-                    result = json.loads(response['body'].read().decode('utf-8'))
-                    if "images" in result and result["images"]:
+                    result = json.loads(response["body"].read().decode("utf-8"))
+                    if result.get("images"):
                         img_b64 = result["images"][0]
                         img_data = base64.b64decode(img_b64)
-                        
+
                         # Load the image and resize it to half size
                         img = Image.open(BytesIO(img_data))
                         original_width, original_height = img.size
                         new_width = original_width // 2
                         new_height = original_height // 2
                         img_resized = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
-                        
+
                         # Save the resized image
                         output = BytesIO()
                         img_resized.save(output, format="JPEG", quality=90)
                         output.seek(0)
-                        
+
                         file_name = f"{item_name.replace(' ', '_')}.jpg"
                         item.image.save(file_name, ContentFile(output.read()), save=False)
                         image_success = True
                     else:
                         raise ValueError("No images returned from Bedrock.")
                 except Exception as e:
-                    self.stdout.write(self.style.WARNING(f"Failed to generate image via Bedrock for {item_name}: {str(e)}"))
+                    self.stdout.write(self.style.WARNING(f"Failed to generate image via Bedrock for {item_name}: {e!s}"))
 
                 # If Bedrock failed, generate a simple placeholder image with item name
                 if not image_success:
@@ -208,7 +210,7 @@ class Command(BaseCommand):
 
                     except Exception as e:
                         self.stdout.write(
-                            self.style.WARNING(f"Failed to generate placeholder image for {item_name}: {str(e)}")
+                            self.style.WARNING(f"Failed to generate placeholder image for {item_name}: {e!s}")
                         )
 
                 # Only save the item if we successfully created an image

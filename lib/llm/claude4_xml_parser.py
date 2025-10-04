@@ -4,12 +4,14 @@ See https://github.com/langchain-ai/langchain-aws/issues/521#issuecomment-304749
 """
 
 from __future__ import annotations
-import json
+
 import contextlib
+import json
 import logging
 
 from langchain_core.output_parsers import BaseOutputParser, XMLOutputParser
 from pydantic import BaseModel
+
 logger = logging.getLogger(__name__)
 
 class Claude4XMLParsingError(Exception):

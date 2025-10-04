@@ -191,7 +191,7 @@ if USE_S3:
 
     # AWS region configuration (allow override via environment)
     AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION", "us-west-2")
-    
+
     # AWS Bedrock region configuration (can be different from S3)
     AWS_BEDROCK_REGION_NAME = os.getenv("AWS_BEDROCK_REGION", "us-west-2")
 
