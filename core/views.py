@@ -33,7 +33,6 @@ def register_view(request: HttpRequest) -> render:
         if form.is_valid():
             user = form.save()
             login(request, user)
-        # DEBUG: log form errors
         logger.error("Registration form errors: %s", form.errors)
     else:
         form = WMSUserCreationForm()
