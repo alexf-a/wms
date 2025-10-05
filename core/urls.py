@@ -21,7 +21,16 @@ urlpatterns = [
     path("create_bin/", views.create_bin_view, name="create_bin"),
     path("add_items_to_bin/", views.add_items_to_bin_view, name="add_items_to_bin"),
     path("bins/", list_bins, name="list_bins"),
-    path("bin/<int:bin_id>/", views.bin_detail, name="bin_detail"),
+    path(
+        "user/<int:user_id>/bins/<slug:access_token>/",
+        views.bin_detail,
+        name="bin_detail",
+    ),
+    path(
+        "user/<int:user_id>/bins/<slug:access_token>/qr/",
+        views.bin_qr_view,
+        name="bin_qr",
+    ),
     path("item/<int:item_id>/", views.item_detail, name="item_detail"),
     path("find-item/", views.item_search_view, name="item_search"),
     path("auto-generate-item/", views.auto_generate_item_view, name="auto_generate_item"),

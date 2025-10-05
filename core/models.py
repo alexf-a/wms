@@ -1,11 +1,16 @@
 import base64
+from urllib.parse import urljoin
 
 from django.contrib.auth.models import User
+from django.core.files.base import ContentFile
 from django.db import models
+from django.urls import reverse
+from django.utils.text import slugify
 
 from schemas import ItemSearchInput
 
-from .upload_paths import user_item_image_upload_path, user_qr_code_upload_path
+from .upload_paths import user_item_image_upload_path
+from .utils import generate_bin_access_token, get_qr_code_file
 
 
 class WMSUser(User):
@@ -36,8 +41,7 @@ class Bin(models.Model):
         user (User): The primary owner of the bin.
         shared_users (ManyToManyField): Users with shared access to the bin.
         name (str): The name of the bin.
-        description (str): A description of the bin.
-        qr_code (ImageField): The QR code image for the bin.
+    description (str): A description of the bin.
         location (str): The location of the bin.
         length (float): The length of the bin.
         width (float): The width of the bin.
@@ -52,7 +56,7 @@ class Bin(models.Model):
     )
     name = models.CharField(max_length=1000)
     description = models.TextField(max_length=5000)
-    qr_code = models.ImageField(upload_to=user_qr_code_upload_path)
+    access_token = models.CharField(max_length=48, unique=True, default=generate_bin_access_token)
     location = models.CharField(max_length=255, blank=True, null=True)
     length = models.FloatField(blank=True, null=True)
     width = models.FloatField(blank=True, null=True)
@@ -63,6 +67,30 @@ class Bin(models.Model):
 
     def __str__(self):
         return self.name
+
+    def get_qr_filename(self) -> str:
+        """Return a deterministic filename for the bin's QR code image."""
+        return f"{slugify(self.name) or 'bin'}_qr.png"
+
+    def get_detail_path(self) -> str:
+        """Return the relative URL path to this bin's detail view."""
+        return reverse(
+            "bin_detail",
+            kwargs={"user_id": self.user_id, "access_token": self.access_token},
+        )
+
+    def get_qr_code(self, *, base_url: str) -> ContentFile:
+        """Generate a QR code file pointing to this bin's detail view.
+
+        Args:
+            base_url: The absolute base URL of the site (e.g., "https://app.example.com/").
+
+        Returns:
+            ContentFile: An in-memory QR code image for the bin.
+        """
+        normalized_base = base_url.rstrip("/") + "/"
+        detail_url = urljoin(normalized_base, self.get_detail_path().lstrip("/"))
+        return get_qr_code_file(detail_url, filename=self.get_qr_filename())
 
 class Item(models.Model):
     """Model representing an item stored in a bin.
@@ -80,6 +108,9 @@ class Item(models.Model):
     created_on = models.DateTimeField(auto_now_add=True)
     image = models.ImageField(upload_to=user_item_image_upload_path, blank=True, null=True)
     bin = models.ForeignKey(Bin, related_name="items", on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ("user", "name")
 
     def __str__(self) -> str:
         return self.name
