@@ -212,7 +212,7 @@ def auto_generate_item_view(request: HttpRequest) -> HttpResponse:
                 messages.success(request, "Item features auto-generated successfully!")
                 return redirect("confirm_item")
 
-            except RuntimeError as e:  # Narrowed example; adjust to specific exceptions raised by get_item_from_img
+            except Exception as e:  # noqa: BLE001
                 messages.error(request, f"Failed to generate item features: {e!s}")
 
     else:
