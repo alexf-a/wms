@@ -6,6 +6,12 @@
 <body>
     <h1>{{ bin.name }}</h1>
     <p>{{ bin.description }}</p>
+    <p>
+        <a href="{% url 'bin_qr' bin.user_id bin.access_token %}">Download QR Code</a>
+    </p>
+    <p>
+        <a href="{% url 'bin_qr' bin.user_id bin.access_token %}">Download QR Code</a>
+    </p>
     <h2>Items in this Bin</h2>
     <ul>
         {% for item in bin.items.all %}
