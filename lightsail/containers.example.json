@@ -1,0 +1,23 @@
+{
+  "web": {
+    "image": ":web",
+    "ports": { "8000": "HTTP" },
+    "environment": {
+      "PORT": "8000",
+      "DEBUG": "False",
+      "DJANGO_SETTINGS_MODULE": "wms.settings",
+      "ALLOWED_HOSTS": "example.com",
+      "SECRET_KEY": "__SECRET_KEY__",
+      "DB_NAME": "__DB_NAME__",
+      "DB_USER": "__DB_USER__",
+      "DB_PASSWORD": "__DB_PASSWORD__",
+      "DB_HOST": "__DB_HOST__",
+      "DB_PORT": "5432",
+      "USE_S3": "True",
+      "AWS_ACCESS_KEY_ID": "__PROD_AWS_ACCESS_KEY_ID__",
+      "AWS_SECRET_ACCESS_KEY": "__PROD_AWS_SECRET_ACCESS_KEY__",
+      "AWS_S3_REGION": "us-west-2",
+      "AWS_BEDROCK_REGION": "us-west-2"
+    }
+  }
+}
