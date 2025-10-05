@@ -1,11 +1,12 @@
+import base64
+
 from django.contrib.auth.models import User
 from django.db import models
-import qrcode
-from django.core.files.base import ContentFile
-from io import BytesIO
-import base64
+
 from schemas import ItemSearchInput
-from .upload_paths import user_qr_code_upload_path, user_item_image_upload_path
+
+from .upload_paths import user_item_image_upload_path, user_qr_code_upload_path
+
 
 class WMSUser(User):
     """Custom user model extending Django's built-in User model."""
@@ -58,7 +59,7 @@ class Bin(models.Model):
     height = models.FloatField(blank=True, null=True)
 
     class Meta:
-        unique_together = ('user', 'name')
+        unique_together = ("user", "name")
 
     def __str__(self):
         return self.name

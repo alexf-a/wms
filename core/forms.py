@@ -1,6 +1,8 @@
-from django.contrib.auth.forms import UserCreationForm
 from django import forms
-from .models import WMSUser, Item, Bin
+from django.contrib.auth.forms import UserCreationForm
+
+from .models import Bin, Item, WMSUser
+
 
 class WMSUserCreationForm(UserCreationForm):
     """Form for creating a new WMSUser."""
@@ -28,22 +30,22 @@ class ItemForm(forms.ModelForm):
 
 class ItemSearchForm(forms.Form):
     """Form for searching items using LLM."""
-    
+
     query = forms.CharField(
-        max_length=255, 
+        max_length=255,
         required=True,
         label="",
         widget=forms.TextInput(
             attrs={
-                'placeholder': 'Where is my...', 
-                'class': 'search-input'
+                "placeholder": "Where is my...",
+                "class": "search-input"
             }
         )
     )
 
 class AutoGenerateItemForm(forms.Form):
     """Form for auto-generating item features from an image."""
-    
+
     image = forms.ImageField(
         required=True,
         label="Upload Item Image",
@@ -55,7 +57,7 @@ class AutoGenerateItemForm(forms.Form):
         label="Select Bin",
         help_text="Choose which bin this item belongs to"
     )
-    
+
     def __init__(self, *args, user=None, **kwargs):
         """Initialize the form with a user-specific queryset for bins.
 
@@ -68,15 +70,15 @@ class AutoGenerateItemForm(forms.Form):
 
 class ConfirmItemForm(forms.ModelForm):
     """Form for confirming and editing auto-generated item features."""
-    
+
     class Meta:
         model = Item
         fields = ["name", "description", "bin"]
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
+            "name": forms.TextInput(attrs={"class": "form-control"}),
+            "description": forms.Textarea(attrs={"class": "form-control", "rows": 4}),
         }
-    
+
     def __init__(self, *args, user=None, **kwargs):
         """Initialize the form with a user-specific queryset for bins.
 

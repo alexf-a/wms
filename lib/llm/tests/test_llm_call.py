@@ -263,23 +263,23 @@ def test_json_structure(
     # First, convert back to dict for easier assertions
     import json
     serialized = json.loads(json_data)
-    
+
     # Check the structure of the serialized object
     assert isinstance(serialized, dict)
-    
+
     # Check that all expected fields are present
     expected_fields = [
-        "system_prompt_tmplt", 
-        "human_prompt_tmplt", 
-        "output_schema", 
-        "model_id", 
-        "temp", 
-        "retry_timeout", 
+        "system_prompt_tmplt",
+        "human_prompt_tmplt",
+        "output_schema",
+        "model_id",
+        "temp",
+        "retry_timeout",
         "retry_limit"
     ]
     for field in expected_fields:
         assert field in serialized
-    
+
     # Check field types
     assert isinstance(serialized["system_prompt_tmplt"], str)
     assert isinstance(serialized["human_prompt_tmplt"], str)
@@ -288,17 +288,17 @@ def test_json_structure(
     assert isinstance(serialized["temp"], float)
     assert isinstance(serialized["retry_timeout"], float)
     assert isinstance(serialized["retry_limit"], int)
-    
+
     # Check output_schema structure
     schema = serialized["output_schema"]
     assert "class_name" in schema
     assert "module" in schema
     assert "fields" in schema
-    
+
     fields = schema["fields"]
     assert "field1" in fields
     assert "field2" in fields
-    
+
     # Check field information structure
     for field_name in ["field1", "field2"]:
         field_info = fields[field_name]

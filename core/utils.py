@@ -1,7 +1,9 @@
-import qrcode
-from qrcode.image.pil import PilImage
 from io import BytesIO
+
+import qrcode
 from django.core.files.base import ContentFile
+from qrcode.image.pil import PilImage
+
 
 #TODO: Must include user information in the QR code data, to ensure uniqueness
 def get_qr_code(  # noqa: PLR0913
