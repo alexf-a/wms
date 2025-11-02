@@ -23,7 +23,7 @@ def get_qr_code(data: str) -> PilImage:
     return qrcode.make(data)
 
 
-def get_qr_code_file(data: str, *, filename: str) -> ContentFile:
+def get_qr_code_file(data: str, filename: str) -> ContentFile:
     """Create a QR code file containing the provided data string.
 
     Args:
