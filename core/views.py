@@ -106,7 +106,8 @@ def add_items_to_bin_view(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
         form = ItemForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
-            form.save()
+            item = form.save(commit=False)
+            item.save()
             return redirect("home_view")
     else:
         form = ItemForm(user=request.user)
@@ -260,7 +261,8 @@ def confirm_item_view(request: HttpRequest) -> HttpResponse:
         if form.is_valid():
             if "confirm" in request.POST:
                 # Save the confirmed item
-                form.save()
+                updated_item = form.save(commit=False)
+                updated_item.save()
                 # Clear session
                 if "generated_item_id" in request.session:
                     del request.session["generated_item_id"]
