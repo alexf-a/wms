@@ -17,6 +17,8 @@ class WMSUser(User):
     """Custom user model extending Django's built-in User model."""
 
     class Meta:
+        """Metadata for the WMSUser proxy."""
+
         app_label = "core"
 
 class BinSharedAccess(models.Model):
@@ -32,7 +34,12 @@ class BinSharedAccess(models.Model):
     permission = models.CharField(max_length=50, default="read")
 
     class Meta:
+        """Model constraints for shared bin access."""
+
         unique_together = ("user", "bin")
+
+    def __str__(self) -> str:
+        return f"{self.user.username} → {self.bin.name} ({self.permission})"
 
 class Bin(models.Model):
     """Model representing a storage bin.
@@ -63,9 +70,11 @@ class Bin(models.Model):
     height = models.FloatField(blank=True, null=True)
 
     class Meta:
+        """Model constraints for the Bin model."""
+
         unique_together = ("user", "name")
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
     def get_qr_filename(self) -> str:
@@ -102,7 +111,7 @@ class Item(models.Model):
         image (ImageField): An optional image of the item.
         bin (Bin): The bin in which the item is stored.
     """
-    #TODO: Decide on PK. I am thinking it should be "name"
+    user = models.ForeignKey(User, related_name="items", on_delete=models.CASCADE, editable=False)
     name = models.CharField(max_length=255)
     description = models.TextField()
     created_on = models.DateTimeField(auto_now_add=True)
@@ -110,10 +119,25 @@ class Item(models.Model):
     bin = models.ForeignKey(Bin, related_name="items", on_delete=models.CASCADE)
 
     class Meta:
+        """Model constraints for Item."""
+
         unique_together = ("user", "name")
 
     def __str__(self) -> str:
         return self.name
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        """Persist the item after verifying ownership alignment."""
+        if self.bin is None:
+            msg = f"Must assign a Bin before saving Item {self}"
+            raise ValueError(msg)
+        if self.user is None:
+            self.user = self.bin.user
+        elif self.user_id != self.bin.user_id:
+            msg = f"User for Bin {self.bin} and Item {self} must be the same"
+            raise ValueError(msg)
+
+        super().save(*args, **kwargs)
 
     def to_search_input(self) -> ItemSearchInput:
         """Convert this Item instance to an ItemSearchInput for LLM search.
