@@ -25,6 +25,10 @@ django-storages = {extras = ["boto3"], version = "^1.14.6"}
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "wms.settings"
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
+
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
@@ -56,4 +60,4 @@ optional = true
 
 [tool.poetry.group.dev.dependencies]
 jupyter = "^1.1.1"
-pytest = "^8.3.5"
+pytest-django = "^4.11.1"
