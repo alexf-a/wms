@@ -48,7 +48,7 @@ class Bin(models.Model):
         user (User): The primary owner of the bin.
         shared_users (ManyToManyField): Users with shared access to the bin.
         name (str): The name of the bin.
-    description (str): A description of the bin.
+        description (str): A description of the bin.
         location (str): The location of the bin.
         length (float): The length of the bin.
         width (float): The width of the bin.
