@@ -1,21 +1,56 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Your Bins</title>
-</head>
-<body>
-    <h1>List of Your Bins</h1>
-    <ul>
-        {% for bin in bins %}
-            <li>
-                <a href="{% url 'bin_detail' bin.user_id bin.access_token %}">{{ bin.name }}</a>
-                &mdash;
-                <a href="{% url 'bin_qr' bin.user_id bin.access_token %}">Download QR Code</a>
-            </li>
-        {% empty %}
-            <li>No bins available.</li>
-        {% endfor %}
-    </ul>
-    <!-- ...additional layout or links... -->
-</body>
-</html>
+{% extends "core/base.html" %}
+
+{% block title %}Your Storage Bins - WMS{% endblock %}
+
+{% block content %}
+    <div class="flex-between" style="margin-bottom: 2rem;">
+        <h1>📦 Your Storage Bins</h1>
+        <a href="{% url 'expand_inventory' %}" role="button">➕ Add New Bin</a>
+    </div>
+
+    {% if bins %}
+        <div class="grid-2">
+            {% for bin in bins %}
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">{{ bin.name }}</h3>
+                    </div>
+                    <div class="card-body">
+                        {% if bin.description %}
+                            <p>{{ bin.description|truncatewords:20 }}</p>
+                        {% else %}
+                            <p style="color: var(--wms-gray-600);"><em>No description</em></p>
+                        {% endif %}
+                        
+                        <p style="color: var(--wms-gray-600); font-size: 0.9rem;">
+                            {% with item_count=bin.items.count %}
+                                {% if item_count == 0 %}
+                                    Empty bin
+                                {% elif item_count == 1 %}
+                                    1 item
+                                {% else %}
+                                    {{ item_count }} items
+                                {% endif %}
+                            {% endwith %}
+                        </p>
+                        
+                        <div class="btn-group">
+                            <a href="{% url 'bin_detail' bin.user_id bin.access_token %}" role="button">View Details</a>
+                            <a href="{% url 'bin_qr' bin.user_id bin.access_token %}" role="button" class="secondary">📱 QR Code</a>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <p>📦 You don't have any storage bins yet</p>
+            <p>Create your first bin to start organizing your items!</p>
+            <a href="{% url 'expand_inventory' %}" role="button">Create Your First Bin</a>
+        </div>
+    {% endif %}
+
+    <div style="margin-top: 2rem;">
+        <a href="{% url 'home_view' %}" role="button" class="secondary">← Back to Home</a>
+    </div>
+{% endblock %}

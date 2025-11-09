@@ -1,27 +1,38 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Register</title>
-</head>
-<body>
-    <h2>Register</h2>
-    <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Register</button>
-    </form>
-        {% if form.errors %}
-            <ul class="errors">
-                {% for field in form %}
-                    {% for error in field.errors %}
-                        <li>{{ field.label }}: {{ error }}</li>
-                    {% endfor %}
-                {% endfor %}
-                {% for error in form.non_field_errors %}
-                    <li>{{ error }}</li>
-                {% endfor %}
-            </ul>
-        {% endif %}
-    <p>Already have an account? <a href="{% url 'login' %}">Login here</a></p>
-</body>
-</html>
+{% extends "core/base.html" %}
+
+{% block title %}Register - WMS{% endblock %}
+
+{% block content %}
+    <div class="card" style="max-width: 500px; margin: 2rem auto;">
+        <div class="card-header">
+            <h2 class="card-title">Create Your Account</h2>
+        </div>
+        <div class="card-body">
+            {% if form.errors %}
+                <article class="message message-error">
+                    <strong>Please correct the following errors:</strong>
+                    <ul style="margin-top: 0.5rem; padding-left: 1.5rem;">
+                        {% for field in form %}
+                            {% for error in field.errors %}
+                                <li>{{ field.label }}: {{ error }}</li>
+                            {% endfor %}
+                        {% endfor %}
+                        {% for error in form.non_field_errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                </article>
+            {% endif %}
+            
+            <form method="post">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <button type="submit">Create Account</button>
+            </form>
+            
+            <p style="text-align: center; margin-top: 1.5rem;">
+                Already have an account? <a href="{% url 'login' %}">Login here</a>
+            </p>
+        </div>
+    </div>
+{% endblock %}

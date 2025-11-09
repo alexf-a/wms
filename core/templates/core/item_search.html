@@ -1,65 +1,40 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Find Your Item</title>
-    <style>
-        .search-container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .search-form {
-            margin-bottom: 30px;
-        }
-        .search-input {
-            width: 70%;
-            padding: 10px;
-            font-size: 16px;
-        }
-        .search-button {
-            padding: 10px 20px;
-            font-size: 16px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        .result-container {
-            background-color: #f9f9f9;
-            padding: 20px;
-            border-radius: 5px;
-            border-left: 4px solid #4CAF50;
-        }
-        .navigation {
-            margin-top: 20px;
-        }
-        .navigation a {
-            margin-right: 10px;
-        }
-    </style>
-</head>
-<body>
-    <div class="search-container">
-        <h1>Find Your Item</h1>
-        <p>Ask the AI where your item is stored:</p>
-        
-        <form method="post" class="search-form">
-            {% csrf_token %}
-            {{ form.query }}
-            <button type="submit" class="search-button">Search</button>
-        </form>
-        
-        {% if result %}
-            <div class="result-container">
-                <h2>Search Results</h2>
-                <p>{{ result|linebreaksbr }}</p>
-            </div>
-        {% endif %}
-        
-        <div class="navigation">
-            <a href="{% url 'home_view' %}">Back to Home</a>
-            <a href="{% url 'list_bins' %}">View All Bins</a>
+{% extends "core/base.html" %}
+
+{% block title %}Find Your Item - WMS{% endblock %}
+
+{% block content %}
+    <div class="card">
+        <div class="card-header">
+            <h1 class="card-title">🔍 Find Your Item</h1>
+        </div>
+        <div class="card-body">
+            <p>Ask the AI where your item is stored. Describe what you're looking for in natural language.</p>
         </div>
     </div>
-</body>
-</html>
+
+    <form method="post">
+        {% csrf_token %}
+        <fieldset>
+            <legend>Search Query</legend>
+            {{ form.query }}
+            <small>Example: "Where are my winter gloves?" or "Find the red toolbox"</small>
+        </fieldset>
+        <button type="submit">🔎 Search</button>
+    </form>
+    
+    {% if result %}
+        <div class="card" style="margin-top: 2rem; border-left: 4px solid var(--wms-success);">
+            <div class="card-header">
+                <h2 class="card-title">Search Results</h2>
+            </div>
+            <div class="card-body">
+                <p>{{ result|linebreaksbr }}</p>
+            </div>
+        </div>
+    {% endif %}
+    
+    <div style="margin-top: 2rem;">
+        <a href="{% url 'home_view' %}" role="button" class="secondary">← Back to Home</a>
+        <a href="{% url 'list_bins' %}" role="button" class="secondary">View All Bins</a>
+    </div>
+{% endblock %}

@@ -1,25 +1,33 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Login</title>
-</head>
-<body>
-    <h2>Login</h2>
-    <form method="post">
-        {% csrf_token %}
-        <p>
-            <label for="username">Username:</label>
-            <input type="text" name="username" id="username" required>
-        </p>
-        <p>
-            <label for="password">Password:</label>
-            <input type="password" name="password" id="password" required>
-        </p>
-        <button type="submit">Login</button>
-    </form>
-    {% if error %}
-        <p style="color: red;">{{ error }}</p>
-    {% endif %}
-    <p>Don't have an account? <a href="{% url 'register' %}">Register here</a></p>
-</body>
-</html>
+{% extends "core/base.html" %}
+
+{% block title %}Login - WMS{% endblock %}
+
+{% block content %}
+    <div class="card" style="max-width: 500px; margin: 2rem auto;">
+        <div class="card-header">
+            <h2 class="card-title">Welcome Back</h2>
+        </div>
+        <div class="card-body">
+            {% if error %}
+                <article class="message message-error">
+                    {{ error }}
+                </article>
+            {% endif %}
+            
+            <form method="post">
+                {% csrf_token %}
+                <label for="username">Username:</label>
+                <input type="text" name="username" id="username" required autofocus>
+                
+                <label for="password">Password:</label>
+                <input type="password" name="password" id="password" required>
+                
+                <button type="submit">Login</button>
+            </form>
+            
+            <p style="text-align: center; margin-top: 1.5rem;">
+                Don't have an account? <a href="{% url 'register' %}">Register here</a>
+            </p>
+        </div>
+    </div>
+{% endblock %}

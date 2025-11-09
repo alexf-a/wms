@@ -1,15 +1,40 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>{{ item.name }} Details</title>
-</head>
-<body>
-    <h1>{{ item.name }}</h1>
-    <p>{{ item.description }}</p>
-    {% if item.image %}
-        <p><img src="{{ item.image.url }}" alt="{{ item.name }} photo"></p>
-    {% endif %}
-    <!-- Optionally display extra fields such as image or created_on -->
-    <!-- ...additional layout or links... -->
-</body>
-</html>
+{% extends "core/base.html" %}
+
+{% block title %}{{ item.name }} - WMS{% endblock %}
+
+{% block content %}
+    <div class="card">
+        <div class="card-header">
+            <h1 class="card-title">{{ item.name }}</h1>
+        </div>
+        
+        {% if item.image %}
+            <div class="image-container">
+                <img src="{{ item.image.url }}" alt="{{ item.name }} photo" class="image-preview">
+            </div>
+        {% endif %}
+        
+        <div class="card-body">
+            <h3>Description</h3>
+            {% if item.description %}
+                <p>{{ item.description }}</p>
+            {% else %}
+                <p style="color: var(--wms-gray-600);"><em>No description available</em></p>
+            {% endif %}
+            
+            {% if item.bin %}
+                <div class="info-box" style="margin-top: 1.5rem;">
+                    <strong>📍 Location:</strong> 
+                    Stored in <a href="{% url 'bin_detail' item.bin.user_id item.bin.access_token %}">{{ item.bin.name }}</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div style="margin-top: 2rem;">
+        {% if item.bin %}
+            <a href="{% url 'bin_detail' item.bin.user_id item.bin.access_token %}" role="button" class="secondary">← Back to {{ item.bin.name }}</a>
+        {% endif %}
+        <a href="{% url 'list_bins' %}" role="button" class="secondary">View All Bins</a>
+    </div>
+{% endblock %}

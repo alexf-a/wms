@@ -1,14 +1,34 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Expand Inventory</title>
-</head>
-<body>
-    <h1>Expand Inventory</h1>
-    <p>Here you can add new items to your inventory.</p>
-    <ul>
-        <li><a href="{% url 'create_bin' %}">Create bin</a></li>
-        <li><a href="{% url 'add_items_to_bin' %}">Add items to bin</a></li>
-    </ul>
-</body>
-</html>
+{% extends "core/base.html" %}
+
+{% block title %}Expand Inventory - WMS{% endblock %}
+
+{% block content %}
+    <h1>📦 Expand Your Inventory</h1>
+    <p>Add new storage units or items to better organize your belongings.</p>
+
+    <div class="grid-2">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">🗄️ Create Storage Bin</h3>
+            </div>
+            <div class="card-body">
+                <p>Create a new storage bin to organize your items. Each bin can hold multiple items and has its own QR code for easy access.</p>
+                <a href="{% url 'create_bin' %}" role="button">Create New Bin</a>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">➕ Add Items</h3>
+            </div>
+            <div class="card-body">
+                <p>Add items to an existing bin. You can manually enter item details or use AI to generate descriptions from photos.</p>
+                <a href="{% url 'add_items_to_bin' %}" role="button">Add Items to Bin</a>
+            </div>
+        </div>
+    </div>
+
+    <div style="margin-top: 2rem;">
+        <a href="{% url 'home_view' %}" role="button" class="secondary">← Back to Home</a>
+    </div>
+{% endblock %}

@@ -17,6 +17,11 @@ urlpatterns = [
         ),
         name="login",
     ),
+    path(
+        "logout/",
+        auth_views.LogoutView.as_view(next_page="home_view"),
+        name="logout",
+    ),
     path("expand_inventory/", views.expand_inventory_view, name="expand_inventory"),
     path("create_bin/", views.create_bin_view, name="create_bin"),
     path("add_items_to_bin/", views.add_items_to_bin_view, name="add_items_to_bin"),
