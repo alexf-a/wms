@@ -3,7 +3,6 @@ from django.core.management.base import BaseCommand
 from faker import Faker
 
 from core.models import Bin
-from core.utils import get_qr_code_file
 from lib.llm.claude4_xml_parser import Claude4XMLParsingError
 from lib.llm.llm_handler import StructuredLangChainHandler
 from lib.llm.utils import get_llm_call
@@ -92,9 +91,15 @@ class Command(BaseCommand):
             length = round(fake.random_number(digits=2) + fake.random.random(), 2)
             width = round(fake.random_number(digits=2) + fake.random.random(), 2)
             height = round(fake.random_number(digits=2) + fake.random.random(), 2)
-            qr_code_file = get_qr_code_file(name=name, description=description, location=location, length=length, width=width, height=height)
+
             bin_obj = Bin(
-                user=user, name=name, description=description, location=location, length=length, width=width, height=height, qr_code=qr_code_file
+                user=user,
+                name=name,
+                description=description,
+                location=location,
+                length=length,
+                width=width,
+                height=height,
             )
             bin_obj.save()
 

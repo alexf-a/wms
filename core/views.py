@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import logging
 
 from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
-from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from lib.llm.item_generation import get_item_from_img
@@ -17,7 +19,6 @@ from .forms import (
     WMSUserCreationForm,
 )
 from .models import Bin, Item
-from .utils import get_qr_code_file
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,7 @@ def home_view(request: HttpRequest) -> HttpResponse:
     # Pass authentication status to the template
     return render(request, "core/home.html", {"is_authenticated": request.user.is_authenticated})
 
+@login_required
 def expand_inventory_view(request: HttpRequest) -> HttpResponse:
     """Render the expand inventory page.
 
@@ -80,20 +82,10 @@ def create_bin_view(request: HttpRequest) -> HttpResponse:
         length = request.POST.get("length", None)
         width = request.POST.get("width", None)
         height = request.POST.get("height", None)
-
-        qr_code_file = get_qr_code_file(
-            name=name,
-            description=description,
-            location=location,
-            length=length,
-            width=width,
-            height=height,
-        )
         new_bin = Bin(
             user=request.user,
             name=name,
             description=description,
-            qr_code=qr_code_file,
             location=location,
             length=length,
             width=width,
@@ -103,6 +95,7 @@ def create_bin_view(request: HttpRequest) -> HttpResponse:
         return redirect("home_view")
     return render(request, "core/create_bin.html")
 
+@login_required
 def add_items_to_bin_view(request: HttpRequest) -> HttpResponse:
     """Handle adding items to a bin.
 
@@ -121,6 +114,7 @@ def add_items_to_bin_view(request: HttpRequest) -> HttpResponse:
         form = ItemForm(user=request.user)
     return render(request, "core/add_items_to_bin.html", {"form": form})
 
+@login_required
 def list_bins(request: HttpRequest) -> HttpResponse:
     """List all bins for the current user.
 
@@ -133,19 +127,40 @@ def list_bins(request: HttpRequest) -> HttpResponse:
     bins = Bin.objects.filter(user=request.user)
     return render(request, "core/list_bins.html", {"bins": bins})
 
-def bin_detail(request: HttpRequest, bin_id: int) -> HttpResponse:
-    """Display the details of a specific bin.
+@login_required
+def bin_detail(request: HttpRequest, user_id: int, access_token: str) -> HttpResponse:
+    """Display the details of a specific bin using its access token.
 
     Args:
         request: The HTTP request object.
-        bin_id: The ID of the bin.
+        user_id: The ID of the bin owner.
+        access_token: The opaque access token assigned to the bin.
 
     Returns:
         The rendered bin detail page.
     """
-    _bin = get_object_or_404(Bin, id=bin_id)
+    _bin = get_object_or_404(Bin, user_id=user_id, access_token=access_token)
     return render(request, "core/bin_detail.html", {"bin": _bin})
 
+
+@login_required
+def bin_qr_view(request: HttpRequest, user_id: int, access_token: str) -> HttpResponse:
+    """Return a PNG QR code for the requested bin."""
+    _bin = get_object_or_404(Bin, user_id=user_id, access_token=access_token)
+    has_access = _bin.user_id == request.user.id or _bin.shared_users.filter(id=request.user.id).exists()
+    if not has_access:
+        message = "Bin not found."
+        raise Http404(message)
+
+    base_url = request.build_absolute_uri("/")
+    qr_file = _bin.get_qr_code(base_url=base_url)
+    qr_file.seek(0)
+
+    response = HttpResponse(qr_file.read(), content_type="image/png")
+    response["Content-Disposition"] = f'attachment; filename="{qr_file.name}"'
+    return response
+
+@login_required
 def item_detail(request: HttpRequest, item_id: int) -> HttpResponse:
     """Display the details of a specific item.
 

@@ -10,21 +10,27 @@ from schemas.llm_search import (
     ItemSearchCandidate,
     ItemLocation,
 )
-from lib.llm.llm_search import get_item_location, HIGH_CONFIDENCE_THRESHOLD
+from unittest.mock import Mock
 
+from lib.llm.llm_call import LLMCall
+from lib.llm.llm_search import (
+    get_item_location,
+    HIGH_CONFIDENCE_THRESHOLD,
+    _should_return_early,
+)
+import lib.llm.llm_search as module
 
 def setup_monkeypatch(monkeypatch, dummy_instances):
     """Patch LLMCall, StructuredLangChainHandler, and Item.objects.filter for testing."""
-    import lib.llm.llm_search as module
-
     # Patch LLMCall.from_json to avoid loading files
-    monkeypatch.setattr(module.LLMCall, "from_json", lambda path: None)
+    monkeypatch.setattr(LLMCall, "from_json", lambda path: None)
 
     # Dummy handler to capture queries and return a fake ItemLocation
     class DummyHandler:
-        def __init__(self, llm_call, output_schema):
+        def __init__(self, llm_call, output_schema, *, region=None):
             self.llm_call = llm_call
             self.output_schema = output_schema
+            self.region = region
             self.queries = []
             dummy_instances.append(self)
 
@@ -63,8 +69,6 @@ def test_follow_up_query_called(monkeypatch, confidences):
     A) more than one candidate has high confidence
     B) no candidate has high confidence
     """
-    from unittest.mock import Mock
-    from lib.llm.llm_search import _should_return_early
 
     dummy_instances = []
     setup_monkeypatch(monkeypatch, dummy_instances)
@@ -209,12 +213,26 @@ def test_perform_candidate_search_wiring(monkeypatch, scenario, confidences, exp
     location_query_args: Optional[Dict[str, Any]] = None
     
     class MockHandler:
-        def __init__(self, llm_call: MockLLMCall, output_schema: type) -> None:
+        def __init__(
+            self,
+            llm_call: MockLLMCall,
+            output_schema: type,
+            *,
+            region: Any | None = None,
+        ) -> None:
             nonlocal candidates_handler_args, location_handler_args
             if llm_call.name == "mock_candidates_llm_call":
-                candidates_handler_args = {"llm_call": llm_call, "output_schema": output_schema}
+                candidates_handler_args = {
+                    "llm_call": llm_call,
+                    "output_schema": output_schema,
+                    "region": region,
+                }
             elif llm_call.name == "mock_location_llm_call":
-                location_handler_args = {"llm_call": llm_call, "output_schema": output_schema}
+                location_handler_args = {
+                    "llm_call": llm_call,
+                    "output_schema": output_schema,
+                    "region": region,
+                }
         
         def query(self, **kwargs: Any):
             nonlocal candidates_query_args, location_query_args
@@ -255,9 +273,15 @@ def test_perform_candidate_search_wiring(monkeypatch, scenario, confidences, exp
     
     # Store original constructor to track which LLMCall is used
     original_init = MockHandler.__init__
-    def tracked_init(self, llm_call: MockLLMCall, output_schema: type) -> None:
+    def tracked_init(
+        self,
+        llm_call: MockLLMCall,
+        output_schema: type,
+        *,
+        region: Any | None = None,
+    ) -> None:
         self._llm_call_name = llm_call.name
-        original_init(self, llm_call, output_schema)
+        original_init(self, llm_call, output_schema, region=region)
     MockHandler.__init__ = tracked_init
     
     # Apply monkey patches
