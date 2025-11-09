@@ -53,6 +53,7 @@ def home_view(request: HttpRequest) -> HttpResponse:
     # Pass authentication status to the template
     return render(request, "core/home.html", {"is_authenticated": request.user.is_authenticated})
 
+@login_required
 def expand_inventory_view(request: HttpRequest) -> HttpResponse:
     """Render the expand inventory page.
 
@@ -94,6 +95,7 @@ def create_bin_view(request: HttpRequest) -> HttpResponse:
         return redirect("home_view")
     return render(request, "core/create_bin.html")
 
+@login_required
 def add_items_to_bin_view(request: HttpRequest) -> HttpResponse:
     """Handle adding items to a bin.
 
@@ -113,6 +115,7 @@ def add_items_to_bin_view(request: HttpRequest) -> HttpResponse:
         form = ItemForm(user=request.user)
     return render(request, "core/add_items_to_bin.html", {"form": form})
 
+@login_required
 def list_bins(request: HttpRequest) -> HttpResponse:
     """List all bins for the current user.
 
@@ -125,6 +128,7 @@ def list_bins(request: HttpRequest) -> HttpResponse:
     bins = Bin.objects.filter(user=request.user)
     return render(request, "core/list_bins.html", {"bins": bins})
 
+@login_required
 def bin_detail(request: HttpRequest, user_id: int, access_token: str) -> HttpResponse:
     """Display the details of a specific bin using its access token.
 
@@ -157,6 +161,7 @@ def bin_qr_view(request: HttpRequest, user_id: int, access_token: str) -> HttpRe
     response["Content-Disposition"] = f'attachment; filename="{qr_file.name}"'
     return response
 
+@login_required
 def item_detail(request: HttpRequest, item_id: int) -> HttpResponse:
     """Display the details of a specific item.
 
