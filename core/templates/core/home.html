@@ -1,63 +1,65 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>WMS Home</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            margin: 20px;
-        }
-        ul {
-            list-style-type: none;
-            padding: 0;
-        }
-        li {
-            margin-bottom: 10px;
-        }
-        li a {
-            display: inline-block;
-            padding: 10px 15px;
-            background-color: #f0f0f0;
-            text-decoration: none;
-            color: #333;
-            border-radius: 4px;
-        }
-        li a:hover {
-            background-color: #e0e0e0;
-        }
-        .feature-section {
-            margin-top: 20px;
-            border-top: 1px solid #ccc;
-            padding-top: 20px;
-        }
-        .feature-highlight {
-            background-color: #e8f5e9;
-            padding: 15px;
-            border-radius: 4px;
-            margin-top: 15px;
-        }
-    </style>
-</head>
-<body>
-    {% if is_authenticated %}
+{% extends "core/base.html" %}
+
+{% block title %}Home - WMS{% endblock %}
+
+{% block content %}
+    {% if user.is_authenticated %}
         <h1>Inventory Management</h1>
-        <ul>
-            <li><a href="{% url 'list_bins' %}">Explore Inventory</a></li>
-            <li><a href="{% url 'expand_inventory' %}">Expand Inventory</a></li>
-        </ul>
+        <p>Welcome back, {{ user.username }}! Manage your storage and find your items with ease.</p>
         
-        <div class="feature-section">
-            <h2>AI-Powered Features</h2>
-            <div class="feature-highlight">
-                <h3>Find Your Items</h3>
+        <div class="grid-2">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">📦 Manage Storage</h3>
+                </div>
+                <div class="card-body">
+                    <p>Organize your bins and keep track of what's stored where.</p>
+                    <a href="{% url 'list_bins' %}" role="button">Explore Inventory</a>
+                    <a href="{% url 'expand_inventory' %}" role="button" class="secondary">Add New Storage</a>
+                </div>
+            </div>
+            
+            <div class="ai-feature">
+                <h3>🔍 AI-Powered Search</h3>
                 <p>Can't remember where you put something? Let our AI help you locate it!</p>
-                <p><a href="{% url 'item_search' %}">Find My Items</a></p>
+                <p>Search using natural language or upload an image of what you're looking for.</p>
+                <a href="{% url 'item_search' %}" role="button" class="contrast">Find My Items</a>
+            </div>
+        </div>
+        
+        <div class="card" style="margin-top: 2rem;">
+            <div class="card-header">
+                <h3 class="card-title">🚀 Quick Actions</h3>
+            </div>
+            <div class="card-body">
+                <div class="grid-3">
+                    <div>
+                        <strong>📸 Add Items</strong>
+                        <p>Use AI to auto-generate item details from images</p>
+                    </div>
+                    <div>
+                        <strong>🏷️ QR Codes</strong>
+                        <p>Access and manage your storage with QR codes</p>
+                    </div>
+                    <div>
+                        <strong>📊 Inventory</strong>
+                        <p>View all your bins and items at a glance</p>
+                    </div>
+                </div>
             </div>
         </div>
     {% else %}
-        <h1>Welcome</h1>
-        <p><a href="{% url 'register' %}">Register</a> or <a href="{% url 'login' %}">Login</a></p>
+        <div style="text-align: center; padding: 3rem 0;">
+            <h1>Welcome to WMS</h1>
+            <p style="font-size: 1.25rem; color: var(--wms-gray-600);">
+                Your personal warehouse management system
+            </p>
+            <p>Never lose track of your belongings again. Organize, search, and find items with AI-powered intelligence.</p>
+            
+            <div class="btn-group" style="justify-content: center; margin-top: 2rem;">
+                <a href="{% url 'register' %}" role="button">Get Started</a>
+                <a href="{% url 'login' %}" role="button" class="secondary">Login</a>
+            </div>
+        </div>
     {% endif %}
-</body>
-</html>
+{% endblock %}

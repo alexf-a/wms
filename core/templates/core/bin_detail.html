@@ -1,22 +1,51 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>{{ bin.name }} Details</title>
-</head>
-<body>
-    <h1>{{ bin.name }}</h1>
-    <p>{{ bin.description }}</p>
-    <p>
-        <a href="{% url 'bin_qr' bin.user_id bin.access_token %}">Download QR Code</a>
-    </p>
+{% extends "core/base.html" %}
+
+{% block title %}{{ bin.name }} - WMS{% endblock %}
+
+{% block content %}
+    <div class="card">
+        <div class="card-header">
+            <h1 class="card-title">{{ bin.name }}</h1>
+        </div>
+        <div class="card-body">
+            <p>{{ bin.description }}</p>
+            <div class="btn-group">
+                <a href="{% url 'bin_qr' bin.user_id bin.access_token %}" role="button" class="secondary">
+                    📱 Download QR Code
+                </a>
+                <a href="{% url 'add_items_to_bin' %}" role="button">
+                    ➕ Add Items
+                </a>
+            </div>
+        </div>
+    </div>
+
     <h2>Items in this Bin</h2>
-    <ul>
-        {% for item in bin.items.all %}
-            <li><a href="{% url 'item_detail' item.id %}">{{ item.name }}</a></li>
-        {% empty %}
-            <li>No items available.</li>
-        {% endfor %}
-    </ul>
-    <!-- ...additional layout or links... -->
-</body>
-</html>
+    {% if bin.items.all %}
+        <ul class="item-list">
+            {% for item in bin.items.all %}
+                <li>
+                    <a href="{% url 'item_detail' item.id %}">
+                        {{ item.name }}
+                        {% if item.description %}
+                            <small style="color: var(--wms-gray-600); display: block;">
+                                {{ item.description|truncatewords:15 }}
+                            </small>
+                        {% endif %}
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <div class="empty-state">
+            <p>📦 This bin is empty</p>
+            <p>
+                <a href="{% url 'add_items_to_bin' %}" role="button">Add your first item</a>
+            </p>
+        </div>
+    {% endif %}
+
+    <div style="margin-top: 2rem;">
+        <a href="{% url 'list_bins' %}" role="button" class="secondary">← Back to All Bins</a>
+    </div>
+{% endblock %}

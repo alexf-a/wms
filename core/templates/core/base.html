@@ -1,0 +1,69 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}WMS - Warehouse Management System{% endblock %}</title>
+    
+    <!-- Pico CSS - Minimal CSS Framework for semantic HTML -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="{% static 'core/css/styles.css' %}">
+    
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="container-fluid">
+        <ul>
+            <li><a href="{% url 'home_view' %}" class="brand"><strong>WMS</strong></a></li>
+        </ul>
+        <ul>
+            {% if user.is_authenticated %}
+                <li><a href="{% url 'list_bins' %}">Inventory</a></li>
+                <li><a href="{% url 'item_search' %}">Search</a></li>
+                <li><a href="{% url 'expand_inventory' %}">Add Storage</a></li>
+                <li>
+                    <details class="dropdown">
+                        <summary>{{ user.username }}</summary>
+                        <ul dir="rtl">
+                            <li><a href="{% url 'logout' %}">Logout</a></li>
+                        </ul>
+                    </details>
+                </li>
+            {% else %}
+                <li><a href="{% url 'login' %}">Login</a></li>
+                <li><a href="{% url 'register' %}" role="button">Register</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container">
+        {% block messages %}
+            {% if messages %}
+                {% for message in messages %}
+                    <article class="message message-{{ message.tags }}">
+                        {{ message }}
+                    </article>
+                {% endfor %}
+            {% endif %}
+        {% endblock %}
+
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="container-fluid">
+        <small>
+            WMS - Personal Warehouse Management System &copy; 2025
+            {% block footer_extra %}{% endblock %}
+        </small>
+    </footer>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

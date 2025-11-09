@@ -1,22 +1,29 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Add Items to Bin</title>
-</head>
-<body>
-    <h1>Add an Item to a Bin</h1>
+{% extends "core/base.html" %}
+
+{% block title %}Add Item - WMS{% endblock %}
+
+{% block content %}
+    <h1>➕ Add an Item to a Bin</h1>
     
-    <div style="margin-bottom: 20px; padding: 15px; background-color: #e7f3ff; border-radius: 4px;">
-        <h3>💡 Try Auto-Generation</h3>
+    <div class="ai-feature">
+        <h3>💡 Try AI Auto-Generation</h3>
         <p>Save time by using AI to automatically generate item name and description from an image!</p>
-        <a href="{% url 'auto_generate_item' %}" style="padding: 8px 16px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px;">Auto-Generate from Image</a>
+        <a href="{% url 'auto_generate_item' %}" role="button" class="contrast">📸 Auto-Generate from Image</a>
     </div>
     
-    <h2>Or add manually:</h2>
-    <form method="post" enctype="multipart/form-data">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Add Item</button>
-    </form>
-</body>
-</html>
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Or Add Manually</h2>
+        </div>
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <div class="btn-group">
+                    <button type="submit">Add Item</button>
+                    <a href="{% url 'list_bins' %}" role="button" class="secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+{% endblock %}
