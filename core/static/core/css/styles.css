@@ -3,43 +3,193 @@
    Design System & Component Overrides
    ========================================== */
 
-/* Design Tokens */
+/* ==========================================
+   Material Design 3 - Design Tokens
+   ========================================== */
+
 :root {
-    /* Brand Colors */
-    --wms-primary: #2563eb;
-    --wms-primary-hover: #1d4ed8;
-    --wms-secondary: #059669;
-    --wms-secondary-hover: #047857;
-    
-    /* Semantic Colors */
-    --wms-success: #10b981;
+    /* ==========================================
+       Reference Tones - Primary (Green)
+       ========================================== */
+    --md-ref-primary-0: #000000;
+    --md-ref-primary-10: #002111;
+    --md-ref-primary-20: #00381f;
+    --md-ref-primary-30: #00522f;
+    --md-ref-primary-40: #50a46c;
+    --md-ref-primary-50: #2d8350;
+    --md-ref-primary-60: #469d66;
+    --md-ref-primary-70: #62b881;
+    --md-ref-primary-80: #7ed49c;
+    --md-ref-primary-90: #9cf0b7;
+    --md-ref-primary-95: #c7ffd4;
+    --md-ref-primary-99: #f4fff6;
+    --md-ref-primary-100: #ffffff;
+
+    /* ==========================================
+       Reference Tones - Secondary (Neutral Gray)
+       ========================================== */
+    --md-ref-secondary-0: #000000;
+    --md-ref-secondary-10: #1a1c1e;
+    --md-ref-secondary-20: #2f3133;
+    --md-ref-secondary-30: #464749;
+    --md-ref-secondary-40: #605d64;
+    --md-ref-secondary-50: #79767d;
+    --md-ref-secondary-60: #938f96;
+    --md-ref-secondary-70: #aea9b1;
+    --md-ref-secondary-80: #cac5cd;
+    --md-ref-secondary-90: #e6e0e9;
+    --md-ref-secondary-95: #f5eff7;
+    --md-ref-secondary-99: #fffbff;
+    --md-ref-secondary-100: #ffffff;
+
+    /* ==========================================
+       Reference Tones - Tertiary (Teal)
+       ========================================== */
+    --md-ref-tertiary-0: #000000;
+    --md-ref-tertiary-10: #002020;
+    --md-ref-tertiary-20: #003737;
+    --md-ref-tertiary-30: #00504f;
+    --md-ref-tertiary-40: #3d8b83;
+    --md-ref-tertiary-50: #23746d;
+    --md-ref-tertiary-60: #3e8f88;
+    --md-ref-tertiary-70: #5aaba3;
+    --md-ref-tertiary-80: #76c7be;
+    --md-ref-tertiary-90: #92e4da;
+    --md-ref-tertiary-95: #bff2e8;
+    --md-ref-tertiary-99: #f0fffb;
+    --md-ref-tertiary-100: #ffffff;
+
+    /* ==========================================
+       Reference Tones - Error (M3 Default)
+       ========================================== */
+    --md-ref-error-0: #000000;
+    --md-ref-error-10: #410e0b;
+    --md-ref-error-20: #601410;
+    --md-ref-error-30: #8c1d18;
+    --md-ref-error-40: #b3261e;
+    --md-ref-error-50: #dc362e;
+    --md-ref-error-60: #e46962;
+    --md-ref-error-70: #ec928e;
+    --md-ref-error-80: #f2b8b5;
+    --md-ref-error-90: #f9dedc;
+    --md-ref-error-95: #fceeee;
+    --md-ref-error-99: #fffbf9;
+    --md-ref-error-100: #ffffff;
+
+    /* ==========================================
+       Reference Tones - Neutral (M3 Default)
+       ========================================== */
+    --md-ref-neutral-0: #000000;
+    --md-ref-neutral-10: #1d1b20;
+    --md-ref-neutral-20: #322f35;
+    --md-ref-neutral-30: #48464c;
+    --md-ref-neutral-40: #605d64;
+    --md-ref-neutral-50: #79767d;
+    --md-ref-neutral-60: #938f96;
+    --md-ref-neutral-70: #aea9b1;
+    --md-ref-neutral-80: #cac5cd;
+    --md-ref-neutral-90: #e6e0e9;
+    --md-ref-neutral-95: #f5eff7;
+    --md-ref-neutral-99: #fffbff;
+    --md-ref-neutral-100: #ffffff;
+
+    /* ==========================================
+       Reference Tones - Neutral Variant (M3 Default)
+       ========================================== */
+    --md-ref-neutral-variant-0: #000000;
+    --md-ref-neutral-variant-10: #1d1a22;
+    --md-ref-neutral-variant-20: #322f37;
+    --md-ref-neutral-variant-30: #49454f;
+    --md-ref-neutral-variant-40: #605d66;
+    --md-ref-neutral-variant-50: #79747e;
+    --md-ref-neutral-variant-60: #938f99;
+    --md-ref-neutral-variant-70: #aea9b4;
+    --md-ref-neutral-variant-80: #cac4d0;
+    --md-ref-neutral-variant-90: #e7e0ec;
+    --md-ref-neutral-variant-95: #f5eefa;
+    --md-ref-neutral-variant-99: #fffbfe;
+    --md-ref-neutral-variant-100: #ffffff;
+
+    /* ==========================================
+       Light Theme - Color Roles
+       ========================================== */
+    --md-sys-color-primary: var(--md-ref-primary-40);
+    --md-sys-color-on-primary: var(--md-ref-primary-100);
+    --md-sys-color-primary-container: var(--md-ref-primary-90);
+    --md-sys-color-on-primary-container: var(--md-ref-primary-10);
+
+    --md-sys-color-secondary: var(--md-ref-secondary-40);
+    --md-sys-color-on-secondary: var(--md-ref-secondary-100);
+    --md-sys-color-secondary-container: var(--md-ref-secondary-90);
+    --md-sys-color-on-secondary-container: var(--md-ref-secondary-10);
+
+    --md-sys-color-tertiary: var(--md-ref-tertiary-40);
+    --md-sys-color-on-tertiary: var(--md-ref-tertiary-100);
+    --md-sys-color-tertiary-container: var(--md-ref-tertiary-90);
+    --md-sys-color-on-tertiary-container: var(--md-ref-tertiary-10);
+
+    --md-sys-color-error: var(--md-ref-error-40);
+    --md-sys-color-on-error: var(--md-ref-error-100);
+    --md-sys-color-error-container: var(--md-ref-error-90);
+    --md-sys-color-on-error-container: var(--md-ref-error-10);
+
+    --md-sys-color-surface: var(--md-ref-neutral-99);
+    --md-sys-color-on-surface: var(--md-ref-neutral-10);
+    --md-sys-color-surface-variant: var(--md-ref-neutral-variant-90);
+    --md-sys-color-on-surface-variant: var(--md-ref-neutral-variant-30);
+
+    --md-sys-color-outline: var(--md-ref-neutral-variant-50);
+    --md-sys-color-outline-variant: var(--md-ref-neutral-variant-80);
+
+    --md-sys-color-background: var(--md-ref-neutral-99);
+    --md-sys-color-on-background: var(--md-ref-neutral-10);
+
+    --md-sys-color-surface-container-lowest: var(--md-ref-neutral-100);
+    --md-sys-color-surface-container-low: var(--md-ref-neutral-95);
+    --md-sys-color-surface-container: var(--md-ref-neutral-90);
+    --md-sys-color-surface-container-high: var(--md-ref-neutral-90);
+    --md-sys-color-surface-container-highest: var(--md-ref-neutral-90);
+
+    /* Legacy compatibility aliases */
+    --wms-primary: var(--md-sys-color-primary);
+    --wms-primary-hover: var(--md-ref-primary-30);
+    --wms-secondary: var(--md-sys-color-secondary);
+    --wms-secondary-hover: var(--md-ref-secondary-30);
+    --wms-success: var(--md-ref-primary-60);
     --wms-warning: #f59e0b;
-    --wms-danger: #ef4444;
-    --wms-info: #3b82f6;
-    
-    /* Neutral Colors */
-    --wms-gray-50: #f9fafb;
-    --wms-gray-100: #f3f4f6;
-    --wms-gray-200: #e5e7eb;
-    --wms-gray-600: #4b5563;
-    --wms-gray-900: #111827;
-    
-    /* Spacing */
+    --wms-danger: var(--md-sys-color-error);
+    --wms-info: var(--md-ref-tertiary-50);
+
+    /* ==========================================
+       Spacing (unchanged)
+       ========================================== */
     --wms-space-xs: 0.5rem;
     --wms-space-sm: 1rem;
     --wms-space-md: 1.5rem;
     --wms-space-lg: 2rem;
     --wms-space-xl: 3rem;
-    
-    /* Border Radius */
-    --wms-radius-sm: 0.25rem;
-    --wms-radius-md: 0.5rem;
-    --wms-radius-lg: 0.75rem;
-    
-    /* Shadows */
-    --wms-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --wms-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    --wms-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+
+    /* ==========================================
+       Border Radius (M3 values)
+       ========================================== */
+    --wms-radius-sm: 0.25rem;   /* 4px */
+    --wms-radius-md: 0.75rem;   /* 12px */
+    --wms-radius-lg: 1rem;      /* 16px */
+    --md-sys-shape-corner-extra-small: 0.25rem;   /* 4px */
+    --md-sys-shape-corner-small: 0.5rem;          /* 8px */
+    --md-sys-shape-corner-medium: 0.75rem;        /* 12px */
+    --md-sys-shape-corner-large: 1rem;            /* 16px */
+    --md-sys-shape-corner-extra-large: 1.75rem;   /* 28px */
+
+    /* ==========================================
+       Elevation (M3 shadows)
+       ========================================== */
+    --md-sys-elevation-1: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
+    --md-sys-elevation-2: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15);
+    --md-sys-elevation-3: 0 4px 8px 3px rgba(0, 0, 0, 0.15), 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+    --wms-shadow-sm: var(--md-sys-elevation-1);
+    --wms-shadow-md: var(--md-sys-elevation-2);
+    --wms-shadow-lg: var(--md-sys-elevation-3);
 }
 
 /* Brand Customization */
@@ -391,4 +541,214 @@ select:focus,
 textarea:focus {
     outline: 2px solid var(--wms-primary);
     outline-offset: 2px;
+}
+
+/* ===================================
+   Material 3 Home Page Components
+   =================================== */
+
+/* Home Container */
+.m3-home-container {
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100vh - 100px);
+    position: relative;
+    padding-bottom: 80px; /* Space for bottom nav */
+}
+
+/* Header */
+.m3-home-header {
+    text-align: center;
+    padding: var(--wms-space-xl) 0 var(--wms-space-md) 0;
+}
+
+.m3-headline-large {
+    font-family: 'Roboto', sans-serif;
+    font-size: 32px;
+    font-weight: 400;
+    line-height: 40px;
+    color: var(--md-sys-color-on-surface);
+    margin: 0;
+}
+
+/* Action Buttons Container */
+.m3-action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: var(--wms-space-lg);
+    padding: var(--wms-space-xl);
+    max-width: 600px;
+    margin: 0 auto;
+    flex: 1;
+    justify-content: center;
+    align-items: stretch;
+}
+
+/* M3 Button Base */
+.m3-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    font-family: 'Roboto', sans-serif;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+/* M3 Button Large */
+.m3-button-large {
+    padding: 32px 48px;
+    border-radius: 28px;
+    min-height: 96px;
+}
+
+/* M3 Button Filled */
+.m3-button-filled {
+    background-color: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+    box-shadow: var(--md-sys-elevation-1);
+}
+
+.m3-button-filled:hover {
+    background-color: var(--md-ref-palette-primary50);
+    box-shadow: var(--md-sys-elevation-2);
+}
+
+.m3-button-filled:active {
+    background-color: var(--md-ref-palette-primary30);
+    box-shadow: var(--md-sys-elevation-1);
+}
+
+/* M3 Button Tonal */
+.m3-button-tonal {
+    background-color: var(--md-sys-color-secondary-container);
+    color: var(--md-sys-color-on-secondary-container);
+    box-shadow: var(--md-sys-elevation-1);
+}
+
+.m3-button-tonal:hover {
+    background-color: var(--md-ref-palette-secondary-container90);
+    box-shadow: var(--md-sys-elevation-2);
+}
+
+.m3-button-tonal:active {
+    background-color: var(--md-ref-palette-secondary-container80);
+    box-shadow: var(--md-sys-elevation-1);
+}
+
+/* Button Icon */
+.m3-button-icon {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+}
+
+/* Button Label */
+.m3-button-label {
+    font-size: 24px;
+    font-weight: 400;
+    line-height: 32px;
+    letter-spacing: 0;
+}
+
+/* Bottom Navigation Bar */
+.m3-bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: var(--md-sys-color-surface-container);
+    display: flex;
+    justify-content: space-around;
+    align-items: stretch;
+    height: 80px;
+    box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.12);
+    z-index: 1000;
+}
+
+/* Navigation Item */
+.m3-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    flex: 1;
+    text-decoration: none;
+    color: var(--md-sys-color-on-surface-variant);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 12px 0 16px 0;
+    position: relative;
+}
+
+/* Navigation Icon Container */
+.m3-nav-icon-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+    padding: 4px 16px;
+    border-radius: 16px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Navigation Icon */
+.m3-nav-icon {
+    width: 24px;
+    height: 24px;
+}
+
+/* Navigation Label */
+.m3-nav-label {
+    font-family: 'Roboto', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 16px;
+    letter-spacing: 0.5px;
+    text-align: center;
+}
+
+/* Active Navigation Item */
+.m3-nav-item-active {
+    color: var(--md-sys-color-on-secondary-container);
+}
+
+.m3-nav-item-active .m3-nav-icon-container {
+    background-color: var(--md-sys-color-secondary-container);
+}
+
+/* Hover States */
+.m3-nav-item:hover:not(.m3-nav-item-active) .m3-nav-icon-container {
+    background-color: rgba(73, 69, 79, 0.08);
+}
+
+.m3-nav-item-active:hover .m3-nav-icon-container {
+    background-color: var(--md-ref-palette-secondary-container90);
+}
+
+/* Focus States */
+.m3-button:focus-visible {
+    outline: 2px solid var(--md-sys-color-primary);
+    outline-offset: 2px;
+}
+
+.m3-nav-item:focus-visible {
+    outline: 2px solid var(--md-sys-color-on-surface-variant);
+    outline-offset: -2px;
+}
+
+/* Responsive Design */
+@media (min-width: 768px) {
+    .m3-action-buttons {
+        max-width: 800px;
+        gap: var(--wms-space-xl);
+    }
+    
+    .m3-button-large {
+        font-size: 28px;
+    }
 }
