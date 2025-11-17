@@ -133,7 +133,7 @@
     --md-sys-color-error-container: var(--md-ref-error-90);
     --md-sys-color-on-error-container: var(--md-ref-error-10);
 
-    --md-sys-color-surface: var(--md-ref-neutral-99);
+    --md-sys-color-surface: #fef7ff;
     --md-sys-color-on-surface: var(--md-ref-neutral-10);
     --md-sys-color-surface-variant: var(--md-ref-neutral-variant-90);
     --md-sys-color-on-surface-variant: var(--md-ref-neutral-variant-30);
@@ -144,11 +144,11 @@
     --md-sys-color-background: var(--md-ref-neutral-99);
     --md-sys-color-on-background: var(--md-ref-neutral-10);
 
-    --md-sys-color-surface-container-lowest: var(--md-ref-neutral-100);
-    --md-sys-color-surface-container-low: var(--md-ref-neutral-95);
-    --md-sys-color-surface-container: var(--md-ref-neutral-90);
-    --md-sys-color-surface-container-high: var(--md-ref-neutral-90);
-    --md-sys-color-surface-container-highest: var(--md-ref-neutral-90);
+    --md-sys-color-surface-container-lowest: #ffffff;
+    --md-sys-color-surface-container-low: #f7f2fa;
+    --md-sys-color-surface-container: #f3edf7;
+    --md-sys-color-surface-container-high: #ece6f0;
+    --md-sys-color-surface-container-highest: #e6e0e9;
 
     /* Legacy compatibility aliases */
     --wms-primary: var(--md-sys-color-primary);
@@ -159,6 +159,13 @@
     --wms-warning: #f59e0b;
     --wms-danger: var(--md-sys-color-error);
     --wms-info: var(--md-ref-tertiary-50);
+
+    /* Gray scale using neutral tones */
+    --wms-gray-50: var(--md-ref-neutral-95);
+    --wms-gray-100: var(--md-ref-neutral-90);
+    --wms-gray-200: var(--md-ref-neutral-80);
+    --wms-gray-600: var(--md-ref-neutral-40);
+    --wms-gray-900: var(--md-ref-neutral-10);
 
     /* ==========================================
        Spacing (unchanged)
@@ -187,9 +194,73 @@
     --md-sys-elevation-1: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
     --md-sys-elevation-2: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15);
     --md-sys-elevation-3: 0 4px 8px 3px rgba(0, 0, 0, 0.15), 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+    --md-sys-elevation-4: 0 6px 10px 4px rgba(0, 0, 0, 0.15), 0 2px 3px 0 rgba(0, 0, 0, 0.3);
+    --md-sys-elevation-5: 0 8px 12px 6px rgba(0, 0, 0, 0.15), 0 4px 4px 0 rgba(0, 0, 0, 0.3);
     --wms-shadow-sm: var(--md-sys-elevation-1);
     --wms-shadow-md: var(--md-sys-elevation-2);
     --wms-shadow-lg: var(--md-sys-elevation-3);
+}
+
+/* ==========================================
+   Material 3 Surface & Elevation Utilities
+   ========================================== */
+.m3-surface {
+    background-color: var(--md-sys-color-surface);
+    color: var(--md-sys-color-on-surface);
+}
+
+.m3-surface-container-lowest {
+    background-color: var(--md-sys-color-surface-container-lowest);
+    color: var(--md-sys-color-on-surface);
+}
+
+.m3-surface-container-low {
+    background-color: var(--md-sys-color-surface-container-low);
+    color: var(--md-sys-color-on-surface);
+}
+
+.m3-surface-container {
+    background-color: var(--md-sys-color-surface-container);
+    color: var(--md-sys-color-on-surface);
+}
+
+.m3-surface-container-high {
+    background-color: var(--md-sys-color-surface-container-high);
+    color: var(--md-sys-color-on-surface);
+}
+
+.m3-surface-container-highest {
+    background-color: var(--md-sys-color-surface-container-highest);
+    color: var(--md-sys-color-on-surface);
+}
+
+.m3-elevation-1 {
+    box-shadow: var(--md-sys-elevation-1);
+}
+
+.m3-elevation-2 {
+    box-shadow: var(--md-sys-elevation-2);
+}
+
+.m3-elevation-3 {
+    box-shadow: var(--md-sys-elevation-3);
+}
+
+.m3-elevation-4 {
+    box-shadow: var(--md-sys-elevation-4);
+}
+
+.m3-elevation-5 {
+    box-shadow: var(--md-sys-elevation-5);
+}
+
+/* ==========================================
+   Force Light Theme & Background
+   ========================================== */
+html,
+body {
+    background-color: var(--md-sys-color-background) !important;
+    color: var(--md-sys-color-on-background) !important;
 }
 
 /* Brand Customization */
@@ -201,9 +272,10 @@
 
 /* Navigation Enhancements */
 nav {
-    background: var(--wms-gray-50);
-    border-bottom: 1px solid var(--wms-gray-200);
+    background: var(--md-sys-color-surface-container-lowest);
+    border-bottom: 1px solid var(--md-sys-color-outline-variant);
     padding: var(--wms-space-sm) 0;
+    box-shadow: var(--md-sys-elevation-1);
 }
 
 nav ul li a:not(.brand) {
@@ -245,17 +317,18 @@ nav ul li a:not(.brand) {
 
 /* Cards & Sections */
 .card {
-    background: white;
-    border: 1px solid var(--wms-gray-200);
+    background: var(--md-sys-color-surface-container-low);
+    border: 1px solid var(--md-sys-color-outline-variant);
     border-radius: var(--wms-radius-lg);
     padding: var(--wms-space-md);
     margin-bottom: var(--wms-space-md);
-    box-shadow: var(--wms-shadow-sm);
-    transition: box-shadow 0.2s ease;
+    box-shadow: var(--md-sys-elevation-1);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .card:hover {
-    box-shadow: var(--wms-shadow-md);
+    box-shadow: var(--md-sys-elevation-2);
+    transform: translateY(-2px);
 }
 
 .card-header {
@@ -282,7 +355,7 @@ nav ul li a:not(.brand) {
     padding: var(--wms-space-lg);
     border-radius: var(--wms-radius-lg);
     margin: var(--wms-space-md) 0;
-    box-shadow: var(--wms-shadow-lg);
+    box-shadow: var(--md-sys-elevation-4);
 }
 
 .feature-box h3 {
@@ -316,11 +389,12 @@ nav ul li a:not(.brand) {
 
 /* Info Box */
 .info-box {
-    background-color: var(--wms-gray-50);
-    border: 1px solid var(--wms-gray-200);
+    background-color: var(--md-sys-color-surface-container);
+    border: 1px solid var(--md-sys-color-outline-variant);
     border-radius: var(--wms-radius-md);
     padding: var(--wms-space-md);
     margin: var(--wms-space-md) 0;
+    box-shadow: var(--md-sys-elevation-1);
 }
 
 .info-box-warning {
@@ -554,6 +628,7 @@ textarea:focus {
     min-height: calc(100vh - 100px);
     position: relative;
     padding-bottom: 80px; /* Space for bottom nav */
+    background-color: var(--md-sys-color-surface);
 }
 
 /* Header */
@@ -582,6 +657,9 @@ textarea:focus {
     flex: 1;
     justify-content: center;
     align-items: stretch;
+    background-color: var(--md-sys-color-surface-container-lowest);
+    border-radius: var(--md-sys-shape-corner-extra-large);
+    box-shadow: var(--md-sys-elevation-1);
 }
 
 /* M3 Button Base */
@@ -597,6 +675,7 @@ textarea:focus {
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     overflow: hidden;
+    border-radius: var(--md-sys-shape-corner-extra-large);
 }
 
 /* M3 Button Large */
@@ -614,12 +693,12 @@ textarea:focus {
 }
 
 .m3-button-filled:hover {
-    background-color: var(--md-ref-palette-primary50);
+    background-color: var(--md-ref-primary-50);
     box-shadow: var(--md-sys-elevation-2);
 }
 
 .m3-button-filled:active {
-    background-color: var(--md-ref-palette-primary30);
+    background-color: var(--md-ref-primary-30);
     box-shadow: var(--md-sys-elevation-1);
 }
 
@@ -628,15 +707,16 @@ textarea:focus {
     background-color: var(--md-sys-color-secondary-container);
     color: var(--md-sys-color-on-secondary-container);
     box-shadow: var(--md-sys-elevation-1);
+    border: 1px solid var(--md-sys-color-outline-variant);
 }
 
 .m3-button-tonal:hover {
-    background-color: var(--md-ref-palette-secondary-container90);
+    background-color: var(--md-ref-secondary-80);
     box-shadow: var(--md-sys-elevation-2);
 }
 
 .m3-button-tonal:active {
-    background-color: var(--md-ref-palette-secondary-container80);
+    background-color: var(--md-ref-secondary-70);
     box-shadow: var(--md-sys-elevation-1);
 }
 
@@ -661,13 +741,14 @@ textarea:focus {
     bottom: 0;
     left: 0;
     right: 0;
-    background-color: var(--md-sys-color-surface-container);
+    background-color: var(--md-sys-color-surface-container-high);
     display: flex;
     justify-content: space-around;
     align-items: stretch;
     height: 80px;
-    box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.12);
+    box-shadow: var(--md-sys-elevation-3);
     z-index: 1000;
+    border-top: 1px solid var(--md-sys-color-outline-variant);
 }
 
 /* Navigation Item */
@@ -694,6 +775,7 @@ textarea:focus {
     padding: 4px 16px;
     border-radius: 16px;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    background-color: transparent;
 }
 
 /* Navigation Icon */
@@ -719,15 +801,17 @@ textarea:focus {
 
 .m3-nav-item-active .m3-nav-icon-container {
     background-color: var(--md-sys-color-secondary-container);
+    box-shadow: var(--md-sys-elevation-1);
 }
 
 /* Hover States */
 .m3-nav-item:hover:not(.m3-nav-item-active) .m3-nav-icon-container {
     background-color: rgba(73, 69, 79, 0.08);
+    box-shadow: var(--md-sys-elevation-1);
 }
 
 .m3-nav-item-active:hover .m3-nav-icon-container {
-    background-color: var(--md-ref-palette-secondary-container90);
+    background-color: var(--md-ref-secondary-80);
 }
 
 /* Focus States */
