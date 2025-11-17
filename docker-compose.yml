@@ -9,5 +9,11 @@ services:
     # Load all common env vars from Lightsail containers.json
     env_file:
       - .cache/.env
+    # Mount local directories for rapid development
+    volumes:
+      - ./core:/app/core
+      - ./lib:/app/lib
+      - ./schemas:/app/schemas
+      - ./staticfiles:/app/staticfiles
     entrypoint:
       - "/app/docker-entrypoint.sh"
