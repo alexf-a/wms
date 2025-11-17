@@ -2,39 +2,120 @@
 
 {% block title %}Find Your Item - WMS{% endblock %}
 
+{% block extra_head %}{% endblock %}
+
 {% block content %}
-    <div class="card">
-        <div class="card-header">
-            <h1 class="card-title">🔍 Find Your Item</h1>
-        </div>
-        <div class="card-body">
-            <p>Ask the AI where your item is stored. Describe what you're looking for in natural language.</p>
-        </div>
+    <div class="m3-page-shell m3-page-shell--primary">
+        <header class="m3-top-app-bar m3-top-app-bar--tonal">
+            <a href="{% url 'home_view' %}" class="m3-top-app-bar__action m3-top-app-bar__action--tonal" aria-label="Back to Home">
+                <span aria-hidden="true">←</span>
+                <span>Back</span>
+            </a>
+            <span class="m3-top-app-bar__title">Find Your Item</span>
+        </header>
+
+        <section class="m3-card m3-card--primary-outline">
+            <form method="post" class="m3-form-vertical" novalidate>
+                {% csrf_token %}
+                <div class="m3-filled-text-field">
+                    <label for="id_query" class="sr-only">Search items</label>
+                    <svg class="m3-filled-text-field__icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.71.71l.27.28v.79l5 4.99L20.49 19zM9.5 14a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z" />
+                    </svg>
+                    {{ form.query }}
+                    <button type="submit" class="m3-input-action" aria-label="Run search">
+                        <svg class="m3-filled-text-field__icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.71.71l.27.28v.79l5 4.99L20.49 19zM9.5 14a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="m3-field-group">
+                    <label for="bin_filter" class="m3-field-label">Browse By Bin</label>
+                    <div class="m3-select-wrapper">
+                        {% with selected=selected_bin_id|default_if_none:'' %}
+                            <select id="bin_filter" name="bin_filter" class="m3-select">
+                                <option value="" {% if not selected %}selected{% endif %}>Select a Bin</option>
+                                {% if bins %}
+                                    {% for bin in bins %}
+                                        <option value="{{ bin.id }}" {% if selected == bin.id|stringformat:"s" %}selected{% endif %}>{{ bin.name }}</option>
+                                    {% endfor %}
+                                {% else %}
+                                    <option value="" disabled>You haven't added any bins yet</option>
+                                {% endif %}
+                            </select>
+                        {% endwith %}
+                    </div>
+                </div>
+            </form>
+            <p class="m3-search-hint m3-search-hint--accent">Describe what you're looking for in natural language. Example: “Where are my winter gloves?”</p>
+        </section>
+
+        <section class="m3-section m3-section--tonal" aria-live="polite" aria-atomic="true">
+            <h2 class="m3-section-heading">Results</h2>
+            <div class="m3-list m3-list--tonal" role="list">
+                {% if result %}
+                    {% with initial=result|default_if_none:''|striptags|slice:":1" %}
+                        <article class="m3-list-item" role="listitem">
+                            <div class="m3-list-item__leading" aria-hidden="true">{{ initial|default:"R" }}</div>
+                            <div class="m3-list-item__content">
+                                {{ result|linebreaksbr }}
+                            </div>
+                            <div class="m3-list-item__checkbox" aria-hidden="true">
+                                <span></span>
+                            </div>
+                        </article>
+                    {% endwith %}
+                {% else %}
+                    <article class="m3-list-item m3-list-item--empty" role="listitem">
+                        <div class="m3-list-item__leading" aria-hidden="true">?</div>
+                        <div class="m3-list-item__content">
+                            <p>Run a search and we'll show the exact bin here.</p>
+                        </div>
+                        <div class="m3-list-item__checkbox" aria-hidden="true">
+                            <span></span>
+                        </div>
+                    </article>
+                {% endif %}
+            </div>
+        </section>
     </div>
 
-    <form method="post">
-        {% csrf_token %}
-        <fieldset>
-            <legend>Search Query</legend>
-            {{ form.query }}
-            <small>Example: "Where are my winter gloves?" or "Find the red toolbox"</small>
-        </fieldset>
-        <button type="submit">🔎 Search</button>
-    </form>
-    
-    {% if result %}
-        <div class="card" style="margin-top: 2rem; border-left: 4px solid var(--wms-success);">
-            <div class="card-header">
-                <h2 class="card-title">Search Results</h2>
+    <nav class="m3-bottom-nav">
+        <a href="{% url 'home_view' %}" class="m3-nav-item">
+            <div class="m3-nav-icon-container">
+                <svg class="m3-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+                </svg>
             </div>
-            <div class="card-body">
-                <p>{{ result|linebreaksbr }}</p>
+            <span class="m3-nav-label">Home</span>
+        </a>
+
+        <a href="{% url 'list_bins' %}" class="m3-nav-item">
+            <div class="m3-nav-icon-container">
+                <svg class="m3-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M20 2H4c-1 0-2 .9-2 2v3.01c0 .72.43 1.34 1 1.69V20c0 1.1 1.1 2 2 2h14c.9 0 2-.9 2-2V8.7c.57-.35 1-.97 1-1.69V4c0-1.1-1-2-2-2zm-5 12H9v-2h6v2zm5-7H4V4h16v3z" />
+                </svg>
             </div>
-        </div>
-    {% endif %}
-    
-    <div style="margin-top: 2rem;">
-        <a href="{% url 'home_view' %}" role="button" class="secondary">← Back to Home</a>
-        <a href="{% url 'list_bins' %}" role="button" class="secondary">View All Bins</a>
-    </div>
+            <span class="m3-nav-label">Inventory</span>
+        </a>
+
+        <a href="{% url 'item_search' %}" class="m3-nav-item m3-nav-item-active">
+            <div class="m3-nav-icon-container">
+                <svg class="m3-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.71.71l.27.28v.79l5 4.99L20.49 19zM9.5 14a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z" />
+                </svg>
+            </div>
+            <span class="m3-nav-label">Search</span>
+        </a>
+    </nav>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        const searchInput = document.getElementById("id_query");
+        if (searchInput) {
+            searchInput.focus();
+        }
+    </script>
 {% endblock %}
