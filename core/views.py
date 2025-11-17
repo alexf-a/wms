@@ -185,8 +185,10 @@ def item_search_view(request: HttpRequest) -> HttpResponse:
         The rendered search page with results if query provided.
     """
     result = None
+    selected_bin_id = None
 
     if request.method == "POST":
+        selected_bin_id = request.POST.get("bin_filter")
         form = ItemSearchForm(request.POST)
         if form.is_valid():
             query = form.cleaned_data["query"]
@@ -196,7 +198,9 @@ def item_search_view(request: HttpRequest) -> HttpResponse:
 
     return render(request, "core/item_search.html", {
         "form": form,
-        "result": result
+        "result": result,
+        "bins": Bin.objects.filter(user=request.user).order_by("name"),
+        "selected_bin_id": selected_bin_id,
     })
 
 @login_required
