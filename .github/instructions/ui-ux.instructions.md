@@ -26,9 +26,9 @@ The workflow is as follows:
 2. You break the design down into individual component such as buttons, menus, text fields, etc. 
 3. You consult the Figma M3 Design Kit Table of Contents for the component names. 
 4. You select one component at a time, and follow the below process:
-    a. You request the M3 Material Design Kit Figma URL for the component name you have selected.
+    a. You request the M3 Material Design Kit Figma URL for the component catory you have selected.
     b. I provide the Figma URL as well as general guidance for how I want the component to look and function.
     c. You get the Figma page meta-data.
-    d. You use the Figma page meta-data to select an appropriate Figma component.
+    d. You use the Figma page meta-data to select a specific Figma component that fits my guidance..
     e. You extract the styles from that Figma component. 
     f. You implement the component. 
