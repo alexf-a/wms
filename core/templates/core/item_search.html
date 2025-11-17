@@ -17,21 +17,21 @@
         <section class="m3-card m3-card--primary-outline">
             <form method="post" class="m3-form-vertical" novalidate>
                 {% csrf_token %}
-                <div class="m3-filled-text-field">
-                    <label for="id_query" class="sr-only">Search items</label>
-                    <svg class="m3-filled-text-field__icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                        <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.71.71l.27.28v.79l5 4.99L20.49 19zM9.5 14a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z" />
-                    </svg>
-                    {{ form.query }}
-                    <button type="submit" class="m3-input-action" aria-label="Run search">
-                        <svg class="m3-filled-text-field__icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                            <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.71.71l.27.28v.79l5 4.99L20.49 19zM9.5 14a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z" />
-                        </svg>
-                    </button>
+                <div class="m3-field-group">
+                    <label for="id_query" class="m3-field-label">Search for items</label>
+                    <div class="m3-filled-text-field">
+                        {{ form.query }}
+                        <button type="submit" class="m3-input-action" aria-label="Run search">
+                            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.71.71l.27.28v.79l5 4.99L20.49 19zM9.5 14a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z" />
+                            </svg>
+                        </button>
+                    </div>
+                    <p class="m3-search-hint">Describe what you're looking for. Example: "Where are my winter gloves?"</p>
                 </div>
 
                 <div class="m3-field-group">
-                    <label for="bin_filter" class="m3-field-label">Browse By Bin</label>
+                    <label for="bin_filter" class="m3-field-label">Or browse by bin</label>
                     <div class="m3-select-wrapper">
                         {% with selected=selected_bin_id|default_if_none:'' %}
                             <select id="bin_filter" name="bin_filter" class="m3-select">
@@ -48,12 +48,11 @@
                     </div>
                 </div>
             </form>
-            <p class="m3-search-hint m3-search-hint--accent">Describe what you're looking for in natural language. Example: “Where are my winter gloves?”</p>
         </section>
 
-        <section class="m3-section m3-section--tonal" aria-live="polite" aria-atomic="true">
+        <section class="m3-section" aria-live="polite" aria-atomic="true">
             <h2 class="m3-section-heading">Results</h2>
-            <div class="m3-list m3-list--tonal" role="list">
+            <div class="m3-list" role="list">
                 {% if result %}
                     {% with initial=result|default_if_none:''|striptags|slice:":1" %}
                         <article class="m3-list-item" role="listitem">
