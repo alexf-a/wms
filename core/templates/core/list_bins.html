@@ -3,7 +3,7 @@
 {% block title %}Your Storage Bins - WMS{% endblock %}
 
 {% block content %}
-    <div class="flex-between" style="margin-bottom: 2rem;">
+    <div class="flex-between mb-lg">
         <h1>📦 Your Storage Bins</h1>
         <a href="{% url 'expand_inventory' %}" role="button">➕ Add New Bin</a>
     </div>
@@ -19,10 +19,10 @@
                         {% if bin.description %}
                             <p>{{ bin.description|truncatewords:20 }}</p>
                         {% else %}
-                            <p style="color: var(--wms-gray-600);"><em>No description</em></p>
+                            <p class="md-typescale-body-medium text-muted"><em>No description</em></p>
                         {% endif %}
                         
-                        <p style="color: var(--wms-gray-600); font-size: 0.9rem;">
+                        <p class="md-typescale-body-medium text-muted">
                             {% with item_count=bin.items.count %}
                                 {% if item_count == 0 %}
                                     Empty bin
@@ -50,7 +50,7 @@
         </div>
     {% endif %}
 
-    <div style="margin-top: 2rem;">
+    <div class="mt-lg">
         <a href="{% url 'home_view' %}" role="button" class="secondary">← Back to Home</a>
     </div>
 {% endblock %}

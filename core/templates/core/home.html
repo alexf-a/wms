@@ -61,14 +61,14 @@
             </nav>
         </div>
     {% else %}
-        <div style="text-align: center; padding: 3rem 0;">
+        <div class="text-center py-xl">
             <h1>Welcome to WMS</h1>
-            <p style="font-size: 1.25rem; color: var(--wms-gray-600);">
+            <p class="md-typescale-title-large text-muted">
                 Your personal warehouse management system
             </p>
             <p>Never lose track of your belongings again. Organize, search, and find items with AI-powered intelligence.</p>
             
-            <div class="btn-group" style="justify-content: center; margin-top: 2rem;">
+            <div class="btn-group justify-center mt-lg">
                 <a href="{% url 'register' %}" role="button">Get Started</a>
                 <a href="{% url 'login' %}" role="button" class="secondary">Login</a>
             </div>
