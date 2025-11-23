@@ -17,8 +17,13 @@ Primary: Green #50a46c
 Secondary: Neutral Gray #605D64
 Tertiary: Soft Teal #3D8B83
 
-## UI/UX Figma Workflow
-The Figma-based UI/UX collaborative workflow will work as follows:
+## UI/UX Coding Process
+
+Front-end web dev work should see consistency across the app and parsimony in CSS styles. Please consult (and perhaps extend) existing styles before making changes, to ensure consistency and maximize reusability.
+
+
+### UI/UX Figma Workflow
+The creation of new HTML/CSS content should be inspired by Figma templates. The Figma-based UI/UX collaborative workflow will work as follows:
 
 1. I provide a template or general description and request a design implementation. This might be for a page, multiple pages or a portion of a page.
 2. You break the design down into individual component such as buttons, menus, text fields, etc. 
