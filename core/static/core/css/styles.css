@@ -1954,3 +1954,59 @@ input.search-input::placeholder,
         font-size: 28px;
     }
 }
+
+/* ===================================
+   M3 Expand Inventory Styles
+   =================================== */
+
+/* Expand Header */
+.m3-expand-header {
+    margin-bottom: var(--wms-space-lg);
+    text-align: center;
+}
+
+/* M3 Card - Filled Variant (extends base .m3-card) */
+.m3-card--filled {
+    background-color: var(--md-sys-color-surface-container-highest);
+    display: flex;
+    flex-direction: column;
+}
+
+/* Card Content */
+.m3-card__content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.m3-card__icon {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--md-sys-shape-corner-medium);
+    background-color: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: var(--wms-space-md);
+}
+
+.m3-card__icon svg {
+    width: 24px;
+    height: 24px;
+}
+
+.m3-card__title {
+    margin-bottom: var(--wms-space-xs);
+}
+
+.m3-card__description {
+    color: var(--md-sys-color-on-surface-variant);
+    margin-bottom: var(--wms-space-md);
+    flex: 1;
+}
+
+/* Card Actions */
+.m3-card__actions {
+    padding-top: var(--wms-space-sm);
+}
