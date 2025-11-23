@@ -940,7 +940,10 @@ nav ul li a:not(.brand) {
     color: #1e40af;
 }
 
-/* Cards & Sections */
+/* ==========================================
+   LEGACY: Cards & Sections
+   DEPRECATED: Use .m3-card, .m3-card--filled instead
+   ========================================== */
 .card {
     background: var(--md-sys-color-surface-container-low);
     border: 1px solid var(--md-sys-color-outline-variant);
@@ -1115,7 +1118,10 @@ nav ul li a:not(.brand) {
     align-items: center;
 }
 
-/* Button Enhancements */
+/* ==========================================
+   LEGACY: Button Enhancements
+   DEPRECATED: Use .m3-button, .m3-button-filled, .m3-button-tonal, .m3-card__actions instead
+   ========================================== */
 .btn-group {
     display: flex;
     gap: var(--wms-space-sm);
@@ -2008,5 +2014,24 @@ input.search-input::placeholder,
 
 /* Card Actions */
 .m3-card__actions {
+    display: flex;
+    gap: var(--wms-space-sm);
     padding-top: var(--wms-space-sm);
+    flex-wrap: wrap;
+}
+
+.m3-card__actions .m3-button {
+    padding: 10px 24px;
+    min-height: auto;
+    border-radius: 20px;
+    flex: 1;
+    min-width: 120px;
+}
+
+.m3-card__actions .m3-button-label {
+    font-family: var(--md-sys-typescale-label-large-font-family);
+    font-weight: var(--md-sys-typescale-label-large-font-weight);
+    font-size: var(--md-sys-typescale-label-large-font-size);
+    line-height: var(--md-sys-typescale-label-large-line-height);
+    letter-spacing: var(--md-sys-typescale-label-large-letter-spacing);
 }
