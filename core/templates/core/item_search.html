@@ -6,19 +6,10 @@
 
 {% block content %}
     <div class="m3-page-shell m3-page-shell--primary">
-        <header class="m3-top-app-bar m3-top-app-bar--tonal">
-            <a href="{% url 'home_view' %}" class="m3-top-app-bar__action m3-top-app-bar__action--tonal" aria-label="Back to Home">
-                <span aria-hidden="true">←</span>
-                <span>Back</span>
-            </a>
-            <span class="m3-top-app-bar__title">Find Your Item</span>
-        </header>
-
-        <section class="m3-card m3-card--primary-outline">
-            <form method="post" class="m3-form-vertical" novalidate>
+        <section class="m3-search-stack">
+            <form method="post" class="m3-form-vertical m3-form-vertical--floating" novalidate>
                 {% csrf_token %}
                 <div class="m3-field-group">
-                    <label for="id_query" class="m3-field-label">Search for items</label>
                     <div class="m3-filled-text-field">
                         {{ form.query }}
                         <button type="submit" class="m3-input-action" aria-label="Run search">
@@ -27,11 +18,10 @@
                             </svg>
                         </button>
                     </div>
-                    <p class="m3-search-hint">Describe what you're looking for. Example: "Where are my winter gloves?"</p>
                 </div>
 
                 <div class="m3-field-group">
-                    <label for="bin_filter" class="m3-field-label">Or browse by bin</label>
+                    <label for="bin_filter" class="m3-field-label">Browse by Bin</label>
                     <div class="m3-select-wrapper">
                         {% with selected=selected_bin_id|default_if_none:'' %}
                             <select id="bin_filter" name="bin_filter" class="m3-select">
@@ -69,7 +59,6 @@
                     <article class="m3-list-item m3-list-item--empty" role="listitem">
                         <div class="m3-list-item__leading" aria-hidden="true">?</div>
                         <div class="m3-list-item__content">
-                            <p>Run a search and we'll show the exact bin here.</p>
                         </div>
                         <div class="m3-list-item__checkbox" aria-hidden="true">
                             <span></span>
