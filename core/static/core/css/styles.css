@@ -1522,16 +1522,6 @@ input.search-input::placeholder,
     font-weight: var(--md-sys-typescale-title-medium-font-weight);
 }
 
-.m3-search-results {
-    margin-top: var(--wms-space-lg);
-}
-
-.m3-search-results__list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--wms-space-md);
-}
-
 .m3-search-results__card {
     display: flex;
     align-items: flex-start;
@@ -1567,11 +1557,11 @@ input.search-input::placeholder,
 }
 
 .m3-list {
-    background-color: var(--md-sys-color-surface-container-low);
-    border-radius: var(--md-sys-shape-corner-extra-large);
-    border: 1px solid var(--md-sys-color-outline-variant);
-    box-shadow: var(--md-sys-elevation-1);
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: var(--wms-space-md);
+    margin-top: var(--wms-space-lg);
 }
 
 .m3-list-item {

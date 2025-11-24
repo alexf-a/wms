@@ -41,8 +41,8 @@
         </section>
 
         {% if result %}
-        <section class="m3-search-results" aria-live="polite" aria-atomic="true">
-            <div class="m3-search-results__list" role="list">
+        <section aria-live="polite" aria-atomic="true">
+            <div class="m3-list" role="list">
                 {% with initial=result|default_if_none:''|striptags|slice:":1" %}
                     <article class="m3-card m3-card--tonal m3-search-results__card" role="listitem">
                         <div class="m3-search-results__avatar" aria-hidden="true">{{ initial|default:"R" }}</div>

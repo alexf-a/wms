@@ -34,7 +34,7 @@
     </div>
 
     <!-- Items Section -->
-    <h2 class="md-typescale-title-large" style="margin-top: var(--wms-space-xl); margin-bottom: var(--wms-space-md); color: var(--md-sys-color-on-surface);">Items in this Bin</h2>
+    <h2 class="md-typescale-title-large" style="margin-top: var(--wms-space-xl); margin-bottom: var(--wms-space-md); color: var(--md-sys-color-on-surface);"> Your Items </h2>
     
     {% if bin.items.all %}
         <div class="m3-list">
@@ -57,6 +57,14 @@
                     </div>
                 </a>
             {% endfor %}
+                <div class="m3-button-centered">
+                    <a href="{% url 'add_items_to_bin' %}" class="m3-button m3-button-filled m3-button-small" style="flex-direction: column; gap: 4px; padding: 16px 24px;">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
+                        </svg>
+                        <span class="md-typescale-label-small">Add Item</span>
+                    </a>
+                </div>
         </div>
     {% else %}
         <div class="m3-card m3-card--filled" style="text-align: center; padding: var(--wms-space-xl);">
