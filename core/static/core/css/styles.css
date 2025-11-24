@@ -157,6 +157,8 @@
     --wms-primary-hover: var(--md-ref-primary-30);
     --wms-secondary: var(--md-sys-color-secondary);
     --wms-secondary-hover: var(--md-ref-secondary-30);
+    --wms-tertiary: var(--md-sys-color-tertiary);
+    --wms-tertiary-hover: var(--md-ref-tertiary-30);
     --wms-success: var(--md-ref-primary-60);
     --wms-warning: #f59e0b;
     --wms-danger: var(--md-sys-color-error);
