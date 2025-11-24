@@ -17,10 +17,8 @@ Primary: Green #50a46c
 Secondary: Neutral Gray #605D64
 Tertiary: Soft Teal #3D8B83
 
-## UI/UX Workflow
-The UI/UX collaborative workflow will be based off interaction with Figma.
-
-The workflow is as follows:
+## UI/UX Figma Workflow
+The Figma-based UI/UX collaborative workflow will work as follows:
 
 1. I provide a template or general description and request a design implementation. This might be for a page, multiple pages or a portion of a page.
 2. You break the design down into individual component such as buttons, menus, text fields, etc. 
