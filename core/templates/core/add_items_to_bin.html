@@ -3,55 +3,216 @@
 {% block title %}Add Item - WMS{% endblock %}
 
 {% block content %}
-<div class="m3-page-shell">
+<div class="m3-page-shell add-item-flow">
     
-    <!-- AI Feature Card -->
-    <div class="m3-card m3-card--filled" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
-        <div class="m3-card__content">
-            <div class="m3-card__icon" style="background-color: rgba(255, 255, 255, 0.2); color: white;">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
-                </svg>
+    <!-- Hero Action: Image Upload Section -->
+    <section class="hero-upload-section">
+        <div class="hero-upload-container">
+            <h1 class="md-typescale-headline-medium">
+                Add New Item
+            </h1>
+            
+            <!-- Large Camera Upload Button -->
+            <div class="hero-upload-button-wrapper">
+                <input type="file" id="hero-image-input" accept="image/*">
+                <button type="button" id="hero-upload-btn" class="hero-upload-btn" aria-label="Upload item image">
+                    <div class="hero-upload-icon">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 15.2l-2.5-2.5 1.4-1.4.6.6V8h1.5v3.9l.6-.6 1.4 1.4-2.5 2.5zM21 5v14c0 1.1-.9 2-2 2H5c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2h14c1.1 0 2 .9 2 2zM7 18h10V6H7v12z"/>
+                            <path d="M12 7c-1.1 0-2 .9-2 2 0 .37.11.7.28 1L12 11.72 13.72 10c.17-.3.28-.63.28-1 0-1.1-.9-2-2-2z"/>
+                        </svg>
+                    </div>
+                    <span class="hero-upload-text md-typescale-title-large">Take Photo or Upload</span>
+                    <span class="hero-upload-subtext md-typescale-body-medium">AI will auto-fill details</span>
+                </button>
             </div>
-            <h2 class="md-typescale-title-large m3-card__title" style="color: white; margin-bottom: var(--wms-space-xs);">
-                Try AI Auto-Generation
-            </h2>
+            
+            <!-- Skip Option -->
+            <div class="hero-skip-wrapper">
+                <button type="button" id="skip-to-manual" class="skip-link">
+                    <span>Skip and enter manually</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
+                    </svg>
+                </button>
+            </div>
         </div>
-        <div class="m3-card__actions">
-            <a href="{% url 'auto_generate_item' %}" class="m3-button m3-button-tonal" style="background-color: rgba(255, 255, 255, 0.9); color: #667eea;">
-                <svg class="m3-button-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
-                </svg>
-                <span class="m3-button-label">Auto-Generate</span>
-            </a>
-        </div>
-    </div>
-    
-    <!-- Manual Entry Card -->
-    <div class="m3-card m3-card--filled">
-        <div class="m3-card__content">
-            <h2 class="md-typescale-title-large m3-card__title" style="margin-bottom: var(--wms-space-md);">
-                Manual Entry
-            </h2>
-            <form method="post" enctype="multipart/form-data" class="m3-form-vertical">
-                {% csrf_token %}
-                {{ form.as_p }}
-                <div class="m3-card__actions" style="padding-top: var(--wms-space-md);">
-                    <button type="submit" class="m3-button m3-button-filled m3-button-standard">
-                        <svg class="m3-button-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M19 13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
-                        </svg>
-                        <span class="m3-button-label">Add Item</span>
+    </section>
+
+    <!-- Manual Form Section (Initially Hidden) -->
+    <section id="form-section" class="form-section">
+        <!-- Image Preview (shown after upload) -->
+        <div id="image-preview-container" class="image-preview-container">
+            <div class="m3-card m3-card--outlined">
+                <div class="m3-card__content image-preview-flex">
+                    <img id="preview-image" src="" alt="Item preview" class="preview-thumbnail">
+                    <div class="image-preview-flex-fill">
+                        <div class="md-typescale-body-medium image-preview-text">
+                            Image uploaded
+                        </div>
+                    </div>
+                    <button type="button" id="change-image-btn" class="m3-button m3-button-outlined">
+                        <span class="m3-button-label">Change</span>
                     </button>
-                    <a href="{% url 'list_bins' %}" class="m3-button m3-button-tonal m3-button-standard">
-                        <svg class="m3-button-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
-                        </svg>
-                        <span class="m3-button-label">Cancel</span>
-                    </a>
                 </div>
-            </form>
+            </div>
         </div>
-    </div>
+
+        <!-- Loading State -->
+        <div id="loading-indicator" class="loading-indicator">
+            <div class="loading-spinner"></div>
+            <p class="md-typescale-body-large">AI is analyzing your image...</p>
+        </div>
+
+        <!-- Form Card -->
+        <div id="form-card" class="m3-card m3-card--filled">
+            <div class="m3-card__content">
+                <h2 class="md-typescale-title-large m3-card__title form-card-title">
+                    Item Details
+                </h2>
+                <form method="post" enctype="multipart/form-data" id="item-form" class="m3-form-vertical">
+                    {% csrf_token %}
+                    
+                    <!-- Hidden image field -->
+                    <input type="file" id="hidden-image-field" name="image">
+                    
+                    <!-- Name Field -->
+                    <div class="m3-form-field">
+                        <label for="id_name" class="m3-form-label">Name</label>
+                        <input type="text" name="name" id="id_name" class="m3-text-field" required>
+                    </div>
+                    
+                    <!-- Description Field -->
+                    <div class="m3-form-field">
+                        <label for="id_description" class="m3-form-label">Description</label>
+                        <textarea name="description" id="id_description" class="m3-text-field" rows="4"></textarea>
+                    </div>
+                    
+                    <!-- Bin Field -->
+                    <div class="m3-form-field">
+                        <label for="id_bin" class="m3-form-label">Bin</label>
+                        <select name="bin" id="id_bin" class="m3-text-field" required>
+                            <option value="">Select a bin...</option>
+                            {% for bin in bins %}
+                            <option value="{{ bin.id }}">{{ bin.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="m3-card__actions form-actions-spacing">
+                        <button type="submit" class="m3-button m3-button-filled m3-button-standard">
+                            <svg class="m3-button-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M19 13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
+                            </svg>
+                            <span class="m3-button-label">Add Item</span>
+                        </button>
+                        <a href="{% url 'list_bins' %}" class="m3-button m3-button-tonal m3-button-standard">
+                            <svg class="m3-button-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+                            </svg>
+                            <span class="m3-button-label">Cancel</span>
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </section>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const heroInput = document.getElementById('hero-image-input');
+    const heroUploadBtn = document.getElementById('hero-upload-btn');
+    const skipBtn = document.getElementById('skip-to-manual');
+    const formSection = document.getElementById('form-section');
+    const imagePreviewContainer = document.getElementById('image-preview-container');
+    const previewImage = document.getElementById('preview-image');
+    const changeImageBtn = document.getElementById('change-image-btn');
+    const loadingIndicator = document.getElementById('loading-indicator');
+    const formCard = document.getElementById('form-card');
+    const hiddenImageField = document.getElementById('hidden-image-field');
+    const nameField = document.getElementById('id_name');
+    const descField = document.getElementById('id_description');
+    
+    // Trigger file input when hero button is clicked
+    heroUploadBtn.addEventListener('click', function() {
+        heroInput.click();
+    });
+    
+    // Handle image selection
+    heroInput.addEventListener('change', async function(e) {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            
+            // Show the form section with animation
+            formSection.style.display = 'block';
+            formSection.classList.add('slide-in');
+            
+            // Smooth scroll to form
+            setTimeout(() => {
+                formSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+            
+            // Show loading indicator
+            loadingIndicator.style.display = 'block';
+            
+            // Show preview
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                previewImage.src = e.target.result;
+                imagePreviewContainer.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+            
+            // Transfer file to hidden field for form submission
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            hiddenImageField.files = dataTransfer.files;
+            
+            // Call AI generation API
+            try {
+                const formData = new FormData();
+                formData.append('image', file);
+                
+                const response = await fetch('/api/extract-item-features/', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    nameField.value = data.name || '';
+                    descField.value = data.description || '';
+                }
+            } catch (error) {
+                console.error('Error extracting features:', error);
+            } finally {
+                // Hide loading, show form
+                loadingIndicator.style.display = 'none';
+                formCard.style.display = 'block';
+            }
+        }
+    });
+    
+    // Handle skip button
+    skipBtn.addEventListener('click', function() {
+        formSection.style.display = 'block';
+        formSection.classList.add('slide-in');
+        formCard.style.display = 'block';
+        
+        // Smooth scroll to form
+        setTimeout(() => {
+            formSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+    });
+    
+    // Handle change image button
+    changeImageBtn.addEventListener('click', function() {
+        heroInput.click();
+    });
+});
+</script>
 {% endblock %}
