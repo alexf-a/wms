@@ -25,7 +25,8 @@ Tertiary: Soft Teal #3D8B83
 
 ## UI/UX Coding Process
 
-Front-end web dev work should see consistency across the app and parsimony in CSS styles. Please consult (and perhaps extend) existing styles before making changes, to ensure consistency and maximize reusability.
+- Use and/or extend existing styles before adding new ones
+- Prefer `styles.css` to inline styles
 
 
 ### UI/UX Figma Workflow

@@ -38,51 +38,44 @@ def _get_cached_handler() -> StructuredLangChainHandler:
     region = AWSRegion(region_name)
     return StructuredLangChainHandler(llm_call=llm_call, output_schema=GeneratedItem, region=region)
 
+def get_img_str(img_file: BinaryIO) -> str:
+    """Create a JPEG thumbnail from an image file and return it as a base64 string.
 
-
-
-def get_item_from_img(image_file: BinaryIO, bin_obj: Bin) -> Item:
-    """Generate item name and description from an image using LLM and create the Item.
+    The image is converted to RGB, resized to fit within 512x512 pixels while
+    preserving aspect ratio, encoded as JPEG, and then base64-encoded.
 
     Args:
-        image_file (BinaryIO): A file-like object containing the image.
-        bin_obj (Bin): The Bin instance the item belongs to.
+        img_file (BinaryIO): A file-like object containing the image.
 
     Returns:
-        Item: The newly created Item instance.
+        str: Base64-encoded JPEG thumbnail.
     """
     # Resize image to limit size and encode to base64
-    # Resize image to limit size and encode to base64
-    # Ensure file pointer is at start
-    image_file.seek(0)
-    img = PILImage.open(image_file)
+    img_file.seek(0)
+    img = PILImage.open(img_file)
     img = img.convert("RGB")
     img.thumbnail((512, 512))
     buffer = BytesIO()
     img.save(buffer, format="JPEG")
     thumb_bytes = buffer.getvalue()
     buffer.close()
-    image_data = base64.b64encode(thumb_bytes).decode("utf-8")
+    return base64.b64encode(thumb_bytes).decode("utf-8")
 
-    # Get cached handler and query with image
+def extract_item_features_from_image(img_file: BinaryIO) -> GeneratedItem:
+    """Extract structured item features from an image file using the LLM handler.
+
+    The image is converted into a base64-encoded JPEG thumbnail, sent to the
+    cached StructuredLangChainHandler, and the resulting GeneratedItem schema
+    is returned.
+
+    Args:
+        img_file (BinaryIO): A file-like object containing the image.
+
+    Returns:
+        GeneratedItem: Parsed/generated item features inferred from the image.
+    """
+    img_str = get_img_str(img_file)
+    # Get cached handler and extract features
     handler = _get_cached_handler()
-    result: GeneratedItem = handler.query_with_image(image_data)
-
-    # Create new Item instance
-    item = Item(
-        name=result.name,
-        description=result.description,
-        bin=bin_obj
-    )
-
-    # Save image to item.image
-    image_name = getattr(image_file, "name", "uploaded_image")
-    # Extract just the filename to avoid path traversal issues
-    if image_name != "uploaded_image":
-        image_name = Path(image_name).name
-    content_file = ContentFile(base64.b64decode(image_data), name=image_name)
-    item.image = content_file
-
-    # Save item to DB
-    item.save()
-    return item
+    result: GeneratedItem = handler.query_with_image(img_str)
+    return result
