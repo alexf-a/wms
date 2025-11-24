@@ -50,12 +50,12 @@
         </div>
         
         <!-- Add Bin Button -->
-        <div style="display: flex; justify-content: center; margin-top: var(--wms-space-lg);">
-            <a href="{% url 'create_bin' %}" class="m3-button m3-button-filled" style="padding: 12px 24px; min-height: auto; border-radius: 20px;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 8px;">
+        <div class="m3-button-centered">
+            <a href="{% url 'create_bin' %}" class="m3-button m3-button-filled m3-button-standard">
+                <svg class="m3-button-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
                 </svg>
-                <span class="m3-button-label" style="font-size: 0.875rem; line-height: 1.25rem;">Add Bin</span>
+                <span class="m3-button-label">Add Bin</span>
             </a>
         </div>
     {% else %}
@@ -66,9 +66,9 @@
             </svg>
             <h2 class="md-typescale-headline-small">No storage bins yet</h2>
             <p class="md-typescale-body-large text-muted">Create your first bin to start organizing your belongings</p>
-            <div style="margin-top: var(--wms-space-lg);">
-                <a href="{% url 'create_bin' %}" class="m3-button m3-button-filled">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 8px;">
+            <div class="m3-button-centered">
+                <a href="{% url 'create_bin' %}" class="m3-button m3-button-filled m3-button-standard">
+                    <svg class="m3-button-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
                     </svg>
                     <span class="m3-button-label">Add Bin</span>

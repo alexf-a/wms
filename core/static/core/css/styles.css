@@ -940,45 +940,6 @@ nav ul li a:not(.brand) {
     color: #1e40af;
 }
 
-/* ==========================================
-   LEGACY: Cards & Sections
-   DEPRECATED: Use .m3-card, .m3-card--filled instead
-   ========================================== */
-.card {
-    background: var(--md-sys-color-surface-container-low);
-    border: 1px solid var(--md-sys-color-outline-variant);
-    border-radius: var(--wms-radius-lg);
-    padding: var(--wms-space-md);
-    margin-bottom: var(--wms-space-md);
-    box-shadow: var(--md-sys-elevation-1);
-    transition: box-shadow 0.2s ease, transform 0.2s ease;
-}
-
-.card:hover {
-    box-shadow: var(--md-sys-elevation-2);
-    transform: translateY(-2px);
-}
-
-.card-header {
-    margin-bottom: var(--wms-space-sm);
-    padding-bottom: var(--wms-space-sm);
-    border-bottom: 1px solid var(--wms-gray-200);
-}
-
-.card-title {
-    margin: 0;
-    font-family: var(--md-sys-typescale-emphasized-title-large-font-family);
-    font-weight: var(--md-sys-typescale-emphasized-title-large-font-weight);
-    font-size: var(--md-sys-typescale-emphasized-title-large-font-size);
-    line-height: var(--md-sys-typescale-emphasized-title-large-line-height);
-    letter-spacing: var(--md-sys-typescale-emphasized-title-large-letter-spacing);
-    color: var(--wms-gray-900);
-}
-
-.card-body {
-    padding: var(--wms-space-sm) 0;
-}
-
 /* Feature Highlights */
 .feature-box {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -1116,36 +1077,6 @@ nav ul li a:not(.brand) {
 .flex-between {
     justify-content: space-between;
     align-items: center;
-}
-
-/* ==========================================
-   LEGACY: Button Enhancements
-   DEPRECATED: Use .m3-button, .m3-button-filled, .m3-button-tonal, .m3-card__actions instead
-   ========================================== */
-.btn-group {
-    display: flex;
-    gap: var(--wms-space-sm);
-    margin-top: var(--wms-space-md);
-}
-
-.btn-primary {
-    background-color: var(--wms-primary);
-    border-color: var(--wms-primary);
-}
-
-.btn-primary:hover {
-    background-color: var(--wms-primary-hover);
-    border-color: var(--wms-primary-hover);
-}
-
-.btn-secondary {
-    background-color: var(--wms-secondary);
-    border-color: var(--wms-secondary);
-}
-
-.btn-secondary:hover {
-    background-color: var(--wms-secondary-hover);
-    border-color: var(--wms-secondary-hover);
 }
 
 /* Footer */
@@ -1790,6 +1721,58 @@ input.search-input::placeholder,
     padding: 32px 48px;
     border-radius: 28px;
     min-height: 96px;
+}
+
+/* M3 Button Standard - Default button size for general use */
+.m3-button-standard {
+    padding: 10px 24px;
+    min-height: auto;
+    border-radius: 20px;
+    width: fit-content;
+}
+
+.m3-button-standard .m3-button-label {
+    font-family: var(--md-sys-typescale-label-large-font-family);
+    font-weight: var(--md-sys-typescale-label-large-font-weight);
+    font-size: var(--md-sys-typescale-label-large-font-size);
+    line-height: var(--md-sys-typescale-label-large-line-height);
+    letter-spacing: var(--md-sys-typescale-label-large-letter-spacing);
+}
+
+.m3-button-standard .m3-button-icon {
+    width: 20px;
+    height: 20px;
+}
+
+/* M3 Button Small - Compact button size for tight spaces */
+.m3-button-small {
+    padding: 8px 16px;
+    min-height: auto;
+    border-radius: 16px;
+    gap: 8px;
+    width: fit-content;
+}
+
+.m3-button-small .m3-button-label {
+    font-family: var(--md-sys-typescale-label-medium-font-family);
+    font-weight: var(--md-sys-typescale-label-medium-font-weight);
+    font-size: var(--md-sys-typescale-label-medium-font-size);
+    line-height: var(--md-sys-typescale-label-medium-line-height);
+    letter-spacing: var(--md-sys-typescale-label-medium-letter-spacing);
+}
+
+.m3-button-small .m3-button-icon {
+    width: 18px;
+    height: 18px;
+}
+
+
+/* Button Centered - Centers button(s) horizontally */
+.m3-button-centered {
+    display: flex;
+    justify-content: center;
+    gap: var(--wms-space-sm);
+    margin-top: var(--wms-space-lg);
 }
 
 /* M3 Button Filled */
