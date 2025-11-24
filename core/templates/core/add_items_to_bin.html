@@ -8,9 +8,6 @@
     <!-- Hero Action: Image Upload Section -->
     <section class="hero-upload-section">
         <div class="hero-upload-container">
-            <h1 class="md-typescale-headline-medium">
-                Add New Item
-            </h1>
             
             <!-- Large Camera Upload Button -->
             <div class="hero-upload-button-wrapper">
@@ -134,6 +131,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const nameField = document.getElementById('id_name');
     const descField = document.getElementById('id_description');
     
+    let currentObjectUrl = null;
+    
     // Trigger file input when hero button is clicked
     heroUploadBtn.addEventListener('click', function() {
         heroInput.click();
@@ -157,12 +156,12 @@ document.addEventListener('DOMContentLoaded', function() {
             loadingIndicator.style.display = 'block';
             
             // Show preview
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                previewImage.src = e.target.result;
-                imagePreviewContainer.style.display = 'block';
-            };
-            reader.readAsDataURL(file);
+            if (currentObjectUrl) {
+                URL.revokeObjectURL(currentObjectUrl);
+            }
+            currentObjectUrl = URL.createObjectURL(file);
+            previewImage.src = currentObjectUrl;
+            imagePreviewContainer.style.display = 'block';
             
             // Transfer file to hidden field for form submission
             const dataTransfer = new DataTransfer();
