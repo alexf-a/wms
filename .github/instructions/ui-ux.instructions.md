@@ -11,11 +11,17 @@ WMS follows **Google's Material 3 (M3) Design System** for a modern, cohesive us
 
 The Table of Contents for the Figma M3 Design Kit can be found at https://www.figma.com/design/h9iZkAZgIKmfP2AM8zHJyb/Material-3-Design-Kit--Community-?node-id=55879-3580
 
+Less content is more. Pursue sleekness and simplicity.
+
 ## Color Scheme
 
 Primary: Green #50a46c
 Secondary: Neutral Gray #605D64
 Tertiary: Soft Teal #3D8B83
+
+## Buttons
+- Keep all button text minimal
+- Prefer icons to text
 
 ## UI/UX Coding Process
 
