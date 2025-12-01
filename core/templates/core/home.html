@@ -27,17 +27,54 @@
             </div>
         </div>
     {% else %}
-        <div class="text-center py-xl">
-            <h1>Welcome to WMS</h1>
-            <p class="md-typescale-title-large text-muted">
-                Your personal warehouse management system
-            </p>
-            <p>Never lose track of your belongings again. Organize, search, and find items with AI-powered intelligence.</p>
-            
-            <div class="btn-group justify-center mt-lg">
-                <a href="{% url 'register' %}" role="button">Get Started</a>
-                <a href="{% url 'login' %}" role="button" class="secondary">Login</a>
+        <!-- Material 3 Welcome Page for Non-Authenticated Users -->
+        <div class="m3-home-container">
+            <div class="m3-welcome-content">
+                <h1 class="m3-headline-large" id="dynamic-welcome">Welcome to WMS</h1>
+                <div class="m3-welcome-buttons">
+                    <!-- Get Started Button (Filled) -->
+                    <a href="{% url 'register' %}" class="m3-button m3-button-filled">
+                        <span class="m3-button-label">Get Started</span>
+                    </a>
+                    <!-- Login Button (Tonal) -->
+                    <a href="{% url 'login' %}" class="m3-button m3-button-tonal">
+                        <span class="m3-button-label">Login</span>
+                    </a>
+                </div>
             </div>
         </div>
     {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if not user.is_authenticated %}
+<script>
+(function() {
+    const greetings = [
+        "Welcome to WMS",
+        "Find Your Sh...Stuff",
+        "Storage, Simplified",
+        "Where's My...? Solved",
+        "Chaos → Order"
+    ];
+    
+    const el = document.getElementById('dynamic-welcome');
+    if (!el) return;
+    
+    // Pick a random greeting on load
+    el.textContent = greetings[Math.floor(Math.random() * greetings.length)];
+    
+    // Rotate greetings every 3 seconds with fade
+    let index = greetings.indexOf(el.textContent);
+    setInterval(() => {
+        el.style.opacity = '0';
+        setTimeout(() => {
+            index = (index + 1) % greetings.length;
+            el.textContent = greetings[index];
+            el.style.opacity = '1';
+        }, 300);
+    }, 3000);
+})();
+</script>
+{% endif %}
 {% endblock %}
