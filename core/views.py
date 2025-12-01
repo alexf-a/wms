@@ -240,7 +240,7 @@ def extract_item_features_api(request: HttpRequest) -> JsonResponse:
 
     except Exception as e:
         logger.exception("Error extracting item features")
-        return JsonResponse({"error": str(e)}, status=500)
+        return JsonResponse({"error": "Failed to process image"}, status=500)
 
 
 def healthcheck_view(_: HttpRequest) -> JsonResponse:  # pragma: no cover - trivial
