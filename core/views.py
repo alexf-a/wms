@@ -12,6 +12,7 @@ from lib.llm.item_generation import extract_item_features_from_image, get_img_st
 from lib.llm.llm_search import find_item_location
 
 from .forms import (
+    AccountForm,
     ItemForm,
     ItemSearchForm,
     WMSUserCreationForm,
@@ -38,6 +39,27 @@ def register_view(request: HttpRequest) -> HttpResponse:
     else:
         form = WMSUserCreationForm()
     return render(request, "core/auth/register.html", {"form": form})
+
+
+@login_required
+def account_view(request: HttpRequest) -> HttpResponse:
+    """Handle user account settings.
+
+    Args:
+        request: The HTTP request object.
+
+    Returns:
+        The rendered account page with user form.
+    """
+    if request.method == "POST":
+        form = AccountForm(request.POST, instance=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Account updated successfully.")
+            return redirect("account")
+    else:
+        form = AccountForm(instance=request.user)
+    return render(request, "core/account.html", {"form": form})
 
 def home_view(request: HttpRequest) -> HttpResponse:
     """Render the home page.
