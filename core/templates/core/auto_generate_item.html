@@ -1,35 +1,33 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Auto-Generate Item</title>
-</head>
-<body>
-    <h1>Auto-Generate Item Features</h1>
-    <p>Upload an image to automatically generate item name and description using AI</p>
-    
-    {% if messages %}
-        {% for message in messages %}
-            <div style="padding: 10px; margin: 10px 0; border: 1px solid; border-radius: 4px;">
-                {{ message }}
-            </div>
-        {% endfor %}
-    {% endif %}
+{% extends "core/base.html" %}
+
+{% block title %}AI Item Generation - WMS{% endblock %}
+
+{% block content %}
+    <div class="card">
+        <div class="card-header">
+            <h1 class="card-title">📸 AI Item Generation</h1>
+        </div>
+        <div class="card-body">
+            <p>Upload an image to automatically generate item name and description using AI vision technology.</p>
+        </div>
+    </div>
 
     <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
         {{ form.as_p }}
-        <button type="submit">Generate Item Features</button>
-        <a href="{% url 'add_items_to_bin' %}">Back to Manual Entry</a>
+        <div class="btn-group">
+            <button type="submit">🤖 Generate with AI</button>
+            <a href="{% url 'add_items_to_bin' %}" role="button" class="secondary">← Back to Manual Entry</a>
+        </div>
     </form>
 
-    <div style="margin-top: 20px; padding: 15px; background-color: #f0f0f0; border-radius: 4px;">
+    <div class="info-box" style="margin-top: 2rem;">
         <h3>How it works:</h3>
         <ol>
-            <li>Upload a clear image of your item</li>
-            <li>Select the bin where the item will be stored</li>
-            <li>Our AI will analyze the image and generate a name and description</li>
-            <li>Review and edit the generated information before saving</li>
+            <li>📤 Upload a clear image of your item</li>
+            <li>📦 Select the bin where the item will be stored</li>
+            <li>🤖 Our AI will analyze the image and generate a name and description</li>
+            <li>✏️ Review and edit the generated information before saving</li>
         </ol>
     </div>
-</body>
-</html>
+{% endblock %}

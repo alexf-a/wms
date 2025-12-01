@@ -1,15 +1,87 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>{{ item.name }} Details</title>
-</head>
-<body>
-    <h1>{{ item.name }}</h1>
-    <p>{{ item.description }}</p>
-    {% if item.image %}
-        <p><img src="{{ item.image.url }}" alt="{{ item.name }} photo"></p>
-    {% endif %}
-    <!-- Optionally display extra fields such as image or created_on -->
-    <!-- ...additional layout or links... -->
-</body>
-</html>
+{% extends "core/base.html" %}
+
+{% block title %}{{ item.name }} - WMS{% endblock %}
+
+{% block content %}
+<div class="m3-page-shell">
+    <div class="m3-card m3-card--filled">
+        <div class="m3-card__content">
+            <div class="m3-card__icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M20 6h-2.18c.11-.31.18-.65.18-1 0-1.66-1.34-3-3-3-1.05 0-1.96.54-2.5 1.35l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM9 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm11 15H4v-2h16v2zm0-5H4V8h5.08L7 10.83 8.62 12 11 8.76l1-1.36 1 1.36L15.38 12 17 10.83 14.92 8H20v6z"/>
+                </svg>
+            </div>
+            <h1 class="md-typescale-headline-medium m3-card__title">{{ item.name }}</h1>
+            
+            {% if item.image %}
+                <div class="image-container" style="margin: var(--wms-space-md) 0;">
+                    <img src="{{ item.image.url }}" alt="{{ item.name }} photo" class="image-preview">
+                </div>
+            {% endif %}
+            
+            <h3 class="md-typescale-title-medium" style="margin-top: var(--wms-space-md); margin-bottom: var(--wms-space-xs);">Description</h3>
+            {% if item.description %}
+                <p class="md-typescale-body-medium m3-card__description">{{ item.description }}</p>
+            {% else %}
+                <p class="md-typescale-body-medium m3-card__description" style="color: var(--md-sys-color-on-surface-variant);"><em>No description available</em></p>
+            {% endif %}
+            
+            {% if item.bin %}
+                <div class="m3-card m3-card--tonal" style="margin-top: var(--wms-space-md); padding: var(--wms-space-md);">
+                    <p class="md-typescale-body-medium">
+                        <strong>📍 Location:</strong> 
+                        Stored in <a href="{% url 'bin_detail' item.bin.user_id item.bin.access_token %}">{{ item.bin.name }}</a>
+                    </p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Navigation Buttons -->
+    <div class="m3-button-centered">
+        {% if item.bin %}
+            <a href="{% url 'bin_detail' item.bin.user_id item.bin.access_token %}" class="m3-button m3-button-tonal m3-button-small">
+                <svg class="m3-button-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+                </svg>
+                <span class="m3-button-label">Back to Bin</span>
+            </a>
+        {% endif %}
+        <a href="{% url 'list_bins' %}" class="m3-button m3-button-tonal m3-button-small">
+            <svg class="m3-button-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M4 4H20V20H4V4ZM6 6V18H18V6H6ZM8 8H16V10H8V8ZM8 12H16V14H8V12Z"/>
+            </svg>
+            <span class="m3-button-label">All Bins</span>
+        </a>
+    </div>
+</div>
+
+<nav class="m3-bottom-nav">
+    <a href="{% url 'home_view' %}" class="m3-nav-item">
+        <div class="m3-nav-icon-container">
+            <svg class="m3-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+            </svg>
+        </div>
+        <span class="m3-nav-label">Home</span>
+    </a>
+
+    <a href="{% url 'list_bins' %}" class="m3-nav-item m3-nav-item-active">
+        <div class="m3-nav-icon-container">
+            <svg class="m3-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M20 2H4c-1 0-2 .9-2 2v3.01c0 .72.43 1.34 1 1.69V20c0 1.1 1.1 2 2 2h14c.9 0 2-.9 2-2V8.7c.57-.35 1-.97 1-1.69V4c0-1.1-1-2-2-2zm-5 12H9v-2h6v2zm5-7H4V4h16v3z" />
+            </svg>
+        </div>
+        <span class="m3-nav-label">Inventory</span>
+    </a>
+
+    <a href="{% url 'item_search' %}" class="m3-nav-item">
+        <div class="m3-nav-icon-container">
+            <svg class="m3-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.71.71l.27.28v.79l5 4.99L20.49 19zM9.5 14a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z" />
+            </svg>
+        </div>
+        <span class="m3-nav-label">Search</span>
+    </a>
+</nav>
+{% endblock %}

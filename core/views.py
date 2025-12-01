@@ -1,19 +1,23 @@
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING, ClassVar
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from PIL import Image, UnidentifiedImageError
 
-from lib.llm.item_generation import get_item_from_img
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from django.core.files.uploadedfile import UploadedFile
+
+from lib.llm.item_generation import extract_item_features_from_image
 from lib.llm.llm_search import find_item_location
 
 from .forms import (
-    AutoGenerateItemForm,
-    ConfirmItemForm,
     ItemForm,
     ItemSearchForm,
     WMSUserCreationForm,
@@ -21,6 +25,65 @@ from .forms import (
 from .models import Bin, Item
 
 logger = logging.getLogger(__name__)
+
+MAX_IMAGE_UPLOAD_SIZE = settings.ITEM_IMAGE_MAX_UPLOAD_SIZE
+MAX_IMAGE_DIMENSION = settings.ITEM_IMAGE_MAX_DIMENSION
+ALLOWED_IMAGE_FORMATS = {
+    fmt.upper() for fmt in settings.ITEM_IMAGE_ALLOWED_FORMATS
+}
+_max_upload_mb = MAX_IMAGE_UPLOAD_SIZE / (1024 * 1024)
+MAX_IMAGE_UPLOAD_SIZE_LABEL = (
+    f"{int(_max_upload_mb)}MB"
+    if _max_upload_mb.is_integer()
+    else f"{_max_upload_mb:.1f}MB"
+)
+ALLOWED_FORMATS_DISPLAY = ", ".join(sorted(ALLOWED_IMAGE_FORMATS))
+
+
+class ImageValidationError(ValueError):
+    """Raised when an uploaded image fails validation."""
+
+    TOO_LARGE = "too_large"
+    BAD_FORMAT = "bad_format"
+    OVERSIZED_DIMENSIONS = "oversized_dimensions"
+    CORRUPTED = "corrupted"
+
+    _MESSAGES: ClassVar[dict[str, str]] = {
+        TOO_LARGE: f"Image is too large. Maximum size is {MAX_IMAGE_UPLOAD_SIZE_LABEL}.",
+        BAD_FORMAT: (
+            "Unsupported image format. Please upload a file with one of the following formats: "
+            f"{ALLOWED_FORMATS_DISPLAY}."
+        ),
+        OVERSIZED_DIMENSIONS: (
+            f"Image dimensions are too large. Maximum allowed is {MAX_IMAGE_DIMENSION}px on the longest side."
+        ),
+        CORRUPTED: "Invalid or corrupted image file.",
+    }
+
+    def __init__(self, reason: str) -> None:
+        """Initialize the exception with a predefined reason key."""
+        super().__init__(self._MESSAGES[reason])
+
+
+def _validate_image_upload(image_file: UploadedFile) -> None:
+    """Ensure the uploaded image meets size, format, and dimension constraints."""
+    if image_file.size > MAX_IMAGE_UPLOAD_SIZE:
+        raise ImageValidationError(ImageValidationError.TOO_LARGE)
+
+    try:
+        image_file.file.seek(0)
+        with Image.open(image_file.file) as img:
+            image_format = (img.format or "").upper()
+            if image_format not in ALLOWED_IMAGE_FORMATS:
+                raise ImageValidationError(ImageValidationError.BAD_FORMAT)
+
+            width, height = img.size
+            if width > MAX_IMAGE_DIMENSION or height > MAX_IMAGE_DIMENSION:
+                raise ImageValidationError(ImageValidationError.OVERSIZED_DIMENSIONS)
+    except UnidentifiedImageError as exc:
+        raise ImageValidationError(ImageValidationError.CORRUPTED) from exc
+    finally:
+        image_file.file.seek(0)
 
 def register_view(request: HttpRequest) -> HttpResponse:
     """Handle user registration.
@@ -79,9 +142,9 @@ def create_bin_view(request: HttpRequest) -> HttpResponse:
         name = request.POST["name"]
         description = request.POST["description"]
         location = request.POST.get("location", "")
-        length = request.POST.get("length", None)
-        width = request.POST.get("width", None)
-        height = request.POST.get("height", None)
+        length = request.POST.get("length") or None
+        width = request.POST.get("width") or None
+        height = request.POST.get("height") or None
         new_bin = Bin(
             user=request.user,
             name=name,
@@ -108,11 +171,16 @@ def add_items_to_bin_view(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
         form = ItemForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
-            form.save()
+            item = form.save(commit=False)
+            item.save()
+            messages.success(request, f"Item '{item.name}' has been added successfully!")
             return redirect("home_view")
     else:
         form = ItemForm(user=request.user)
-    return render(request, "core/add_items_to_bin.html", {"form": form})
+
+    # Get user's bins for the template
+    bins = Bin.objects.filter(user=request.user)
+    return render(request, "core/add_items_to_bin.html", {"form": form, "bins": bins})
 
 @login_required
 def list_bins(request: HttpRequest) -> HttpResponse:
@@ -185,8 +253,10 @@ def item_search_view(request: HttpRequest) -> HttpResponse:
         The rendered search page with results if query provided.
     """
     result = None
+    selected_bin_id = None
 
     if request.method == "POST":
+        selected_bin_id = request.POST.get("bin_filter")
         form = ItemSearchForm(request.POST)
         if form.is_valid():
             query = form.cleaned_data["query"]
@@ -196,95 +266,45 @@ def item_search_view(request: HttpRequest) -> HttpResponse:
 
     return render(request, "core/item_search.html", {
         "form": form,
-        "result": result
+        "result": result,
+        "bins": Bin.objects.filter(user=request.user).order_by("name"),
+        "selected_bin_id": selected_bin_id,
     })
 
-@login_required
-def auto_generate_item_view(request: HttpRequest) -> HttpResponse:
-    """Handle auto-generation of item features from uploaded image.
-
-    This view processes an uploaded image and selected bin to auto-generate
-    name and description using LLM, then redirects to confirmation page.
-
-    Args:
-        request: The HTTP request object containing image and bin selection.
-
-    Returns:
-        The rendered auto-generation page or redirect to confirmation page.
-    """
-    if request.method == "POST":
-        form = AutoGenerateItemForm(request.POST, request.FILES, user=request.user)
-        if form.is_valid():
-            image = form.cleaned_data["image"]
-            bin_obj = form.cleaned_data["bin"]
-
-            try:
-                # Use the item generation function to create the item
-                item = get_item_from_img(image.file, bin_obj)
-
-                # Store item ID in session for confirmation view
-                request.session["generated_item_id"] = item.id
-                messages.success(request, "Item features auto-generated successfully!")
-                return redirect("confirm_item")
-
-            except Exception as e:  # noqa: BLE001
-                messages.error(request, f"Failed to generate item features: {e!s}")
-
-    else:
-        form = AutoGenerateItemForm(user=request.user)
-
-    return render(request, "core/auto_generate_item.html", {"form": form})
 
 @login_required
-def confirm_item_view(request: HttpRequest) -> HttpResponse:
-    """Handle confirmation and editing of auto-generated item features.
+def extract_item_features_api(request: HttpRequest) -> JsonResponse:
+    """Extract item features from an uploaded image via API.
 
-    This view displays the auto-generated item features (name, description)
-    along with the uploaded image and allows the user to edit before saving.
+    Process an image and return extracted name and description
+    without saving to the database. Used for the new hero-action flow.
 
     Args:
-        request: The HTTP request object.
+        request: The HTTP request object with uploaded image file.
 
     Returns:
-        The rendered confirmation page or redirect to add items page after saving.
+        JsonResponse with extracted 'name' and 'description' fields.
     """
-    # Get the generated item from session
-    item_id = request.session.get("generated_item_id")
-    if not item_id:
-        messages.error(request, "No generated item found. Please start over.")
-        return redirect("auto_generate_item")
+    if request.method != "POST":
+        return JsonResponse({"error": "POST method required"}, status=405)
+
+    if "image" not in request.FILES:
+        return JsonResponse({"error": "No image provided"}, status=400)
+
+    image_file = request.FILES["image"]
 
     try:
-        item = get_object_or_404(Item, id=item_id, bin__user=request.user)
-    except Item.DoesNotExist:
-        messages.error(request, "Generated item not found.")
-        return redirect("auto_generate_item")
-
-    if request.method == "POST":
-        form = ConfirmItemForm(request.POST, instance=item, user=request.user)
-        if form.is_valid():
-            if "confirm" in request.POST:
-                # Save the confirmed item
-                form.save()
-                # Clear session
-                if "generated_item_id" in request.session:
-                    del request.session["generated_item_id"]
-                messages.success(request, f"Item '{item.name}' has been added successfully!")
-                return redirect("home_view")
-            if "regenerate" in request.POST:
-                # Delete the current item and redirect to regenerate
-                item.delete()
-                if "generated_item_id" in request.session:
-                    del request.session["generated_item_id"]
-                messages.info(request, "Item deleted. Please upload image again.")
-                return redirect("auto_generate_item")
-    else:
-        form = ConfirmItemForm(instance=item, user=request.user)
-
-    return render(request, "core/confirm_item.html", {
-        "form": form,
-        "item": item
-    })
+        _validate_image_upload(image_file)
+        result = extract_item_features_from_image(image_file.file)
+        return JsonResponse({
+            "name": result.name,
+            "description": result.description
+        })
+    except ImageValidationError as validation_error:
+        return JsonResponse({"error": str(validation_error)}, status=400)
+    except Exception:
+        logger.exception("Error extracting item features")
+        return JsonResponse({"error": "Failed to process image"}, status=500)
 
 
 def healthcheck_view(_: HttpRequest) -> JsonResponse:  # pragma: no cover - trivial
