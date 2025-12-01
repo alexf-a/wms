@@ -50,3 +50,19 @@ class ItemSearchForm(forms.Form):
             }
         )
     )
+
+
+class AccountForm(forms.ModelForm):
+    """Form for updating user account information."""
+
+    class Meta:
+        """Metadata options for AccountForm."""
+
+        model = WMSUser
+        fields = ("username", "email", "first_name", "last_name")
+        widgets = {
+            "username": forms.TextInput(attrs={"placeholder": "Username"}),
+            "email": forms.EmailInput(attrs={"placeholder": "Email"}),
+            "first_name": forms.TextInput(attrs={"placeholder": "First name"}),
+            "last_name": forms.TextInput(attrs={"placeholder": "Last name"}),
+        }

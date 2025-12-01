@@ -7,6 +7,7 @@ from .views import list_bins
 urlpatterns = [
     path("", views.home_view, name="home_view"),
     path("healthz/", views.healthcheck_view, name="healthcheck"),
+    path("account/", views.account_view, name="account"),
     path("register/", views.register_view, name="register"),
     path(
         "login/",
