@@ -8,7 +8,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const changeImageBtn = document.getElementById('change-image-btn');
     const loadingIndicator = document.getElementById('loading-indicator');
     const formCard = document.getElementById('form-card');
-    const hiddenImageField = document.getElementById('hidden-image-field');
     const itemForm = document.getElementById('item-form');
     const nameField = document.getElementById('id_name');
     const descField = document.getElementById('id_description');
@@ -48,11 +47,6 @@ document.addEventListener('DOMContentLoaded', function() {
             currentObjectUrl = URL.createObjectURL(file);
             previewImage.src = currentObjectUrl;
             imagePreviewContainer.style.display = 'block';
-
-            // Transfer file to hidden field for form submission
-            const dataTransfer = new DataTransfer();
-            dataTransfer.items.add(file);
-            hiddenImageField.files = dataTransfer.files;
 
             // Call AI generation API
             try {
