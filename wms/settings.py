@@ -237,6 +237,21 @@ else:
     MEDIA_URL = "/media/"
     MEDIA_ROOT = BASE_DIR / "media"
 
+# Item image validation configuration
+ITEM_IMAGE_MAX_UPLOAD_SIZE = int(os.getenv("ITEM_IMAGE_MAX_UPLOAD_SIZE", str(10 * 1024 * 1024)))
+ITEM_IMAGE_MAX_DIMENSION = int(os.getenv("ITEM_IMAGE_MAX_DIMENSION", "4096"))
+
+_item_image_formats_env = os.getenv("ITEM_IMAGE_ALLOWED_FORMATS")
+if _item_image_formats_env:
+    _parsed_formats = tuple(
+        fmt.strip().upper()
+        for fmt in _item_image_formats_env.split(",")
+        if fmt.strip()
+    )
+    ITEM_IMAGE_ALLOWED_FORMATS = _parsed_formats or ("JPEG", "PNG")
+else:
+    ITEM_IMAGE_ALLOWED_FORMATS = ("JPEG", "PNG")
+
 # LLM Configuration
 LLM_CALLS_DIR = BASE_DIR / "llm_calls"
 
