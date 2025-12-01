@@ -77,9 +77,9 @@ def create_bin_view(request: HttpRequest) -> HttpResponse:
         name = request.POST["name"]
         description = request.POST["description"]
         location = request.POST.get("location", "")
-        length = request.POST.get("length", None)
-        width = request.POST.get("width", None)
-        height = request.POST.get("height", None)
+        length = request.POST.get("length") or None
+        width = request.POST.get("width") or None
+        height = request.POST.get("height") or None
         new_bin = Bin(
             user=request.user,
             name=name,
