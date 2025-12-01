@@ -1,7 +1,7 @@
 (function() {
     const greetings = [
         "Welcome to WMS",
-        "Find Your Sh...Stuff",
+        "Find Your Shi...Stuff",
         "Storage, Simplified",
         "Where's My...? Solved",
         "Chaos → Order"
