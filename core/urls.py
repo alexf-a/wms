@@ -17,6 +17,11 @@ urlpatterns = [
         ),
         name="login",
     ),
+    path(
+        "logout/",
+        auth_views.LogoutView.as_view(next_page="home_view"),
+        name="logout",
+    ),
     path("expand_inventory/", views.expand_inventory_view, name="expand_inventory"),
     path("create_bin/", views.create_bin_view, name="create_bin"),
     path("add_items_to_bin/", views.add_items_to_bin_view, name="add_items_to_bin"),
@@ -33,6 +38,5 @@ urlpatterns = [
     ),
     path("item/<int:item_id>/", views.item_detail, name="item_detail"),
     path("find-item/", views.item_search_view, name="item_search"),
-    path("auto-generate-item/", views.auto_generate_item_view, name="auto_generate_item"),
-    path("confirm-item/", views.confirm_item_view, name="confirm_item"),
+    path("api/extract-item-features/", views.extract_item_features_api, name="extract_item_features_api"),
 ]

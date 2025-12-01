@@ -1,33 +1,185 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Create Bin</title>
-</head>
-<body>
-    <h1>Create Bin</h1>
-    <form method="post" enctype="multipart/form-data">
-        {% csrf_token %}
-        <label for="name">Name:</label>
-        <input type="text" id="name" name="name" required><br>
+{% extends "core/base.html" %}
+{% load static %}
 
-        <label for="description">Description:</label>
-        <textarea id="description" name="description" required></textarea><br>
+{% block title %}Create Storage Bin - WMS{% endblock %}
 
-        <!-- Removed QR Code input field -->
-        
-        <label for="location">Location:</label>
-        <input type="text" id="location" name="location"><br>
+{% block content %}
+<div class="m3-page-shell">
+    <!-- Form Card -->
+    <div class="m3-card m3-card--filled">
+        <div class="m3-card__content">
+            <div class="m3-card__icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M4 4H20V20H4V4ZM6 6V18H18V6H6ZM8 8H16V10H8V8ZM8 12H16V14H8V12Z"/>
+                </svg>
+            </div>
+            <h1 class="md-typescale-headline-small m3-card__title">Create a Bin</h1>
+            <form method="post" enctype="multipart/form-data" class="m3-form-vertical" id="create-bin-form" data-m3-dynamic-form data-total-steps="5" data-initial-step="1">
+                {% csrf_token %}
+                
+                <div class="m3-field-group m3-dynamic-field" data-step="1">
+                    <label for="name" class="m3-field-label">Bin Name <span class="text-error">*</span></label>
+                    <div class="m3-filled-text-field">
+                        <input type="text" id="name" name="name" placeholder="e.g., Garage Box 1" required data-step-input>
+                        <button type="button" class="m3-input-action m3-next-btn" aria-label="Next field" style="display: none;" data-visible-display="flex">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
 
-        <label for="length">Length:</label>
-        <input type="number" step="0.01" id="length" name="length"><br>
+                <div class="m3-field-group m3-dynamic-field" data-step="2" style="display: none;">
+                    <label for="description" class="m3-field-label">Description <span class="text-error">*</span></label>
+                    <div class="m3-filled-text-field">
+                        <textarea id="description" name="description" rows="3" placeholder="What will you store here?" required data-step-input></textarea>
+                    </div>
+                    <button type="button" class="m3-button m3-button-tonal m3-button-small m3-next-btn m3-next-btn--below" style="display: none; margin-top: 0.5rem;" data-visible-display="inline-flex">
+                        <span class="m3-button-label">Next</span>
+                        <svg class="m3-button-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
+                        </svg>
+                    </button>
+                </div>
 
-        <label for="width">Width:</label>
-        <input type="number" step="0.01" id="width" name="width"><br>
+                <div class="m3-field-group m3-dynamic-field" data-step="3" style="display: none;">
+                    <label for="location" class="m3-field-label">Physical Location</label>
+                    <div class="m3-filled-text-field">
+                        <input type="text" id="location" name="location" placeholder="e.g., Garage, Basement" data-step-input>
+                        <button type="button" class="m3-input-action m3-next-btn" aria-label="Next field" style="display: none;" data-visible-display="flex">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <button type="button" class="m3-button m3-button-text m3-button-small m3-skip-btn" style="margin-top: 0.25rem; align-self: flex-start;" data-skip-to="4">
+                        <span class="m3-button-label">Skip</span>
+                    </button>
+                </div>
 
-        <label for="height">Height:</label>
-        <input type="number" step="0.01" id="height" name="height"><br>
+                <div class="m3-dynamic-field" data-step="4" style="display: none;">
+                    <div class="grid-3">
+                        <div class="m3-field-group">
+                            <label for="length" class="m3-field-label">Length (inches)</label>
+                            <div class="m3-filled-text-field">
+                                <input type="number" step="0.01" id="length" name="length" placeholder="0.00">
+                            </div>
+                        </div>
+                        <div class="m3-field-group">
+                            <label for="width" class="m3-field-label">Width (inches)</label>
+                            <div class="m3-filled-text-field">
+                                <input type="number" step="0.01" id="width" name="width" placeholder="0.00">
+                            </div>
+                        </div>
+                        <div class="m3-field-group">
+                            <label for="height" class="m3-field-label">Height (inches)</label>
+                            <div class="m3-filled-text-field">
+                                <input type="number" step="0.01" id="height" name="height" placeholder="0.00">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="m3-dimension-actions">
+                        <button type="button" class="m3-button m3-button-tonal m3-button-small m3-next-btn" data-visible-display="inline-flex">
+                            <span class="m3-button-label">Continue</span>
+                            <svg class="m3-button-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
+                            </svg>
+                        </button>
+                        <button type="button" class="m3-button m3-button-text m3-button-small m3-skip-btn" data-skip-to="5">
+                            <span class="m3-button-label">Skip Dimensions</span>
+                        </button>
+                    </div>
+                </div>
 
-        <button type="submit">Create Bin</button>
-    </form>
-</body>
-</html>
+                <!-- Actions -->
+                <div class="m3-card__actions m3-dynamic-field" data-step="5" style="display: none;">
+                    <button type="submit" class="m3-button m3-button-filled m3-button-standard">
+                        <svg class="m3-button-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
+                        </svg>
+                        <span class="m3-button-label">Create Bin</span>
+                    </button>
+                    <a href="{% url 'expand_inventory' %}" class="m3-button m3-button-tonal m3-button-standard">
+                        <svg class="m3-button-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+                        </svg>
+                        <span class="m3-button-label">Cancel</span>
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<nav class="m3-bottom-nav">
+    <a href="{% url 'home_view' %}" class="m3-nav-item">
+        <div class="m3-nav-icon-container">
+            <svg class="m3-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+            </svg>
+        </div>
+        <span class="m3-nav-label">Home</span>
+    </a>
+
+    <a href="{% url 'list_bins' %}" class="m3-nav-item">
+        <div class="m3-nav-icon-container">
+            <svg class="m3-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M20 2H4c-1 0-2 .9-2 2v3.01c0 .72.43 1.34 1 1.69V20c0 1.1 1.1 2 2 2h14c.9 0 2-.9 2-2V8.7c.57-.35 1-.97 1-1.69V4c0-1.1-1-2-2-2zm-5 12H9v-2h6v2zm5-7H4V4h16v3z" />
+            </svg>
+        </div>
+        <span class="m3-nav-label">Inventory</span>
+    </a>
+
+    <a href="{% url 'item_search' %}" class="m3-nav-item">
+        <div class="m3-nav-icon-container">
+            <svg class="m3-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.71.71l.27.28v.79l5 4.99L20.49 19zM9.5 14a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z" />
+            </svg>
+        </div>
+        <span class="m3-nav-label">Search</span>
+    </a>
+</nav>
+<style>
+/* Dynamic form field animations */
+.m3-dynamic-field {
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.m3-dynamic-field.slide-in {
+    animation: slideInUp 0.3s ease forwards;
+}
+
+.m3-next-btn {
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.m3-next-btn--below {
+    align-self: flex-end;
+}
+
+.m3-skip-btn {
+    opacity: 0.7;
+}
+
+.m3-skip-btn:hover {
+    opacity: 1;
+}
+
+/* Ensure text field can contain the next button */
+.m3-dynamic-field .m3-filled-text-field {
+    position: relative;
+}
+
+.m3-dimension-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+    {{ block.super }}
+    <script src="{% static 'core/js/dynamic_form.js' %}"></script>
+{% endblock %}
