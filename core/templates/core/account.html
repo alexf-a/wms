@@ -1,0 +1,89 @@
+{% extends "core/base.html" %}
+
+{% block title %}Account - WMS{% endblock %}
+
+{% block content %}
+<div class="m3-page-shell">
+    <!-- Account Card -->
+    <div class="m3-card m3-card--filled">
+        <div class="m3-card__content">
+            <h2 class="md-typescale-headline-small" style="margin-bottom: var(--wms-space-md);">Account Settings</h2>
+            
+            <form method="post" class="m3-form-vertical">
+                {% csrf_token %}
+                
+                <!-- Username Field -->
+                <div class="m3-field-group">
+                    <label class="md-typescale-label-large" for="id_username">Username</label>
+                    <div class="m3-filled-text-field">
+                        <svg class="m3-filled-text-field__icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                        </svg>
+                        {{ form.username }}
+                    </div>
+                    {% if form.username.errors %}
+                        <p class="md-typescale-body-small m3-error-text">{{ form.username.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <!-- Email Field -->
+                <div class="m3-field-group">
+                    <label class="md-typescale-label-large" for="id_email">Email</label>
+                    <div class="m3-filled-text-field">
+                        <svg class="m3-filled-text-field__icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+                        </svg>
+                        {{ form.email }}
+                    </div>
+                    {% if form.email.errors %}
+                        <p class="md-typescale-body-small m3-error-text">{{ form.email.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <!-- First Name Field -->
+                <div class="m3-field-group">
+                    <label class="md-typescale-label-large" for="id_first_name">First Name</label>
+                    <div class="m3-filled-text-field">
+                        {{ form.first_name }}
+                    </div>
+                    {% if form.first_name.errors %}
+                        <p class="md-typescale-body-small m3-error-text">{{ form.first_name.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <!-- Last Name Field -->
+                <div class="m3-field-group">
+                    <label class="md-typescale-label-large" for="id_last_name">Last Name</label>
+                    <div class="m3-filled-text-field">
+                        {{ form.last_name }}
+                    </div>
+                    {% if form.last_name.errors %}
+                        <p class="md-typescale-body-small m3-error-text">{{ form.last_name.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <!-- Save Button -->
+                <div class="m3-button-centered" style="margin-top: var(--wms-space-md);">
+                    <button type="submit" class="m3-button m3-button-filled m3-button-standard">
+                        <svg class="m3-button-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                        </svg>
+                        <span class="m3-button-label">Save</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Logout Button -->
+    <form method="post" action="{% url 'logout' %}" class="m3-button-centered" style="margin-top: var(--wms-space-lg);">
+        {% csrf_token %}
+        <button type="submit" class="m3-button m3-button-tonal m3-button-standard">
+            <svg class="m3-button-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
+            </svg>
+            <span class="m3-button-label">Logout</span>
+        </button>
+    </form>
+</div>
+{% endblock %}

@@ -1,5 +1,7 @@
 {% extends "core/base.html" %}
 
+{% load static %}
+
 {% block title %}Home - WMS{% endblock %}
 
 {% block content %}
@@ -25,49 +27,29 @@
                     <span class="m3-button-label">Add Stuff</span>
                 </a>
             </div>
-            
-            <!-- Bottom Navigation Bar -->
-            <nav class="m3-bottom-nav">
-                <a href="{% url 'home_view' %}" class="m3-nav-item m3-nav-item-active">
-                    <div class="m3-nav-icon-container">
-                        <svg class="m3-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
-                        </svg>
-                    </div>
-                    <span class="m3-nav-label">Home</span>
-                </a>
-                
-                <a href="{% url 'list_bins' %}" class="m3-nav-item">
-                    <div class="m3-nav-icon-container">
-                        <svg class="m3-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M20 2H4c-1 0-2 .9-2 2v3.01c0 .72.43 1.34 1 1.69V20c0 1.1 1.1 2 2 2h14c.9 0 2-.9 2-2V8.7c.57-.35 1-.97 1-1.69V4c0-1.1-1-2-2-2zm-5 12H9v-2h6v2zm5-7H4V4h16v3z"/>
-                        </svg>
-                    </div>
-                    <span class="m3-nav-label">Inventory</span>
-                </a>
-                
-                <a href="#" class="m3-nav-item">
-                    <div class="m3-nav-icon-container">
-                        <svg class="m3-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
-                        </svg>
-                    </div>
-                    <span class="m3-nav-label">More</span>
-                </a>
-            </nav>
         </div>
     {% else %}
-        <div class="text-center py-xl">
-            <h1>Welcome to WMS</h1>
-            <p class="md-typescale-title-large text-muted">
-                Your personal warehouse management system
-            </p>
-            <p>Never lose track of your belongings again. Organize, search, and find items with AI-powered intelligence.</p>
-            
-            <div class="btn-group justify-center mt-lg">
-                <a href="{% url 'register' %}" role="button">Get Started</a>
-                <a href="{% url 'login' %}" role="button" class="secondary">Login</a>
+        <!-- Material 3 Welcome Page for Non-Authenticated Users -->
+        <div class="m3-home-container">
+            <div class="m3-welcome-content">
+                <h1 class="m3-headline-large" id="dynamic-welcome">Welcome to WMS</h1>
+                <div class="m3-welcome-buttons">
+                    <!-- Get Started Button (Filled) -->
+                    <a href="{% url 'register' %}" class="m3-button m3-button-filled">
+                        <span class="m3-button-label">Get Started</span>
+                    </a>
+                    <!-- Login Button (Tonal) -->
+                    <a href="{% url 'login' %}" class="m3-button m3-button-tonal">
+                        <span class="m3-button-label">Login</span>
+                    </a>
+                </div>
             </div>
         </div>
     {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if not user.is_authenticated %}
+    <script src="{% static 'core/js/dynamic_greeting.js' %}"></script>
+{% endif %}
 {% endblock %}

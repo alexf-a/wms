@@ -946,6 +946,11 @@ nav ul li a:not(.brand) {
     color: #1e40af;
 }
 
+.m3-error-list {
+    margin: 0.5rem 0 0 0;
+    padding-left: 1.5rem;
+}
+
 /* Feature Highlights */
 .feature-box {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -1681,6 +1686,47 @@ input.search-input::placeholder,
     margin: 0;
 }
 
+/* Welcome Content for Non-Authenticated Users */
+.m3-welcome-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    text-align: center;
+    padding: var(--wms-space-xl);
+    gap: var(--wms-space-lg);
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.m3-welcome-content .m3-headline-large {
+    color: var(--md-sys-color-primary);
+    transition: opacity 0.3s ease-in-out;
+}
+
+/* Welcome Buttons - Large, side-by-side, centered */
+.m3-welcome-buttons {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: var(--wms-space-md);
+    flex-wrap: wrap;
+}
+
+.m3-welcome-buttons .m3-button {
+    padding: 24px 48px;
+    min-width: 160px;
+    border-radius: 28px;
+}
+
+.m3-welcome-buttons .m3-button-label {
+    font-family: var(--md-sys-typescale-title-medium-font-family);
+    font-weight: var(--md-sys-typescale-title-medium-font-weight);
+    font-size: var(--md-sys-typescale-title-medium-font-size);
+}
+
 /* Action Buttons Container */
 .m3-action-buttons {
     display: flex;
@@ -2219,4 +2265,27 @@ input.search-input::placeholder,
         width: 48px;
         height: 48px;
     }
+}
+
+/* ==========================================
+   Header Icon Links
+   ========================================== */
+
+.m3-header-icon-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+    border-radius: 50%;
+    color: var(--md-sys-color-on-surface);
+    transition: background-color 0.2s ease;
+}
+
+.m3-header-icon-link:hover {
+    background-color: var(--md-sys-color-surface-container-high);
+}
+
+.m3-header-icon-link svg {
+    width: 24px;
+    height: 24px;
 }
