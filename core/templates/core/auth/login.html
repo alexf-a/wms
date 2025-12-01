@@ -3,10 +3,6 @@
 
 {% block title %}Login - WMS{% endblock %}
 
-{% block extra_head %}
-<script src="{% static 'core/js/dynamic_form.js' %}" defer></script>
-{% endblock %}
-
 {% block content %}
 <div class="m3-page-shell">
     <div class="m3-card m3-card--filled">
@@ -24,33 +20,28 @@
             </article>
             {% endif %}
             
-            <form method="post" class="m3-form-vertical" data-m3-dynamic-form data-total-steps="2" data-initial-step="1">
+            <form method="post" class="m3-form-vertical">
                 {% csrf_token %}
                 
                 <!-- Username Field -->
-                <div class="m3-field-group m3-dynamic-field" data-step="1">
+                <div class="m3-field-group">
                     <label class="m3-field-label" for="username">Username</label>
                     <div class="m3-filled-text-field">
                         <svg class="m3-filled-text-field__icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
                         </svg>
-                        <input type="text" name="username" id="username" placeholder="Enter your username" required autofocus data-step-input>
-                        <button type="button" class="m3-input-action m3-next-btn" aria-label="Next field" style="display: none;" data-visible-display="flex">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
-                            </svg>
-                        </button>
+                        <input type="text" name="username" id="username" placeholder="Enter your username" required autofocus>
                     </div>
                 </div>
                 
                 <!-- Password Field -->
-                <div class="m3-field-group m3-dynamic-field" data-step="2" style="display: none;">
+                <div class="m3-field-group">
                     <label class="m3-field-label" for="password">Password</label>
                     <div class="m3-filled-text-field">
                         <svg class="m3-filled-text-field__icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
                         </svg>
-                        <input type="password" name="password" id="password" placeholder="Enter your password" required data-step-input>
+                        <input type="password" name="password" id="password" placeholder="Enter your password" required>
                     </div>
                     
                     <!-- Submit Button -->
