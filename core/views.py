@@ -59,7 +59,7 @@ def account_view(request: HttpRequest) -> HttpResponse:
             return redirect("account")
     else:
         form = AccountForm(instance=request.user)
-    return render(request, "core/account.html", {"form": form})
+    return render(request, "core/account.html", {"form": form, "active_nav": "account"})
 
 def home_view(request: HttpRequest) -> HttpResponse:
     """Render the home page.
@@ -71,7 +71,7 @@ def home_view(request: HttpRequest) -> HttpResponse:
         The rendered home page with content based on authentication status.
     """
     # Pass authentication status to the template
-    return render(request, "core/home.html", {"is_authenticated": request.user.is_authenticated})
+    return render(request, "core/home.html", {"is_authenticated": request.user.is_authenticated, "active_nav": "home"})
 
 @login_required
 def expand_inventory_view(request: HttpRequest) -> HttpResponse:
@@ -83,7 +83,7 @@ def expand_inventory_view(request: HttpRequest) -> HttpResponse:
     Returns:
         The rendered expand inventory page.
     """
-    return render(request, "core/expand_inventory.html")
+    return render(request, "core/expand_inventory.html", {"active_nav": "add"})
 
 @login_required
 def create_bin_view(request: HttpRequest) -> HttpResponse:
@@ -151,7 +151,7 @@ def list_bins(request: HttpRequest) -> HttpResponse:
         The rendered list bins page.
     """
     bins = Bin.objects.filter(user=request.user)
-    return render(request, "core/list_bins.html", {"bins": bins})
+    return render(request, "core/list_bins.html", {"bins": bins, "active_nav": "see"})
 
 @login_required
 def bin_detail(request: HttpRequest, user_id: int, access_token: str) -> HttpResponse:
@@ -227,6 +227,7 @@ def item_search_view(request: HttpRequest) -> HttpResponse:
         "result": result,
         "bins": Bin.objects.filter(user=request.user).order_by("name"),
         "selected_bin_id": selected_bin_id,
+        "active_nav": "find",
     })
 
 
