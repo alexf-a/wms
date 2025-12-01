@@ -11,7 +11,7 @@
             
             <!-- Large Camera Upload Button -->
             <div class="hero-upload-button-wrapper">
-                <input type="file" id="hero-image-input" accept="image/*" aria-label="Upload item image for AI analysis">
+                <input type="file" id="hero-image-input" name="image" form="item-form" accept="image/*" aria-label="Upload item image for AI analysis" style="display: none;">
                 <button type="button" id="hero-upload-btn" class="hero-upload-btn" aria-label="Upload item image">
                     <div class="hero-upload-icon">
                         <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor">
@@ -69,9 +69,6 @@
                 </h2>
                 <form method="post" enctype="multipart/form-data" id="item-form" class="m3-form-vertical">
                     {% csrf_token %}
-                    
-                    <!-- Hidden image field -->
-                    <input type="file" id="hidden-image-field" name="image">
                     
                     <!-- Name Field -->
                     <div class="m3-form-field">
