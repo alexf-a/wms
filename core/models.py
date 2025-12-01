@@ -50,9 +50,9 @@ class Bin(models.Model):
         name (str): The name of the bin.
         description (str): A description of the bin.
         location (str): The location of the bin.
-        length (float): The length of the bin.
-        width (float): The width of the bin.
-        height (float): The height of the bin.
+        length (float): The length of the bin in inches.
+        width (float): The width of the bin in inches.
+        height (float): The height of the bin in inches.
     """
     user = models.ForeignKey(User, related_name="bins", on_delete=models.CASCADE)
     shared_users = models.ManyToManyField(
@@ -65,9 +65,9 @@ class Bin(models.Model):
     description = models.TextField(max_length=5000)
     access_token = models.CharField(max_length=48, unique=True, default=generate_bin_access_token)
     location = models.CharField(max_length=255, blank=True, null=True)
-    length = models.FloatField(blank=True, null=True)
-    width = models.FloatField(blank=True, null=True)
-    height = models.FloatField(blank=True, null=True)
+    length = models.FloatField(blank=True, null=True, help_text="in inches")
+    width = models.FloatField(blank=True, null=True, help_text="in inches")
+    height = models.FloatField(blank=True, null=True, help_text="in inches")
 
     class Meta:
         """Model constraints for the Bin model."""
