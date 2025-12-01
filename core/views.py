@@ -107,7 +107,6 @@ def add_items_to_bin_view(request: HttpRequest) -> HttpResponse:
         form = ItemForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
             item = form.save(commit=False)
-            item.user = request.user
             item.save()
             messages.success(request, f"Item '{item.name}' has been added successfully!")
             return redirect("home_view")
