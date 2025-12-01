@@ -175,9 +175,9 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_DIRS = [
-    BASE_DIR / "core" / "static",
-]
+# Only include core/static in STATICFILES_DIRS during development.
+# In production, rely on app-based static file discovery to avoid duplication.
+STATICFILES_DIRS = [BASE_DIR / "core" / "static"] if DEBUG else []
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
@@ -236,6 +236,21 @@ else:
     }
     MEDIA_URL = "/media/"
     MEDIA_ROOT = BASE_DIR / "media"
+
+# Item image validation configuration
+ITEM_IMAGE_MAX_UPLOAD_SIZE = int(os.getenv("ITEM_IMAGE_MAX_UPLOAD_SIZE", str(10 * 1024 * 1024)))
+ITEM_IMAGE_MAX_DIMENSION = int(os.getenv("ITEM_IMAGE_MAX_DIMENSION", "4096"))
+
+_item_image_formats_env = os.getenv("ITEM_IMAGE_ALLOWED_FORMATS")
+if _item_image_formats_env:
+    _parsed_formats = tuple(
+        fmt.strip().upper()
+        for fmt in _item_image_formats_env.split(",")
+        if fmt.strip()
+    )
+    ITEM_IMAGE_ALLOWED_FORMATS = _parsed_formats or ("JPEG", "PNG")
+else:
+    ITEM_IMAGE_ALLOWED_FORMATS = ("JPEG", "PNG")
 
 # LLM Configuration
 LLM_CALLS_DIR = BASE_DIR / "llm_calls"

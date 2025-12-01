@@ -1,14 +1,20 @@
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING, ClassVar
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from PIL import Image, UnidentifiedImageError
 
-from lib.llm.item_generation import extract_item_features_from_image, get_img_str
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from django.core.files.uploadedfile import UploadedFile
+
+from lib.llm.item_generation import extract_item_features_from_image
 from lib.llm.llm_search import find_item_location
 
 from .forms import (
@@ -20,6 +26,65 @@ from .forms import (
 from .models import Bin, Item
 
 logger = logging.getLogger(__name__)
+
+MAX_IMAGE_UPLOAD_SIZE = settings.ITEM_IMAGE_MAX_UPLOAD_SIZE
+MAX_IMAGE_DIMENSION = settings.ITEM_IMAGE_MAX_DIMENSION
+ALLOWED_IMAGE_FORMATS = {
+    fmt.upper() for fmt in settings.ITEM_IMAGE_ALLOWED_FORMATS
+}
+_max_upload_mb = MAX_IMAGE_UPLOAD_SIZE / (1024 * 1024)
+MAX_IMAGE_UPLOAD_SIZE_LABEL = (
+    f"{int(_max_upload_mb)}MB"
+    if _max_upload_mb.is_integer()
+    else f"{_max_upload_mb:.1f}MB"
+)
+ALLOWED_FORMATS_DISPLAY = ", ".join(sorted(ALLOWED_IMAGE_FORMATS))
+
+
+class ImageValidationError(ValueError):
+    """Raised when an uploaded image fails validation."""
+
+    TOO_LARGE = "too_large"
+    BAD_FORMAT = "bad_format"
+    OVERSIZED_DIMENSIONS = "oversized_dimensions"
+    CORRUPTED = "corrupted"
+
+    _MESSAGES: ClassVar[dict[str, str]] = {
+        TOO_LARGE: f"Image is too large. Maximum size is {MAX_IMAGE_UPLOAD_SIZE_LABEL}.",
+        BAD_FORMAT: (
+            "Unsupported image format. Please upload a file with one of the following formats: "
+            f"{ALLOWED_FORMATS_DISPLAY}."
+        ),
+        OVERSIZED_DIMENSIONS: (
+            f"Image dimensions are too large. Maximum allowed is {MAX_IMAGE_DIMENSION}px on the longest side."
+        ),
+        CORRUPTED: "Invalid or corrupted image file.",
+    }
+
+    def __init__(self, reason: str) -> None:
+        """Initialize the exception with a predefined reason key."""
+        super().__init__(self._MESSAGES[reason])
+
+
+def _validate_image_upload(image_file: UploadedFile) -> None:
+    """Ensure the uploaded image meets size, format, and dimension constraints."""
+    if image_file.size > MAX_IMAGE_UPLOAD_SIZE:
+        raise ImageValidationError(ImageValidationError.TOO_LARGE)
+
+    try:
+        image_file.file.seek(0)
+        with Image.open(image_file.file) as img:
+            image_format = (img.format or "").upper()
+            if image_format not in ALLOWED_IMAGE_FORMATS:
+                raise ImageValidationError(ImageValidationError.BAD_FORMAT)
+
+            width, height = img.size
+            if width > MAX_IMAGE_DIMENSION or height > MAX_IMAGE_DIMENSION:
+                raise ImageValidationError(ImageValidationError.OVERSIZED_DIMENSIONS)
+    except UnidentifiedImageError as exc:
+        raise ImageValidationError(ImageValidationError.CORRUPTED) from exc
+    finally:
+        image_file.file.seek(0)
 
 def register_view(request: HttpRequest) -> HttpResponse:
     """Handle user registration.
@@ -129,7 +194,6 @@ def add_items_to_bin_view(request: HttpRequest) -> HttpResponse:
         form = ItemForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
             item = form.save(commit=False)
-            item.user = request.user
             item.save()
             messages.success(request, f"Item '{item.name}' has been added successfully!")
             return redirect("home_view")
@@ -250,20 +314,20 @@ def extract_item_features_api(request: HttpRequest) -> JsonResponse:
     if "image" not in request.FILES:
         return JsonResponse({"error": "No image provided"}, status=400)
 
+    image_file = request.FILES["image"]
+
     try:
-        image_file = request.FILES["image"]
-
-        # Extract features using shared function
+        _validate_image_upload(image_file)
         result = extract_item_features_from_image(image_file.file)
-
         return JsonResponse({
             "name": result.name,
             "description": result.description
         })
-
-    except Exception as e:
+    except ImageValidationError as validation_error:
+        return JsonResponse({"error": str(validation_error)}, status=400)
+    except Exception:
         logger.exception("Error extracting item features")
-        return JsonResponse({"error": str(e)}, status=500)
+        return JsonResponse({"error": "Failed to process image"}, status=500)
 
 
 def healthcheck_view(_: HttpRequest) -> JsonResponse:  # pragma: no cover - trivial
