@@ -7,6 +7,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
+from django.db import IntegrityError
 from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from PIL import Image, UnidentifiedImageError
@@ -201,9 +202,16 @@ def add_items_to_bin_view(request: HttpRequest) -> HttpResponse:
         if form.is_valid():
             item = form.save(commit=False)
             item.user = request.user
-            item.save()
-            messages.success(request, f"Item '{item.name}' has been added successfully!")
-            return redirect("home_view")
+            try:
+                item.save()
+                messages.success(request, f"Item '{item.name}' has been added successfully!")
+                return redirect("home_view")
+            except IntegrityError:
+                # Duplicate item name for this user
+                form.add_error(
+                    "name",
+                    f"You already have an item named '{item.name}'. Please choose a different name."
+                )
     else:
         form = ItemForm(user=request.user)
 

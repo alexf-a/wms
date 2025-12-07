@@ -951,6 +951,83 @@ nav ul li a:not(.brand) {
     padding-left: 1.5rem;
 }
 
+/* M3 Snackbar - Toast Notifications */
+.m3-snackbar {
+    position: fixed;
+    bottom: calc(var(--wms-nav-height, 64px) + 16px);
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background-color: var(--md-sys-color-inverse-surface);
+    color: var(--md-sys-color-inverse-on-surface);
+    padding: 14px 16px;
+    border-radius: var(--wms-radius-sm);
+    box-shadow: var(--md-sys-elevation-3);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 288px;
+    max-width: calc(100vw - 32px);
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                visibility 0.25s;
+}
+
+.m3-snackbar--visible {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+    visibility: visible;
+}
+
+.m3-snackbar-text {
+    flex: 1;
+    font-family: var(--md-sys-typescale-body-medium-font-family);
+    font-size: var(--md-sys-typescale-body-medium-font-size);
+    line-height: var(--md-sys-typescale-body-medium-line-height);
+}
+
+.m3-snackbar-action {
+    background: none;
+    border: none;
+    color: var(--md-sys-color-inverse-primary);
+    padding: 8px;
+    margin: -8px;
+    cursor: pointer;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+}
+
+.m3-snackbar-action:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.m3-snackbar-action:active {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Form field error states */
+.m3-form-field--error .m3-text-field {
+    border-color: var(--wms-danger);
+}
+
+.m3-form-field--error .m3-form-label {
+    color: var(--wms-danger);
+}
+
+.m3-form-error {
+    display: block;
+    color: var(--wms-danger);
+    font-family: var(--md-sys-typescale-body-small-font-family);
+    font-size: var(--md-sys-typescale-body-small-font-size);
+    line-height: var(--md-sys-typescale-body-small-line-height);
+    margin-top: 4px;
+}
+
 /* Feature Highlights */
 .feature-box {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
