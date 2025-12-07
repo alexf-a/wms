@@ -37,8 +37,9 @@ DEBUG = os.getenv("DEBUG", "True").lower() in {"1", "true", "yes"}
 # Comma-separated hostnames, e.g. "example.com,.example.com,localhost"
 _hosts = os.getenv("ALLOWED_HOSTS", "")
 ALLOWED_HOSTS: list[str] = [h.strip() for h in _hosts.split(",") if h.strip()]
-if DEBUG:
-    # Force empty for dev; Django implicitly allows localhost variants
+if DEBUG and not _hosts:
+    # Default to empty for dev; Django implicitly allows localhost variants.
+    # If ALLOWED_HOSTS is explicitly set (e.g., for mobile testing), respect it.
     ALLOWED_HOSTS = []
 
 # CSRF trusted origins
