@@ -15,5 +15,6 @@ services:
       - ./lib:/app/lib
       - ./schemas:/app/schemas
       - ./staticfiles:/app/staticfiles
+      - ./wms:/app/wms
     entrypoint:
       - "/app/docker-entrypoint.sh"

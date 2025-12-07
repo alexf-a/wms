@@ -1,5 +1,5 @@
 ---
-applyTo: "core/llm_calls/item_generation.json,core/views.py,llm/item_generation.py,core/templates/core/auto_generate_item.html,core/templates/core/confirm_item.html,core/templates/core/add_items_to_bin.html"
+applyTo: "core/llm_calls/item_generation.json,core/views.py,llm/item_generation.py,core/templates/core/auto_generate_item.html,core/templates/core/confirm_item.html,core/templates/core/add_items_to_bin.html,core/static/core/js/add_items_flow.js"
 description: "Instructions for Item Addition Functionality"
 ---
 
