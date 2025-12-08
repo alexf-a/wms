@@ -1,5 +1,12 @@
+/**
+ * Add Items Flow JavaScript
+ * Handles image upload, AI feature extraction, and form management
+ * 
+ * Dependencies: ui_utils.js (revealSection, showErrorSnackbar)
+ */
+
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('[AddItems] Script loaded v3');
+    console.log('[AddItems] Script loaded v4');
     
     const heroInput = document.getElementById('hero-image-input');
     const skipBtn = document.getElementById('skip-to-manual');
@@ -134,16 +141,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Use 'change' event which is most reliable across browsers
     heroInput.addEventListener('change', handleImageSelect);
 
-    // Handle skip button
+    // Handle skip button - uses shared revealSection utility
     skipBtn.addEventListener('click', function() {
-        formSection.style.display = 'block';
-        formSection.classList.add('slide-in');
         formCard.style.display = 'block';
         imagePreviewContainer.style.display = 'none';
-
-        setTimeout(() => {
-            formSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 100);
+        revealSection(formSection, null, null, { scrollBlock: 'start' });
     });
 
     if (itemForm) {

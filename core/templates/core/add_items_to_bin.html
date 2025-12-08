@@ -131,48 +131,18 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'core/js/add_items_flow.js' %}?v=4"></script>
+<script src="{% static 'core/js/ui_utils.js' %}"></script>
+<script src="{% static 'core/js/add_items_flow.js' %}?v=5"></script>
+{% if form.errors %}
 <script>
-// Initialize snackbar with server-side errors if present
 document.addEventListener('DOMContentLoaded', function() {
-    {% if form.errors %}
-    // Show form section if there are errors
-    const formSection = document.getElementById('form-section');
-    const formCard = document.getElementById('form-card');
-    if (formSection) formSection.style.display = 'block';
-    if (formCard) formCard.style.display = 'block';
-    
-    // Show snackbar with error message
+    showFormSectionWithErrors('form-section', 'form-card');
     {% for field, errors in form.errors.items %}
     {% for error in errors %}
     showErrorSnackbar("{{ error|escapejs }}");
     {% endfor %}
     {% endfor %}
-    {% endif %}
 });
-
-function showErrorSnackbar(message) {
-    const snackbar = document.getElementById('error-snackbar');
-    const snackbarText = document.getElementById('error-snackbar-text');
-    const dismissBtn = document.getElementById('error-snackbar-dismiss');
-    
-    if (snackbar && snackbarText) {
-        snackbarText.textContent = message;
-        snackbar.classList.add('m3-snackbar--visible');
-        
-        // Auto-dismiss after 6 seconds
-        const timeout = setTimeout(() => {
-            snackbar.classList.remove('m3-snackbar--visible');
-        }, 6000);
-        
-        // Manual dismiss
-        if (dismissBtn) {
-            dismissBtn.onclick = () => {
-                clearTimeout(timeout);
-                snackbar.classList.remove('m3-snackbar--visible');
-            };
-        }
-    }
-}
 </script>
+{% endif %}
 {% endblock %}

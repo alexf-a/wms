@@ -2244,7 +2244,8 @@ input.search-input::placeholder,
     padding-top: var(--wms-space-xl);
 }
 
-.form-section.slide-in {
+/* Slide-in Animation Utility */
+.slide-in {
     animation: slideInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -2379,4 +2380,9 @@ input.search-input::placeholder,
 .m3-header-icon-link svg {
     width: 24px;
     height: 24px;
+}
+
+/* Bin Filter Section (Item Search) */
+.bin-filter-section {
+    padding-top: var(--wms-space-md);
 }
