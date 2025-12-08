@@ -278,3 +278,18 @@ LLM_CALLS_DIR = BASE_DIR / "llm_calls"
 
 # Health Check Configuration
 HEALTH_CHECK_PATH = "/healthz/"
+
+# Security settings for HTTPS
+# In production (non-DEBUG), enable secure cookies and HTTPS redirects
+if not DEBUG:
+    # Redirect all HTTP requests to HTTPS
+    SECURE_SSL_REDIRECT = True
+    # Use secure cookies (only sent over HTTPS)
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    # Enable HSTS (tells browsers to always use HTTPS)
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    # Trust the X-Forwarded-Proto header from Lightsail's load balancer
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
