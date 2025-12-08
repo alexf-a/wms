@@ -290,6 +290,7 @@ def item_search_view(request: HttpRequest) -> HttpResponse:
         The rendered search page with results if query provided.
     """
     result = None
+    found_item = None
     selected_bin_id = None
 
     if request.method == "POST":
@@ -297,13 +298,20 @@ def item_search_view(request: HttpRequest) -> HttpResponse:
         form = ItemSearchForm(request.POST)
         if form.is_valid():
             query = form.cleaned_data["query"]
-            result = str(find_item_location(query, request.user.id))
+            item_location = find_item_location(query, request.user.id)
+            result = str(item_location)
+            # Try to fetch the actual Item object for displaying its image
+            found_item = Item.objects.filter(
+                user=request.user,
+                name=item_location.item_name,
+            ).first()
     else:
         form = ItemSearchForm()
 
     return render(request, "core/item_search.html", {
         "form": form,
         "result": result,
+        "found_item": found_item,
         "bins": Bin.objects.filter(user=request.user).order_by("name"),
         "selected_bin_id": selected_bin_id,
         "active_nav": "find",
