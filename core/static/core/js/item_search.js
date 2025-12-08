@@ -16,10 +16,26 @@ document.addEventListener('DOMContentLoaded', function() {
     const browseByBinBtn = document.getElementById('browse-by-bin-btn');
     const binFilterSection = document.getElementById('bin-filter-section');
     const binSelect = document.getElementById('bin_filter');
+    const searchFieldGroup = document.getElementById('search-field-group');
     
     if (browseByBinBtn && binFilterSection) {
         browseByBinBtn.addEventListener('click', function() {
+            // Hide the search bar
+            if (searchFieldGroup) {
+                searchFieldGroup.style.display = 'none';
+            }
             revealSection(binFilterSection, browseByBinBtn, binSelect);
+        });
+    }
+
+    // Navigate to bin detail page when a bin is selected
+    if (binSelect) {
+        binSelect.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const url = selectedOption.dataset.url;
+            if (url) {
+                window.location.href = url;
+            }
         });
     }
 });
@@ -31,9 +47,13 @@ document.addEventListener('DOMContentLoaded', function() {
 function showBinFilterSection() {
     const browseByBinBtn = document.getElementById('browse-by-bin-btn');
     const binFilterSection = document.getElementById('bin-filter-section');
+    const searchFieldGroup = document.getElementById('search-field-group');
     
     if (browseByBinBtn && binFilterSection) {
         binFilterSection.style.display = 'block';
         browseByBinBtn.style.display = 'none';
+    }
+    if (searchFieldGroup) {
+        searchFieldGroup.style.display = 'none';
     }
 }
