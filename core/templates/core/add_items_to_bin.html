@@ -95,7 +95,7 @@
                     <!-- Description Field -->
                     <div class="m3-form-field">
                         <label for="id_description" class="m3-form-label">Description</label>
-                        <textarea name="description" id="id_description" class="m3-text-field" rows="4"></textarea>
+                        <textarea name="description" id="id_description" class="m3-text-field" rows="4">{{ form.description.value|default:'' }}</textarea>
                     </div>
                     
                     <!-- Bin Field -->
@@ -104,7 +104,7 @@
                         <select name="bin" id="id_bin" class="m3-text-field" required>
                             <option value="">Select a bin...</option>
                             {% for bin in bins %}
-                            <option value="{{ bin.id }}">{{ bin.name }}</option>
+                            <option value="{{ bin.id }}"{% if form.bin.value|stringformat:"s" == bin.id|stringformat:"s" %} selected{% endif %}>{{ bin.name }}</option>
                             {% endfor %}
                         </select>
                     </div>
