@@ -108,6 +108,10 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 const errorData = await response.json().catch(() => ({}));
                 console.error('API error:', response.status, errorData);
+                // Show error in snackbar if available
+                if (errorData.error && typeof showErrorSnackbar === 'function') {
+                    showErrorSnackbar(errorData.error);
+                }
             }
         } catch (error) {
             console.error('Error extracting features:', error);
