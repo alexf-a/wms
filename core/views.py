@@ -370,3 +370,63 @@ def healthcheck_view(_: HttpRequest) -> JsonResponse:  # pragma: no cover - triv
     Returns 200 with minimal JSON without hitting database.
     """
     return JsonResponse({"status": "ok"})
+
+
+# =============================================================================
+# Custom Error Handlers
+# =============================================================================
+
+
+def custom_400_view(
+    request: HttpRequest, exception: Exception | None = None
+) -> HttpResponse:
+    """Handle 400 Bad Request errors with optional debug info."""
+    import traceback
+
+    context = {
+        "debug": settings.DEBUG,
+        "exception": str(exception) if exception else None,
+        "traceback": traceback.format_exc() if settings.DEBUG else None,
+    }
+    return render(request, "400.html", context, status=400)
+
+
+def custom_403_view(
+    request: HttpRequest, exception: Exception | None = None
+) -> HttpResponse:
+    """Handle 403 Forbidden errors with optional debug info."""
+    import traceback
+
+    context = {
+        "debug": settings.DEBUG,
+        "exception": str(exception) if exception else None,
+        "traceback": traceback.format_exc() if settings.DEBUG else None,
+    }
+    return render(request, "403.html", context, status=403)
+
+
+def custom_404_view(
+    request: HttpRequest, exception: Exception | None = None
+) -> HttpResponse:
+    """Handle 404 Not Found errors with optional debug info."""
+    context = {
+        "debug": settings.DEBUG,
+        "exception": str(exception) if exception else None,
+        "request_path": request.path,
+    }
+    return render(request, "404.html", context, status=404)
+
+
+def custom_500_view(request: HttpRequest) -> HttpResponse:
+    """Handle 500 Internal Server errors with optional debug info."""
+    import sys
+    import traceback
+
+    exc_info = sys.exc_info()
+    context = {
+        "debug": settings.DEBUG,
+        "exception": str(exc_info[1]) if exc_info[1] else None,
+        "exception_type": exc_info[0].__name__ if exc_info[0] else None,
+        "traceback": traceback.format_exc() if settings.DEBUG else None,
+    }
+    return render(request, "500.html", context, status=500)

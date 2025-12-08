@@ -50,6 +50,29 @@
             flex-wrap: wrap;
             justify-content: center;
         }
+        
+        .debug-info {
+            margin-top: 2rem;
+            text-align: left;
+            width: 100%;
+            max-width: 800px;
+        }
+        
+        .debug-info summary {
+            cursor: pointer;
+            font-weight: 500;
+            color: var(--md-sys-color-error, #ba1a1a);
+        }
+        
+        .debug-info pre {
+            background: var(--md-sys-color-surface-variant, #e7e0ec);
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 0.875rem;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
     </style>
 </head>
 <body>
@@ -77,6 +100,18 @@
                 <a href="/" role="button">Go to Home</a>
                 <a href="javascript:history.back()" role="button" class="secondary outline">Go Back</a>
             </div>
+            
+            {% if debug and exception %}
+            <div class="debug-info">
+                <details open>
+                    <summary>Debug Information</summary>
+                    <p><strong>Exception:</strong> {{ exception }}</p>
+                    {% if traceback %}
+                    <pre>{{ traceback }}</pre>
+                    {% endif %}
+                </details>
+            </div>
+            {% endif %}
         </div>
     </main>
 
