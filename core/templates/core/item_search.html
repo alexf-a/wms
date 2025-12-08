@@ -10,7 +10,7 @@
         <section class="m3-search-stack">
             <form method="post" class="m3-form-vertical m3-form-vertical--floating" novalidate>
                 {% csrf_token %}
-                <div class="m3-field-group">
+                <div id="search-field-group" class="m3-field-group">
                     <div class="m3-filled-text-field">
                         {{ form.query }}
                         <button type="submit" class="m3-input-action" aria-label="Run search">
@@ -41,7 +41,7 @@
                                     <option value="" {% if not selected %}selected{% endif %}>Select a Bin</option>
                                     {% if bins %}
                                         {% for bin in bins %}
-                                            <option value="{{ bin.id }}" {% if selected == bin.id|stringformat:"s" %}selected{% endif %}>{{ bin.name }}</option>
+                                            <option value="{{ bin.id }}" data-url="{% url 'bin_detail' bin.user_id bin.access_token %}" {% if selected == bin.id|stringformat:"s" %}selected{% endif %}>{{ bin.name }}</option>
                                         {% endfor %}
                                     {% else %}
                                         <option value="" disabled>You haven't added any bins yet</option>
