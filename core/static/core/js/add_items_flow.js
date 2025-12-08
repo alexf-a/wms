@@ -1,4 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('[AddItems] Script loaded v3');
+    
     const heroInput = document.getElementById('hero-image-input');
     const skipBtn = document.getElementById('skip-to-manual');
     const formSection = document.getElementById('form-section');
@@ -12,6 +14,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     let currentObjectUrl = null;
     let isProcessing = false;
+    let lastFileTimestamp = 0;
     
     const cleanupObjectUrl = () => {
         if (currentObjectUrl) {
@@ -22,8 +25,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Process the selected image file
     async function processImageFile(file) {
-        // Prevent duplicate processing
-        if (isProcessing) return;
+        console.log('[AddItems] processImageFile called', file ? file.name : 'no file');
+        
+        // Prevent duplicate processing using timestamp-based debounce
+        const now = Date.now();
+        if (isProcessing || (now - lastFileTimestamp) < 500) {
+            console.log('[AddItems] Debounced, skipping');
+            return;
+        }
+        lastFileTimestamp = now;
         isProcessing = true;
 
         try {
@@ -46,10 +56,36 @@ document.addEventListener('DOMContentLoaded', function() {
             previewImage.src = currentObjectUrl;
             imagePreviewContainer.style.display = 'block';
 
-            // Call AI generation API
-            const formData = new FormData();
-            formData.append('image', file);
+            console.log('[AddItems] Reading file as ArrayBuffer...');
+            
+            // Read the file as blob to ensure it's fully loaded before sending
+            // This helps with iOS Safari/Chrome which may have async file access
+            const fileBlob = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    console.log('[AddItems] FileReader loaded, size:', reader.result.byteLength);
+                    const blob = new Blob([reader.result], { type: file.type || 'image/jpeg' });
+                    resolve(blob);
+                };
+                reader.onerror = (err) => {
+                    console.error('[AddItems] FileReader error:', err);
+                    reject(err);
+                };
+                reader.readAsArrayBuffer(file);
+            });
 
+            console.log('[AddItems] Blob created, size:', fileBlob.size, 'type:', fileBlob.type);
+
+            // Create FormData with the blob
+            const formData = new FormData();
+            formData.append('image', fileBlob, file.name || 'image.jpg');
+            
+            // Debug: log formData contents
+            for (let [key, value] of formData.entries()) {
+                console.log('[AddItems] FormData entry:', key, value instanceof Blob ? `Blob(${value.size})` : value);
+            }
+
+            // Get CSRF token
             const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
             if (!csrfToken) {
                 console.error('CSRF token not found');
@@ -83,7 +119,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Handle image selection via native label click
+    // Handle image selection - works for both camera and file upload
     function handleImageSelect(e) {
         const files = e.target.files;
         if (files && files.length > 0 && files[0]) {
@@ -91,8 +127,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Use 'change' event which is most reliable across browsers
     heroInput.addEventListener('change', handleImageSelect);
-    heroInput.addEventListener('input', handleImageSelect);
 
     // Handle skip button
     skipBtn.addEventListener('click', function() {

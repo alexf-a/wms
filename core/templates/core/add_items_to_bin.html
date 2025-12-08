@@ -16,7 +16,7 @@
                 
                 <!-- Large Camera Upload Button -->
                 <div class="hero-upload-button-wrapper">
-                    <input type="file" id="hero-image-input" name="image" accept="image/*" aria-label="Upload item image for AI analysis" style="display: none;">
+                    <input type="file" id="hero-image-input" name="image" accept="image/*" class="visually-hidden-input" aria-label="Upload item image for AI analysis">
                     <label for="hero-image-input" class="hero-upload-btn" role="button" tabindex="0" aria-label="Upload item image">
                         <div class="hero-upload-icon">
                             <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor">
@@ -115,8 +115,8 @@
         </section>
     </form>
 </div>
+{% endblock %}
 
 {% block extra_js %}
-    <script src="{% static 'core/js/add_items_flow.js' %}"></script>
-{% endblock %}
+<script src="{% static 'core/js/add_items_flow.js' %}?v=3"></script>
 {% endblock %}

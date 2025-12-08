@@ -52,13 +52,14 @@ class ImageValidationError(ValueError):
     _MESSAGES: ClassVar[dict[str, str]] = {
         TOO_LARGE: f"Image is too large. Maximum size is {MAX_IMAGE_UPLOAD_SIZE_LABEL}.",
         BAD_FORMAT: (
-            "Unsupported image format. Please upload a file with one of the following formats: "
-            f"{ALLOWED_FORMATS_DISPLAY}."
+            "Unsupported image format. Please upload a standard photo "
+            f"({ALLOWED_FORMATS_DISPLAY}). If using iPhone, try disabling "
+            "HEIC format in Settings > Camera > Formats > Most Compatible."
         ),
         OVERSIZED_DIMENSIONS: (
             f"Image dimensions are too large. Maximum allowed is {MAX_IMAGE_DIMENSION}px on the longest side."
         ),
-        CORRUPTED: "Invalid or corrupted image file.",
+        CORRUPTED: "Unable to read this image file. Please try a different photo.",
     }
 
     def __init__(self, reason: str) -> None:
@@ -68,6 +69,7 @@ class ImageValidationError(ValueError):
 
 def _validate_image_upload(image_file: UploadedFile) -> None:
     """Ensure the uploaded image meets size, format, and dimension constraints."""
+    logger.debug("Validating image: size=%s, max=%s", image_file.size, MAX_IMAGE_UPLOAD_SIZE)
     if image_file.size > MAX_IMAGE_UPLOAD_SIZE:
         raise ImageValidationError(ImageValidationError.TOO_LARGE)
 
@@ -75,13 +77,17 @@ def _validate_image_upload(image_file: UploadedFile) -> None:
         image_file.file.seek(0)
         with Image.open(image_file.file) as img:
             image_format = (img.format or "").upper()
+            logger.debug("Image format: %s, allowed: %s", image_format, ALLOWED_IMAGE_FORMATS)
             if image_format not in ALLOWED_IMAGE_FORMATS:
                 raise ImageValidationError(ImageValidationError.BAD_FORMAT)
 
             width, height = img.size
+            logger.debug("Image dimensions: %sx%s, max=%s", width, height, MAX_IMAGE_DIMENSION)
             if width > MAX_IMAGE_DIMENSION or height > MAX_IMAGE_DIMENSION:
                 raise ImageValidationError(ImageValidationError.OVERSIZED_DIMENSIONS)
+        logger.debug("Image validation passed")
     except UnidentifiedImageError as exc:
+        logger.debug("Image validation failed: corrupted")
         raise ImageValidationError(ImageValidationError.CORRUPTED) from exc
     finally:
         image_file.file.seek(0)
@@ -194,6 +200,7 @@ def add_items_to_bin_view(request: HttpRequest) -> HttpResponse:
         form = ItemForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
             item = form.save(commit=False)
+            item.user = request.user
             item.save()
             messages.success(request, f"Item '{item.name}' has been added successfully!")
             return redirect("home_view")
@@ -311,19 +318,30 @@ def extract_item_features_api(request: HttpRequest) -> JsonResponse:
     if request.method != "POST":
         return JsonResponse({"error": "POST method required"}, status=405)
 
+    # Debug logging for file upload issues
+    logger.debug("Extract API - FILES keys: %s, POST keys: %s, Content-Type: %s",
+                 list(request.FILES.keys()),
+                 list(request.POST.keys()),
+                 request.content_type)
+
     if "image" not in request.FILES:
+        logger.debug("No 'image' in FILES. Full FILES: %s", request.FILES)
         return JsonResponse({"error": "No image provided"}, status=400)
 
     image_file = request.FILES["image"]
+    logger.debug("Got image file: %s, size: %s", image_file.name, image_file.size)
 
     try:
         _validate_image_upload(image_file)
+        logger.debug("Calling extract_item_features_from_image...")
         result = extract_item_features_from_image(image_file.file)
+        logger.debug("Extraction successful: name=%s", result.name)
         return JsonResponse({
             "name": result.name,
             "description": result.description
         })
     except ImageValidationError as validation_error:
+        logger.debug("Image validation error: %s", validation_error)
         return JsonResponse({"error": str(validation_error)}, status=400)
     except Exception:
         logger.exception("Error extracting item features")
