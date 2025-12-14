@@ -384,12 +384,10 @@ def custom_400_view(
     request: HttpRequest, exception: Exception | None = None
 ) -> HttpResponse:
     """Handle 400 Bad Request errors with optional debug info."""
-    import traceback
-
     context = {
         "debug": settings.DEBUG,
         "exception": str(exception) if exception else None,
-        "traceback": traceback.format_exc() if settings.DEBUG else None,
+        "traceback": traceback.format_exc() if settings.DEBUG and exception is not None else None,
     }
     return render(request, "400.html", context, status=400)
 
@@ -398,8 +396,6 @@ def custom_403_view(
     request: HttpRequest, exception: Exception | None = None
 ) -> HttpResponse:
     """Handle 403 Forbidden errors with optional debug info."""
-    import traceback
-
     context = {
         "debug": settings.DEBUG,
         "exception": str(exception) if exception else None,
