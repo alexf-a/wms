@@ -23,7 +23,7 @@ deploy/containers.json
 
 .cache
 
-.env.local
+.env.local*
 
 # Local HTTPS testing artifacts
 .caddy-trusted
