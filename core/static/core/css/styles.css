@@ -2268,7 +2268,11 @@ input.search-input::placeholder,
     padding-top: var(--wms-space-xl);
 }
 
-/* Slide-in Animation Utility */
+/* 
+   Slide-in Animation Utility
+   This is a reusable animation class that can be applied to any element
+   to animate its entrance with a slide-in-up effect. Not limited to form sections.
+*/
 .slide-in {
     animation: slideInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
