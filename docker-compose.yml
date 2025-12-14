@@ -1,4 +1,13 @@
 version: "3.8"
+
+networks:
+  wms-network:
+    driver: bridge
+
+volumes:
+  caddy_data:
+  caddy_config:
+
 services:
   web:
     build:
@@ -18,3 +27,22 @@ services:
       - ./wms:/app/wms
     entrypoint:
       - "/app/docker-entrypoint.sh"
+    networks:
+      - wms-network
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "8080:80"
+      - "8443:443"
+    environment:
+      - DOMAIN=${DOMAIN:-dev.wms.local}
+      - LOCAL_IP=${LOCAL_IP:-192.168.68.54}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - wms-network
+    depends_on:
+      - web

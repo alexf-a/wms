@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from django.conf import settings
@@ -373,6 +374,47 @@ def healthcheck_view(_: HttpRequest) -> JsonResponse:  # pragma: no cover - triv
     Returns 200 with minimal JSON without hitting database.
     """
     return JsonResponse({"status": "ok"})
+
+
+def caddy_ca_download_view(request: HttpRequest) -> HttpResponse:
+    """Serve Caddy root CA certificate for local HTTPS testing.
+
+    This endpoint allows mobile devices to download the Caddy Local Authority
+    root certificate to trust local HTTPS connections during development.
+    No authentication required to facilitate easy mobile setup.
+
+    Args:
+        request: The HTTP request object.
+
+    Returns:
+        HttpResponse with CA certificate file or 404 JsonResponse if not found.
+    """
+    # Block access in production
+    if not settings.DEBUG:
+        raise Http404("Endpoint only available in development mode")
+
+    ca_cert_path = Path(settings.BASE_DIR) / "deploy" / "caddy-root-ca.crt"
+
+    if not ca_cert_path.exists():
+        return JsonResponse(
+            {
+                "error": "CA certificate not found",
+                "message": "Run 'make caddy-export-ca' to extract the certificate first.",
+            },
+            status=404,
+        )
+
+    try:
+        with Path.open(ca_cert_path, "rb") as cert_file:
+            response = HttpResponse(cert_file.read(), content_type="application/x-pem-file")
+            response["Content-Disposition"] = 'attachment; filename="caddy-root-ca.crt"'
+            return response
+    except Exception as e:
+        logger.exception("Error serving Caddy CA certificate")
+        return JsonResponse(
+            {"error": "Failed to read certificate file", "details": str(e)},
+            status=500,
+        )
 
 
 # =============================================================================
