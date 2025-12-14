@@ -1,0 +1,130 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Something Went Wrong - WMS</title>
+    
+    <!-- Pico CSS - Minimal CSS Framework for semantic HTML -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="{% static 'core/css/styles.css' %}">
+    
+    <style>
+        .error-page {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 60vh;
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .error-icon {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 1.5rem;
+            color: var(--md-sys-color-error, #ba1a1a);
+        }
+        
+        .error-title {
+            font-size: 1.75rem;
+            font-weight: 500;
+            color: var(--md-sys-color-on-surface, #1a1c1e);
+            margin-bottom: 0.75rem;
+        }
+        
+        .error-message {
+            font-size: 1rem;
+            color: var(--md-sys-color-on-surface-variant, #46474a);
+            margin-bottom: 2rem;
+            max-width: 400px;
+        }
+        
+        .error-actions {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .debug-info {
+            margin-top: 2rem;
+            text-align: left;
+            width: 100%;
+            max-width: 800px;
+        }
+        
+        .debug-info summary {
+            cursor: pointer;
+            font-weight: 500;
+            color: var(--md-sys-color-error, #ba1a1a);
+        }
+        
+        .debug-info pre {
+            background: var(--md-sys-color-surface-variant, #e7e0ec);
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 0.875rem;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .exception-type {
+            font-weight: 600;
+            color: var(--md-sys-color-error, #ba1a1a);
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="container-fluid">
+        <ul>
+            <li><a href="/" class="brand"><strong>WMS</strong></a></li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container">
+        <div class="error-page">
+            <!-- Error Icon -->
+            <svg class="error-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+            </svg>
+            
+            <h1 class="error-title">Something went wrong</h1>
+            <p class="error-message">
+                An unexpected error occurred. Please try again later or return to the home page.
+            </p>
+            
+            <div class="error-actions">
+                <a href="/" role="button">Go to Home</a>
+                <a href="javascript:history.back()" role="button" class="secondary outline">Go Back</a>
+            </div>
+            
+            {% if debug and traceback %}
+            <div class="debug-info">
+                <details open>
+                    <summary>Debug Information</summary>
+                    {% if exception_type %}
+                    <p><span class="exception-type">{{ exception_type }}</span>: {{ exception }}</p>
+                    {% endif %}
+                    <pre>{{ traceback }}</pre>
+                </details>
+            </div>
+            {% endif %}
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="container-fluid">
+        <small>
+            WMS - Personal Warehouse Management System &copy; 2025
+        </small>
+    </footer>
+</body>
+</html>

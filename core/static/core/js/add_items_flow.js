@@ -1,11 +1,17 @@
+/**
+ * Add Items Flow JavaScript
+ * Handles image upload, AI feature extraction, and form management
+ * 
+ * Dependencies: ui_utils.js (revealSection, showErrorSnackbar)
+ */
+
 document.addEventListener('DOMContentLoaded', function() {
+    
     const heroInput = document.getElementById('hero-image-input');
-    const heroUploadBtn = document.getElementById('hero-upload-btn');
     const skipBtn = document.getElementById('skip-to-manual');
     const formSection = document.getElementById('form-section');
     const imagePreviewContainer = document.getElementById('image-preview-container');
     const previewImage = document.getElementById('preview-image');
-    const changeImageBtn = document.getElementById('change-image-btn');
     const loadingIndicator = document.getElementById('loading-indicator');
     const formCard = document.getElementById('form-card');
     const itemForm = document.getElementById('item-form');
@@ -13,6 +19,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const descField = document.getElementById('id_description');
 
     let currentObjectUrl = null;
+    let isProcessing = false;
+    let lastFileTimestamp = 0;
+    
     const cleanupObjectUrl = () => {
         if (currentObjectUrl) {
             URL.revokeObjectURL(currentObjectUrl);
@@ -20,27 +29,31 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
-    // Trigger file input when hero button is clicked
-    heroUploadBtn.addEventListener('click', function() {
-        heroInput.click();
-    });
+    // Process the selected image file
+    async function processImageFile(file) {
+        debugLog('[AddItems] processImageFile called', file ? file.name : 'no file');
+        
+        // Prevent duplicate processing using timestamp-based debounce
+        const now = Date.now();
+        if (isProcessing || (now - lastFileTimestamp) < 500) {
+            return;
+        }
+        lastFileTimestamp = now;
+        isProcessing = true;
 
-    // Handle image selection
-    heroInput.addEventListener('change', async function(e) {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-
+        try {
             // Show the form section with animation
             formSection.style.display = 'block';
             formSection.classList.add('slide-in');
 
-            // Smooth scroll to form
+            // Smooth scroll to form (with slight delay for DOM update)
             setTimeout(() => {
                 formSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }, 100);
 
             // Show loading indicator
             loadingIndicator.style.display = 'block';
+            formCard.style.display = 'none';
 
             // Show preview
             cleanupObjectUrl();
@@ -48,49 +61,87 @@ document.addEventListener('DOMContentLoaded', function() {
             previewImage.src = currentObjectUrl;
             imagePreviewContainer.style.display = 'block';
 
-            // Call AI generation API
-            try {
-                const formData = new FormData();
-                formData.append('image', file);
+            debugLog('[AddItems] Reading file as ArrayBuffer...');
+            
+            // Read the file as blob to ensure it's fully loaded before sending
+            // This helps with iOS Safari/Chrome which may have async file access
+            const fileBlob = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    debugLog('[AddItems] FileReader loaded, size:', reader.result.byteLength);
+                    const blob = new Blob([reader.result], { type: file.type || 'image/jpeg' });
+                    resolve(blob);
+                };
+                reader.onerror = (err) => {
+                    debugError('[AddItems] FileReader error:', err);
+                    reject(err);
+                };
+                reader.readAsArrayBuffer(file);
+            });
 
-                const response = await fetch('/api/extract-item-features/', {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                    }
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    nameField.value = data.name || '';
-                    descField.value = data.description || '';
-                }
-            } catch (error) {
-                console.error('Error extracting features:', error);
-            } finally {
-                // Hide loading, show form
-                loadingIndicator.style.display = 'none';
-                formCard.style.display = 'block';
+            // Create FormData with the blob
+            const formData = new FormData();
+            formData.append('image', fileBlob, file.name || 'image.jpg');
+            
+            // Debug: log formData contents
+            for (let [key, value] of formData.entries()) {
+                debugLog('[AddItems] FormData entry:', key, value instanceof Blob ? `Blob(${value.size})` : value);
             }
+
+            // Get CSRF token
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+            if (!csrfToken) {
+                errorLog('CSRF token not found');
+                throw new Error('CSRF token not found');
+            }
+
+            const response = await fetch('/api/extract-item-features/', {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin',
+                headers: {
+                    'X-CSRFToken': csrfToken.value
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                nameField.value = data.name || '';
+                descField.value = data.description || '';
+            } else {
+                const errorData = await response.json().catch(() => ({}));
+                errorLog('API error:', response.status, errorData);
+                // Show error in snackbar if available
+                if (errorData.error && typeof showErrorSnackbar === 'function') {
+                    showErrorSnackbar(errorData.error);
+                }
+            }
+        } catch (error) {
+            errorLog('Error extracting features:', error);
+        } finally {
+            // Hide loading, show form
+            loadingIndicator.style.display = 'none';
+            formCard.style.display = 'block';
+            isProcessing = false;
         }
-    });
+    }
 
-    // Handle skip button
+    // Handle image selection - works for both camera and file upload
+    function handleImageSelect(e) {
+        const files = e.target.files;
+        if (files && files.length > 0 && files[0]) {
+            processImageFile(files[0]);
+        }
+    }
+
+    // Use 'change' event which is most reliable across browsers
+    heroInput.addEventListener('change', handleImageSelect);
+
+    // Handle skip button - uses shared revealSection utility
     skipBtn.addEventListener('click', function() {
-        formSection.style.display = 'block';
-        formSection.classList.add('slide-in');
         formCard.style.display = 'block';
-
-        // Smooth scroll to form
-        setTimeout(() => {
-            formSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 100);
-    });
-
-    // Handle change image button
-    changeImageBtn.addEventListener('click', function() {
-        heroInput.click();
+        imagePreviewContainer.style.display = 'none';
+        revealSection(formSection, null, null, { scrollBlock: 'start' });
     });
 
     if (itemForm) {

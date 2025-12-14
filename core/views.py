@@ -7,12 +7,16 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
+from django.db import IntegrityError
 from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from PIL import Image, UnidentifiedImageError
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from django.core.files.uploadedfile import UploadedFile
+
+import sys
+import traceback
 
 from lib.llm.item_generation import extract_item_features_from_image
 from lib.llm.llm_search import find_item_location
@@ -52,13 +56,14 @@ class ImageValidationError(ValueError):
     _MESSAGES: ClassVar[dict[str, str]] = {
         TOO_LARGE: f"Image is too large. Maximum size is {MAX_IMAGE_UPLOAD_SIZE_LABEL}.",
         BAD_FORMAT: (
-            "Unsupported image format. Please upload a file with one of the following formats: "
-            f"{ALLOWED_FORMATS_DISPLAY}."
+            "Unsupported image format. Please upload a standard photo "
+            f"({ALLOWED_FORMATS_DISPLAY}). If using iPhone, try disabling "
+            "HEIC format in Settings > Camera > Formats > Most Compatible."
         ),
         OVERSIZED_DIMENSIONS: (
             f"Image dimensions are too large. Maximum allowed is {MAX_IMAGE_DIMENSION}px on the longest side."
         ),
-        CORRUPTED: "Invalid or corrupted image file.",
+        CORRUPTED: "Unable to read this image file. Please try a different photo.",
     }
 
     def __init__(self, reason: str) -> None:
@@ -68,6 +73,7 @@ class ImageValidationError(ValueError):
 
 def _validate_image_upload(image_file: UploadedFile) -> None:
     """Ensure the uploaded image meets size, format, and dimension constraints."""
+    logger.debug("Validating image: size=%s, max=%s", image_file.size, MAX_IMAGE_UPLOAD_SIZE)
     if image_file.size > MAX_IMAGE_UPLOAD_SIZE:
         raise ImageValidationError(ImageValidationError.TOO_LARGE)
 
@@ -75,13 +81,17 @@ def _validate_image_upload(image_file: UploadedFile) -> None:
         image_file.file.seek(0)
         with Image.open(image_file.file) as img:
             image_format = (img.format or "").upper()
+            logger.debug("Image format: %s, allowed: %s", image_format, ALLOWED_IMAGE_FORMATS)
             if image_format not in ALLOWED_IMAGE_FORMATS:
                 raise ImageValidationError(ImageValidationError.BAD_FORMAT)
 
             width, height = img.size
+            logger.debug("Image dimensions: %sx%s, max=%s", width, height, MAX_IMAGE_DIMENSION)
             if width > MAX_IMAGE_DIMENSION or height > MAX_IMAGE_DIMENSION:
                 raise ImageValidationError(ImageValidationError.OVERSIZED_DIMENSIONS)
+        logger.debug("Image validation passed")
     except UnidentifiedImageError as exc:
+        logger.debug("Image validation failed: corrupted")
         raise ImageValidationError(ImageValidationError.CORRUPTED) from exc
     finally:
         image_file.file.seek(0)
@@ -194,9 +204,17 @@ def add_items_to_bin_view(request: HttpRequest) -> HttpResponse:
         form = ItemForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
             item = form.save(commit=False)
-            item.save()
-            messages.success(request, f"Item '{item.name}' has been added successfully!")
-            return redirect("home_view")
+            item.user = request.user
+            try:
+                item.save()
+                messages.success(request, f"Item '{item.name}' has been added successfully!")
+                return redirect("home_view")
+            except IntegrityError:
+                # Duplicate item name for this user
+                form.add_error(
+                    "name",
+                    f"You already have an item named '{item.name}'. Please choose a different name."
+                )
     else:
         form = ItemForm(user=request.user)
 
@@ -275,6 +293,7 @@ def item_search_view(request: HttpRequest) -> HttpResponse:
         The rendered search page with results if query provided.
     """
     result = None
+    found_item = None
     selected_bin_id = None
 
     if request.method == "POST":
@@ -282,13 +301,20 @@ def item_search_view(request: HttpRequest) -> HttpResponse:
         form = ItemSearchForm(request.POST)
         if form.is_valid():
             query = form.cleaned_data["query"]
-            result = str(find_item_location(query, request.user.id))
+            item_location = find_item_location(query, request.user.id)
+            result = str(item_location)
+            # Try to fetch the actual Item object for displaying its image
+            found_item = Item.objects.filter(
+                user=request.user,
+                name=item_location.item_name,
+            ).first()
     else:
         form = ItemSearchForm()
 
     return render(request, "core/item_search.html", {
         "form": form,
         "result": result,
+        "found_item": found_item,
         "bins": Bin.objects.filter(user=request.user).order_by("name"),
         "selected_bin_id": selected_bin_id,
         "active_nav": "find",
@@ -311,19 +337,30 @@ def extract_item_features_api(request: HttpRequest) -> JsonResponse:
     if request.method != "POST":
         return JsonResponse({"error": "POST method required"}, status=405)
 
+    # Debug logging for file upload issues
+    logger.debug("Extract API - FILES keys: %s, POST keys: %s, Content-Type: %s",
+                 list(request.FILES.keys()),
+                 list(request.POST.keys()),
+                 request.content_type)
+
     if "image" not in request.FILES:
+        logger.debug("No 'image' in FILES. Full FILES: %s", request.FILES)
         return JsonResponse({"error": "No image provided"}, status=400)
 
     image_file = request.FILES["image"]
+    logger.debug("Got image file: %s, size: %s", image_file.name, image_file.size)
 
     try:
         _validate_image_upload(image_file)
+        logger.debug("Calling extract_item_features_from_image...")
         result = extract_item_features_from_image(image_file.file)
+        logger.debug("Extraction successful: name=%s", result.name)
         return JsonResponse({
             "name": result.name,
             "description": result.description
         })
     except ImageValidationError as validation_error:
+        logger.debug("Image validation error: %s", validation_error)
         return JsonResponse({"error": str(validation_error)}, status=400)
     except Exception:
         logger.exception("Error extracting item features")
@@ -336,3 +373,56 @@ def healthcheck_view(_: HttpRequest) -> JsonResponse:  # pragma: no cover - triv
     Returns 200 with minimal JSON without hitting database.
     """
     return JsonResponse({"status": "ok"})
+
+
+# =============================================================================
+# Custom Error Handlers
+# =============================================================================
+
+
+def custom_400_view(
+    request: HttpRequest, exception: Exception | None = None
+) -> HttpResponse:
+    """Handle 400 Bad Request errors with optional debug info."""
+    context = {
+        "debug": settings.DEBUG,
+        "exception": str(exception) if exception else None,
+        "traceback": traceback.format_exc() if settings.DEBUG and exception is not None else None,
+    }
+    return render(request, "400.html", context, status=400)
+
+
+def custom_403_view(
+    request: HttpRequest, exception: Exception | None = None
+) -> HttpResponse:
+    """Handle 403 Forbidden errors with optional debug info."""
+    context = {
+        "debug": settings.DEBUG,
+        "exception": str(exception) if exception else None,
+        "traceback": traceback.format_exc() if settings.DEBUG and exception is not None else None,
+    }
+    return render(request, "403.html", context, status=403)
+
+
+def custom_404_view(
+    request: HttpRequest, exception: Exception | None = None
+) -> HttpResponse:
+    """Handle 404 Not Found errors with optional debug info."""
+    context = {
+        "debug": settings.DEBUG,
+        "exception": str(exception) if exception else None,
+        "request_path": request.path,
+    }
+    return render(request, "404.html", context, status=404)
+
+
+def custom_500_view(request: HttpRequest) -> HttpResponse:
+    """Handle 500 Internal Server errors with optional debug info."""
+    exc_info = sys.exc_info()
+    context = {
+        "debug": settings.DEBUG,
+        "exception": str(exc_info[1]) if exc_info[1] else None,
+        "exception_type": exc_info[0].__name__ if exc_info[0] else None,
+        "traceback": traceback.format_exc() if settings.DEBUG else None,
+    }
+    return render(request, "500.html", context, status=500)

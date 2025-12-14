@@ -26,3 +26,9 @@ urlpatterns = [
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# Custom error handlers (used when DEBUG=False)
+handler400 = "core.views.custom_400_view"
+handler403 = "core.views.custom_403_view"
+handler404 = "core.views.custom_404_view"
+handler500 = "core.views.custom_500_view"

@@ -37,25 +37,49 @@ DEBUG = os.getenv("DEBUG", "True").lower() in {"1", "true", "yes"}
 # Comma-separated hostnames, e.g. "example.com,.example.com,localhost"
 _hosts = os.getenv("ALLOWED_HOSTS", "")
 ALLOWED_HOSTS: list[str] = [h.strip() for h in _hosts.split(",") if h.strip()]
-if DEBUG:
-    # Force empty for dev; Django implicitly allows localhost variants
+if DEBUG and not _hosts:
+    # Default to empty for dev; Django implicitly allows localhost variants.
+    # If ALLOWED_HOSTS is explicitly set (e.g., for mobile testing), respect it.
     ALLOWED_HOSTS = []
 
 # CSRF trusted origins
 _trusted = os.getenv("CSRF_TRUSTED_ORIGINS", "")
 CSRF_TRUSTED_ORIGINS = [u.strip() for u in _trusted.split(",") if u.strip()]
 
-# Logging configuration to surface CSRF failures
+# Logging configuration
+# Log level can be set via LOG_LEVEL env var (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "formatters": {
+        "verbose": {
+            "format": "[{levelname}] {name}: {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        }
+    },
     "loggers": {
         "django.security.csrf": {
             "handlers": ["console"],
             "level": "WARNING",
             "propagate": False,
         },
+        "core": {
+            "handlers": ["console"],
+            "level": LOG_LEVEL,
+            "propagate": True,
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
     },
 }
 
@@ -241,19 +265,31 @@ else:
 ITEM_IMAGE_MAX_UPLOAD_SIZE = int(os.getenv("ITEM_IMAGE_MAX_UPLOAD_SIZE", str(10 * 1024 * 1024)))
 ITEM_IMAGE_MAX_DIMENSION = int(os.getenv("ITEM_IMAGE_MAX_DIMENSION", "4096"))
 
+# MPO is Multi-Picture Object format used by iPhone for portrait/depth photos
 _item_image_formats_env = os.getenv("ITEM_IMAGE_ALLOWED_FORMATS")
-if _item_image_formats_env:
-    _parsed_formats = tuple(
-        fmt.strip().upper()
-        for fmt in _item_image_formats_env.split(",")
-        if fmt.strip()
-    )
-    ITEM_IMAGE_ALLOWED_FORMATS = _parsed_formats or ("JPEG", "PNG")
-else:
-    ITEM_IMAGE_ALLOWED_FORMATS = ("JPEG", "PNG")
+ITEM_IMAGE_ALLOWED_FORMATS = tuple(
+    fmt.strip().upper()
+    for fmt in (_item_image_formats_env or "JPEG,PNG,MPO").split(",")
+    if fmt.strip()
+)
 
 # LLM Configuration
 LLM_CALLS_DIR = BASE_DIR / "llm_calls"
 
 # Health Check Configuration
 HEALTH_CHECK_PATH = "/healthz/"
+
+# Security settings for HTTPS
+# In production (non-DEBUG), enable secure cookies and HTTPS redirects
+if not DEBUG:
+    # Redirect all HTTP requests to HTTPS
+    SECURE_SSL_REDIRECT = True
+    # Use secure cookies (only sent over HTTPS)
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    # Enable HSTS (tells browsers to always use HTTPS)
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    # Trust the X-Forwarded-Proto header from Lightsail's load balancer
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
