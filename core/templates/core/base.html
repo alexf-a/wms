@@ -1,6 +1,6 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="light" data-debug="{% if debug %}true{% else %}false{% endif %}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -112,6 +112,9 @@
         </a>
     </nav>
     {% endif %}
+
+    <!-- Debug Utility (load before all other JS) -->
+    <script src="{% static 'core/js/debug.js' %}"></script>
 
     {% block extra_js %}{% endblock %}
 </body>

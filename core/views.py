@@ -400,7 +400,7 @@ def custom_403_view(
     context = {
         "debug": settings.DEBUG,
         "exception": str(exception) if exception else None,
-        "traceback": traceback.format_exc() if settings.DEBUG else None,
+        "traceback": traceback.format_exc() if settings.DEBUG and exception is not None else None,
     }
     return render(request, "403.html", context, status=403)
 
