@@ -213,8 +213,12 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 USE_S3 = os.getenv("USE_S3", "true").lower() in {"1", "true", "yes"}
 
 if USE_S3:
-    # Determine bucket based on DEBUG setting
-    AWS_STORAGE_BUCKET_NAME = "wms-media-dev-alexa" if DEBUG else "wms-media-prod-alexa"
+    # Determine bucket based on DEBUG setting (can be overridden by env var)
+    # This allows using dev credentials in production mode testing
+    AWS_STORAGE_BUCKET_NAME = os.getenv(
+        "AWS_STORAGE_BUCKET_NAME",
+        "wms-media-dev-alexa" if DEBUG else "wms-media-prod-alexa",
+    )
 
     # AWS region configuration (allow override via environment)
     AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION", "us-west-2")
