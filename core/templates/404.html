@@ -1,0 +1,123 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page Not Found - WMS</title>
+    
+    <!-- Pico CSS - Minimal CSS Framework for semantic HTML -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="{% static 'core/css/styles.css' %}">
+    
+    <style>
+        .error-page {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 60vh;
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .error-icon {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 1.5rem;
+            color: var(--md-sys-color-outline, #79767d);
+        }
+        
+        .error-title {
+            font-size: 1.75rem;
+            font-weight: 500;
+            color: var(--md-sys-color-on-surface, #1a1c1e);
+            margin-bottom: 0.75rem;
+        }
+        
+        .error-message {
+            font-size: 1rem;
+            color: var(--md-sys-color-on-surface-variant, #46474a);
+            margin-bottom: 2rem;
+            max-width: 400px;
+        }
+        
+        .error-actions {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .debug-info {
+            margin-top: 2rem;
+            text-align: left;
+            width: 100%;
+            max-width: 800px;
+        }
+        
+        .debug-info summary {
+            cursor: pointer;
+            font-weight: 500;
+            color: var(--md-sys-color-outline, #79767d);
+        }
+        
+        .debug-info pre {
+            background: var(--md-sys-color-surface-variant, #e7e0ec);
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="container-fluid">
+        <ul>
+            <li><a href="/" class="brand"><strong>WMS</strong></a></li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container">
+        <div class="error-page">
+            <!-- Search/Not Found Icon -->
+            <svg class="error-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.71.71l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z"/>
+            </svg>
+            
+            <h1 class="error-title">Page not found</h1>
+            <p class="error-message">
+                The page you're looking for doesn't exist or may have been moved.
+            </p>
+            
+            <div class="error-actions">
+                <a href="/" role="button">Go to Home</a>
+                <a href="javascript:history.back()" role="button" class="secondary outline">Go Back</a>
+            </div>
+            
+            {% if debug and request_path %}
+            <div class="debug-info">
+                <details open>
+                    <summary>Debug Information</summary>
+                    <p><strong>Requested path:</strong> <code>{{ request_path }}</code></p>
+                    {% if exception %}
+                    <p><strong>Exception:</strong> {{ exception }}</p>
+                    {% endif %}
+                </details>
+            </div>
+            {% endif %}
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="container-fluid">
+        <small>
+            WMS - Personal Warehouse Management System &copy; 2025
+        </small>
+    </footer>
+</body>
+</html>

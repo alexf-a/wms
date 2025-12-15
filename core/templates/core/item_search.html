@@ -1,4 +1,5 @@
 {% extends "core/base.html" %}
+{% load static %}
 
 {% block title %}Find Your Item - WMS{% endblock %}
 
@@ -9,7 +10,7 @@
         <section class="m3-search-stack">
             <form method="post" class="m3-form-vertical m3-form-vertical--floating" novalidate>
                 {% csrf_token %}
-                <div class="m3-field-group">
+                <div id="search-field-group" class="m3-field-group">
                     <div class="m3-filled-text-field">
                         {{ form.query }}
                         <button type="submit" class="m3-input-action" aria-label="Run search">
@@ -20,21 +21,34 @@
                     </div>
                 </div>
 
-                <div class="m3-field-group">
-                    <label for="bin_filter" class="m3-field-label">Browse by Bin</label>
-                    <div class="m3-select-wrapper">
-                        {% with selected=selected_bin_id|default_if_none:'' %}
-                            <select id="bin_filter" name="bin_filter" class="m3-select">
-                                <option value="" {% if not selected %}selected{% endif %}>Select a Bin</option>
-                                {% if bins %}
-                                    {% for bin in bins %}
-                                        <option value="{{ bin.id }}" {% if selected == bin.id|stringformat:"s" %}selected{% endif %}>{{ bin.name }}</option>
-                                    {% endfor %}
-                                {% else %}
-                                    <option value="" disabled>You haven't added any bins yet</option>
-                                {% endif %}
-                            </select>
-                        {% endwith %}
+                <!-- Browse by Bin Button -->
+                <div class="hero-skip-wrapper">
+                    <button type="button" id="browse-by-bin-btn" class="skip-link">
+                        <span>Browse by Bin</span>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Bin Filter Section (Initially Hidden) -->
+                <div id="bin-filter-section" class="bin-filter-section" style="display: none;">
+                    <div class="m3-field-group">
+                        <label for="bin_filter" class="m3-field-label">Select a Bin</label>
+                        <div class="m3-select-wrapper">
+                            {% with selected=selected_bin_id|default_if_none:'' %}
+                                <select id="bin_filter" name="bin_filter" class="m3-select">
+                                    <option value="" {% if not selected %}selected{% endif %}>Select a Bin</option>
+                                    {% if bins %}
+                                        {% for bin in bins %}
+                                            <option value="{{ bin.id }}" data-url="{% url 'bin_detail' bin.user_id bin.access_token %}" {% if selected == bin.id|stringformat:"s" %}selected{% endif %}>{{ bin.name }}</option>
+                                        {% endfor %}
+                                    {% else %}
+                                        <option value="" disabled>You haven't added any bins yet</option>
+                                    {% endif %}
+                                </select>
+                            {% endwith %}
+                        </div>
                     </div>
                 </div>
             </form>
@@ -43,14 +57,22 @@
         {% if result %}
         <section aria-live="polite" aria-atomic="true">
             <div class="m3-list" role="list">
-                {% with initial=result|default_if_none:''|striptags|slice:":1" %}
-                    <article class="m3-card m3-card--tonal m3-search-results__card" role="listitem">
-                        <div class="m3-search-results__avatar" aria-hidden="true">{{ initial|default:"R" }}</div>
-                        <div class="m3-search-results__content">
-                            {{ result|linebreaksbr }}
+                <article class="m3-card m3-card--tonal m3-search-results__card" role="listitem">
+                    {% if found_item and found_item.image %}
+                        <div class="m3-search-results__thumbnail">
+                            <img src="{{ found_item.image.url }}" alt="{{ found_item.name }}" class="m3-thumbnail-img">
                         </div>
-                    </article>
-                {% endwith %}
+                    {% else %}
+                        <div class="m3-search-results__avatar" aria-hidden="true">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M20 6h-2.18c.11-.31.18-.65.18-1 0-1.66-1.34-3-3-3-1.05 0-1.96.54-2.5 1.35l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM9 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm11 15H4v-2h16v2zm0-5H4V8h5.08L7 10.83 8.62 12 11 8.76l1-1.36 1 1.36L15.38 12 17 10.83 14.92 8H20v6z"/>
+                            </svg>
+                        </div>
+                    {% endif %}
+                    <div class="m3-search-results__content">
+                        {{ result|linebreaksbr }}
+                    </div>
+                </article>
             </div>
         </section>
         {% endif %}
@@ -58,10 +80,9 @@
 {% endblock %}
 
 {% block extra_js %}
-    <script>
-        const searchInput = document.getElementById("id_query");
-        if (searchInput) {
-            searchInput.focus();
-        }
-    </script>
+<script src="{% static 'core/js/ui_utils.js' %}"></script>
+<script src="{% static 'core/js/item_search.js' %}"></script>
+{% if selected_bin_id %}
+<script>showBinFilterSection();</script>
+{% endif %}
 {% endblock %}

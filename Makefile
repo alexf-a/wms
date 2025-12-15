@@ -2,8 +2,8 @@ SVC?=wms
 REGION?=us-west-2
 POWER?=nano
 SCALE?=1
-# Path to Lightsail containers spec
-CONTAINERS?=lightsail/containers.json
+# Path to deployment containers spec
+CONTAINERS?=deploy/containers.json
  # Host suffix for ALLOWED_HOSTS and CSRF_TRUSTED_ORIGINS
 HOST_SUFFIX?=csf5750j52mvw.us-west-2.cs.amazonlightsail.com
 # Docker platform architecture - Lightsail only supports linux/amd64
@@ -53,7 +53,7 @@ deploy:
 		--region $(REGION) \
 		--service-name $(SVC) \
 		--containers file://$(CONTAINERS) \
-		--public-endpoint file://lightsail/public-endpoint.json \
+		--public-endpoint file://deploy/public-endpoint.json \
 		--no-cli-pager
 
 update-hosts:
@@ -65,9 +65,10 @@ update-hosts:
 update-image:
 	@echo "Updating containers.json with pushed image..."
 	$(eval IMAGE_NAME := $(shell aws lightsail get-container-images --region $(REGION) --service-name $(SVC) --query 'containerImages[0].image' --output text))
-	@sed -i.bak 's|"image": ":.*"|"image": "$(IMAGE_NAME)"|' lightsail/containers.json
+	@sed -i.bak 's|"image": ":.*"|"image": "$(IMAGE_NAME)"|' deploy/containers.json
 	@echo "Updated image reference to: $(IMAGE_NAME)"
 
+# Pushes container to AWS lightsail
 up: docker-build push update-image update-hosts deploy
 
 down:
@@ -75,13 +76,34 @@ down:
  
 sync-env:
 	@mkdir -p .cache
-	@jq -r '.web.environment | to_entries | map("\(.key)=\(.value)") | .[]' lightsail/containers.json > .cache/.env
+	@jq -r '.web.environment | to_entries | map("\(.key)=\(.value)") | .[]' $(CONTAINERS) > .cache/.env
 	@echo "PGSSLMODE=require" >> .cache/.env
 	# Override DEBUG for local development
 	@sed -i '' -e 's/^DEBUG=.*/DEBUG=True/' .cache/.env || true
 	@sed -i '' -e 's/^DB_NAME=.*/DB_NAME=local/' .cache/.env || true
 
-local-up: sync-env
+# Run containerized local development server
+# Runs Docker compose with the local dev environment
+# Usage:
+#   make local-up                              - Use env generated from containers.json
+#   make local-up ENV_FILE=.env.local          - Use custom env file (e.g., for mobile testing)
+#   make local-up CONTAINERS=deploy/other.json - Use different containers.json for sync-env
+local-up:
+	@mkdir -p .cache
+	@if [ -n "$(ENV_FILE)" ] && [ -f "$(ENV_FILE)" ]; then \
+		cp $(ENV_FILE) .cache/.env; \
+		echo "Using environment from $(ENV_FILE)"; \
+		echo "Access from your phone at: http://$$(grep ALLOWED_HOSTS $(ENV_FILE) | cut -d= -f2):8000"; \
+	elif [ -n "$(ENV_FILE)" ] && [ ! -f "$(ENV_FILE)" ]; then \
+		echo "Error: $(ENV_FILE) not found."; \
+		echo "Copy .env.local.example to $(ENV_FILE) and fill in all values."; \
+		echo ""; \
+		echo "To find your IP: ipconfig getifaddr en0"; \
+		exit 1; \
+	else \
+		$(MAKE) sync-env; \
+		echo "Using environment generated from containers.json"; \
+	fi
 	@docker-compose up --build -d
 
 # Help target to document the bug fix

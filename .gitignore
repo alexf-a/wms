@@ -19,8 +19,10 @@ poetry.lock
 .data
 
 .debugging
-lightsail/containers.json
+deploy/containers.json
 
 .cache
+
+.env.local
 
 staticfiles/*

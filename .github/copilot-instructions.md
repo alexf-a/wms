@@ -43,9 +43,9 @@ This project deploys to AWS Lightsail Container Service using a container image 
 - `Dockerfile`: Builds the production image (Poetry install, collectstatic, non‑root user).
 - `docker-entrypoint.sh`: Runtime bootstrap (verifies `PORT` env, runs migrations opportunistically, then `gunicorn`).
 - `gunicorn.conf.py`: Server tuning (workers via `WEB_CONCURRENCY` override or `(2*cores)+1`, threading, timeouts, logging). Also ensures `DJANGO_SETTINGS_MODULE` is set from the environment.
-- `lightsail/containers.example.json`: Template for the real (ignored) `lightsail/containers.json` containing env vars (single source of truth for `PORT`, `DEBUG`, `ALLOWED_HOSTS`, `SECRET_KEY`, DB_* vars, `DJANGO_SETTINGS_MODULE`, optional `WEB_CONCURRENCY`).
-- `lightsail/public-endpoint.json`: Defines public endpoint and health check path (update to `/healthz/` if you switch from `/`).
-- `Makefile`: Automation targets for build & deploy (`docker-build`, `create`, `push`, `deploy`, `up`, `down`, `setup`, `install-lightsailctl-fix`). Includes workarounds for lightsailctl bugs #95 and #100. Validates presence of `lightsail/containers.json` before deploy. Uses patched lightsailctl and explicit linux/amd64 platform.
+- `deploy/containers.example.json`: Template for the real (ignored) `deploy/containers.json` containing env vars (single source of truth for `PORT`, `DEBUG`, `ALLOWED_HOSTS`, `SECRET_KEY`, DB_* vars, `DJANGO_SETTINGS_MODULE`, optional `WEB_CONCURRENCY`).
+- `deploy/public-endpoint.json`: Defines public endpoint and health check path (update to `/healthz/` if you switch from `/`).
+- `Makefile`: Automation targets for build & deploy (`docker-build`, `create`, `push`, `deploy`, `up`, `down`, `setup`, `install-lightsailctl-fix`). Includes workarounds for lightsailctl bugs #95 and #100. Validates presence of `deploy/containers.json` before deploy. Uses patched lightsailctl and explicit linux/amd64 platform.
 - `core/views.py` & `core/urls.py`: Provide the lightweight health check endpoint at `/healthz/` (JSON `{"status": "ok"}`).
 
 ### Build & Deploy Workflow
@@ -54,7 +54,7 @@ This project deploys to AWS Lightsail Container Service using a container image 
 
 #### Prerequisites
 1. Install patched lightsailctl: `make install-lightsailctl-fix`
-2. Ensure `lightsail/containers.json` exists (real secrets file, ignored by git).
+2. Ensure `deploy/containers.json` exists (real secrets file, ignored by git).
 
 #### Deployment Steps
 1. **First-time setup**: 
@@ -70,7 +70,7 @@ Note: `make` commands will modify your containers.json file.
 #### Manual Steps
 1. Build image with correct platform: `make docker-build` (uses linux/amd64)
 2. Create service (first time): `make create`
-3. Get the URL from the Lightsail console output, and add it as `ALLOWED_HOSTS` in `lightsail/containers.json`.
+3. Get the URL from the Lightsail console output, and add it as `ALLOWED_HOSTS` in `deploy/containers.json`.
 4. Push image to Lightsail registry: `make push` (uses patched lightsailctl)
 5. Deploy new version: `make deploy`
 6. Tear down (stop billing): `make down` (deletes service; recreate later with `make create && make deploy`).

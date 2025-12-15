@@ -1,5 +1,5 @@
 ---
-applyTo: "llm/llm_search.py,core/llm_calls/item_candidates_search.json,core/llm_calls/item_location_search.json,core/views.py,core/templates/core/item_search.html"
+applyTo: "llm/llm_search.py,core/llm_calls/item_candidates_search.json,core/llm_calls/item_location_search.json,core/views.py,core/templates/core/item_search.html,core/static/core/js/item_search.js"
 description: "Instructions for Item Search Functionality"
 ---
 Item Search is the process by which a user can find specific items within their storage units using natural language queries (such as "where is my red jacket?").
