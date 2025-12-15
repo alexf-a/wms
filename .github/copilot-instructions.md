@@ -83,3 +83,51 @@ Static files are stored in an S3 bucket. See `settings.py` for configuration.
 - The Makefile automatically uses `--platform linux/amd64` to ensure Lightsail compatibility
 - Patched lightsailctl is installed to `~/go/bin/` and automatically added to PATH
 
+## Local Production Testing (HTTPS)
+
+Test the app locally in production mode (`DEBUG=False`) with HTTPS via Caddy reverse proxy. This is useful for testing production security settings and mobile device compatibility.
+
+### Key Files
+- `Caddyfile`: Reverse proxy config with automatic TLS certificate generation.
+- `.env.local.https.example`: Template for creating `.env.local.https`.
+- `deploy/generate_ca_qr.py`: Generates QR codes for mobile access and CA certificate download.
+
+### Prerequisites
+1. Copy `.env.local.https.example` to `.env.local.https` and fill in values.
+2. Update `LOCAL_IP` to your machine's IP: `ipconfig getifaddr en0`
+3. Add domain to `/etc/hosts`: `sudo sh -c 'echo "127.0.0.1 dev.wms.local" >> /etc/hosts'`
+
+### Workflow
+
+#### Start Local HTTPS Server
+```bash
+make local-https
+```
+This will:
+- Validate environment configuration
+- Start Django and Caddy containers
+- Auto-install Caddy CA on first run (for desktop browser trust)
+- Display QR code for mobile access
+
+**Access Points:**
+- Desktop: `https://dev.wms.local:<PORT>`
+- Mobile: `https://<LOCAL_IP>:<PORT>`
+
+#### Mobile Device Setup (One-Time)
+Mobile devices need to trust the Caddy CA certificate:
+
+```bash
+make caddy-export-ca
+```
+
+This extracts the CA, starts an HTTP server, and displays a QR code. On your mobile device:
+
+1. Scan the QR code or visit `http://<LOCAL_IP>:8888/caddy-root-ca.crt`
+2. **iOS**: Settings → Profile Downloaded → Install → Settings → General → About → Certificate Trust Settings → Enable trust
+3. **Android**: Settings → Security → Install from storage → Select certificate
+
+#### Stop Server
+```bash
+make local-https-down
+```
+
