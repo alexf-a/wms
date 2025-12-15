@@ -32,7 +32,7 @@ https://{$DOMAIN}:{$HTTPS_PORT} {
 	tls internal
 }
 
-# HTTP to HTTPS redirect
-http://{$DOMAIN}:{$HTTP_PORT} {
-	redir https://{$DOMAIN}:{$HTTPS_PORT}{uri} permanent
+# HTTP to HTTPS redirect - bind to port for all hostnames
+:{$HTTP_PORT} {
+	redir https://{host}:{$HTTPS_PORT}{uri} permanent
 }
