@@ -15,6 +15,9 @@ from PIL import Image, UnidentifiedImageError
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from django.core.files.uploadedfile import UploadedFile
 
+import sys
+import traceback
+
 from lib.llm.item_generation import extract_item_features_from_image
 from lib.llm.llm_search import find_item_location
 
@@ -419,9 +422,6 @@ def custom_404_view(
 
 def custom_500_view(request: HttpRequest) -> HttpResponse:
     """Handle 500 Internal Server errors with optional debug info."""
-    import sys
-    import traceback
-
     exc_info = sys.exc_info()
     context = {
         "debug": settings.DEBUG,
