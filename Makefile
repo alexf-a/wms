@@ -69,9 +69,9 @@ endef
 # Check if Caddy volumes were recreated and invalidate trust sentinel
 # Usage: $(call check-local-https-caddy-volumes)
 define check-local-https-caddy-volumes
-	@if docker volume inspect caddy_data >/dev/null 2>&1; then \
+	@if docker volume inspect wms_caddy_data >/dev/null 2>&1; then \
 		if [ -f .caddy-trusted ]; then \
-			VOLUME_CREATED=$$(docker volume inspect caddy_data --format '{{.CreatedAt}}' 2>/dev/null | sed 's/\..*//' | xargs -I {} date -j -f "%Y-%m-%dT%H:%M:%S" {} "+%s" 2>/dev/null); \
+			VOLUME_CREATED=$$(docker volume inspect wms_caddy_data --format '{{.CreatedAt}}' 2>/dev/null | sed 's/\..*//' | xargs -I {} date -j -f "%Y-%m-%dT%H:%M:%S" {} "+%s" 2>/dev/null); \
 			if [ -n "$$VOLUME_CREATED" ]; then \
 				SENTINEL_MTIME=$$(stat -f %m .caddy-trusted 2>/dev/null); \
 				if [ -n "$$SENTINEL_MTIME" ] && [ "$$VOLUME_CREATED" -gt "$$SENTINEL_MTIME" ]; then \
@@ -238,7 +238,8 @@ local-https:
 	echo "  Desktop: https://$$DOMAIN:8443"; \
 	echo "  Mobile:  https://$$LOCAL_IP:8443"; \
 	echo ""; \
-	echo "For mobile access, run: make caddy-export-ca ENV_FILE=$(ENV_FILE)"; \
+	poetry run python deploy/generate_qr.py --url "https://$$LOCAL_IP:8443" --title "Scan to access WMS on your mobile device:"; \
+	echo "For mobile CA installation: make caddy-export-ca ENV_FILE=$(ENV_FILE)"; \
 	echo "============================================================"
 	@echo ""
 
@@ -256,7 +257,8 @@ caddy-trust:
 	@echo "Caddy CA certificate installed successfully!"
 	@echo "You can now access https://dev.wms.local:8443 without certificate warnings."
 
-# Export Caddy CA certificate for mobile device installation
+# Export Caddy CA certificate and serve it via HTTP for mobile download
+# This combines extraction, QR code generation, and HTTP serving in one command
 # Usage:
 #   make caddy-export-ca                                - Use .env.local.https
 #   make caddy-export-ca ENV_FILE=.env.local.https.wifi - Use custom env file
@@ -264,26 +266,45 @@ caddy-export-ca: ENV_FILE?=.env.local.https
 caddy-export-ca:
 	$(call validate-local-https-env,$(ENV_FILE))
 	@echo "Extracting Caddy root CA certificate..."
-	@if ! docker volume inspect caddy_data >/dev/null 2>&1; then \
-		echo "Error: caddy_data volume not found. Run 'make local-https' first."; \
+	@if ! docker volume inspect wms_caddy_data >/dev/null 2>&1; then \
+		echo "Error: wms_caddy_data volume not found. Run 'make local-https' first."; \
 		exit 1; \
 	fi
-	@if ! docker run --rm -v caddy_data:/data alpine cat /data/caddy/pki/authorities/local/root.crt > deploy/caddy-root-ca.crt 2>/dev/null; then \
+	@if ! docker run --rm -v wms_caddy_data:/data alpine cat /data/caddy/pki/authorities/local/root.crt > deploy/caddy-root-ca.crt 2>/dev/null; then \
 		echo "Error: Failed to extract CA certificate from Caddy volume."; \
 		echo ""; \
 		echo "Troubleshooting:"; \
 		echo "  1. Ensure Caddy has generated the CA: make local-https"; \
 		echo "  2. Check Caddy logs: docker-compose logs caddy"; \
-		echo "  3. Verify volume exists: docker volume ls | grep caddy_data"; \
+		echo "  3. Verify volume exists: docker volume ls | grep caddy"; \
 		echo ""; \
 		echo "If the CA path has changed in newer Caddy versions, check:"; \
-		echo "  docker run --rm -v caddy_data:/data alpine find /data -name root.crt"; \
+		echo "  docker run --rm -v wms_caddy_data:/data alpine find /data -name root.crt"; \
 		exit 1; \
 	fi
 	@echo "CA certificate extracted to: deploy/caddy-root-ca.crt"
 	@echo ""
-	@echo "Generating QR code..."
-	@poetry run python deploy/generate_ca_qr.py --cert-path deploy/caddy-root-ca.crt --env-file $(ENV_FILE)
+	@LOCAL_IP=$$(grep "^LOCAL_IP=" $(ENV_FILE) | cut -d= -f2); \
+	echo "============================================================"; \
+	echo "Starting HTTP server for CA certificate download..."; \
+	echo "============================================================"; \
+	echo "Download URL: http://$$LOCAL_IP:8888/caddy-root-ca.crt"; \
+	echo ""; \
+	echo "Scan this QR code to download the certificate:"; \
+	echo ""; \
+	poetry run python -c "import qrcode; qr = qrcode.QRCode(); qr.add_data('http://$$LOCAL_IP:8888/caddy-root-ca.crt'); qr.print_ascii(invert=True)"; \
+	echo ""; \
+	echo "On your mobile device:"; \
+	echo "  1. Scan the QR code above OR visit: http://$$LOCAL_IP:8888/caddy-root-ca.crt"; \
+	echo "  2. Tap 'Allow' when prompted about downloads"; \
+	echo "  3. Go to Settings → Profile Downloaded → Install"; \
+	echo "  4. Go to Settings → General → About → Certificate Trust Settings"; \
+	echo "  5. Enable full trust for 'Caddy Local Authority'"; \
+	echo ""; \
+	echo "Press Ctrl+C to stop the server after downloading"; \
+	echo "============================================================"; \
+	echo ""; \
+	cd deploy && python3 -m http.server 8888
 
 # Stop local HTTPS development server and clean up artifacts
 local-https-down:
@@ -292,3 +313,6 @@ local-https-down:
 	@echo "Cleaning up HTTPS artifacts..."
 	@rm -f .caddy-trusted deploy/caddy-root-ca.crt deploy/caddy-ca-qr.png
 	@echo "Local HTTPS environment shut down successfully."
+	@echo ""
+	@echo "Note: Docker volumes (wms_caddy_data, wms_caddy_config) are preserved."
+	@echo "To remove volumes completely, run: docker volume rm wms_caddy_data wms_caddy_config"
