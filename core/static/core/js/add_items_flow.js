@@ -6,7 +6,6 @@
  */
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('[AddItems] Script loaded v4');
     
     const heroInput = document.getElementById('hero-image-input');
     const skipBtn = document.getElementById('skip-to-manual');
@@ -32,12 +31,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Process the selected image file
     async function processImageFile(file) {
-        console.log('[AddItems] processImageFile called', file ? file.name : 'no file');
+        debugLog('[AddItems] processImageFile called', file ? file.name : 'no file');
         
         // Prevent duplicate processing using timestamp-based debounce
         const now = Date.now();
         if (isProcessing || (now - lastFileTimestamp) < 500) {
-            console.log('[AddItems] Debounced, skipping');
             return;
         }
         lastFileTimestamp = now;
@@ -63,25 +61,23 @@ document.addEventListener('DOMContentLoaded', function() {
             previewImage.src = currentObjectUrl;
             imagePreviewContainer.style.display = 'block';
 
-            console.log('[AddItems] Reading file as ArrayBuffer...');
+            debugLog('[AddItems] Reading file as ArrayBuffer...');
             
             // Read the file as blob to ensure it's fully loaded before sending
             // This helps with iOS Safari/Chrome which may have async file access
             const fileBlob = await new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = () => {
-                    console.log('[AddItems] FileReader loaded, size:', reader.result.byteLength);
+                    debugLog('[AddItems] FileReader loaded, size:', reader.result.byteLength);
                     const blob = new Blob([reader.result], { type: file.type || 'image/jpeg' });
                     resolve(blob);
                 };
                 reader.onerror = (err) => {
-                    console.error('[AddItems] FileReader error:', err);
+                    debugError('[AddItems] FileReader error:', err);
                     reject(err);
                 };
                 reader.readAsArrayBuffer(file);
             });
-
-            console.log('[AddItems] Blob created, size:', fileBlob.size, 'type:', fileBlob.type);
 
             // Create FormData with the blob
             const formData = new FormData();
@@ -89,13 +85,13 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Debug: log formData contents
             for (let [key, value] of formData.entries()) {
-                console.log('[AddItems] FormData entry:', key, value instanceof Blob ? `Blob(${value.size})` : value);
+                debugLog('[AddItems] FormData entry:', key, value instanceof Blob ? `Blob(${value.size})` : value);
             }
 
             // Get CSRF token
             const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
             if (!csrfToken) {
-                console.error('CSRF token not found');
+                errorLog('CSRF token not found');
                 throw new Error('CSRF token not found');
             }
 
@@ -114,14 +110,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 descField.value = data.description || '';
             } else {
                 const errorData = await response.json().catch(() => ({}));
-                console.error('API error:', response.status, errorData);
+                errorLog('API error:', response.status, errorData);
                 // Show error in snackbar if available
                 if (errorData.error && typeof showErrorSnackbar === 'function') {
                     showErrorSnackbar(errorData.error);
                 }
             }
         } catch (error) {
-            console.error('Error extracting features:', error);
+            errorLog('Error extracting features:', error);
         } finally {
             // Hide loading, show form
             loadingIndicator.style.display = 'none';
