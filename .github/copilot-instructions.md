@@ -90,12 +90,13 @@ Test the app locally in production mode (`DEBUG=False`) with HTTPS via Caddy rev
 ### Key Files
 - `Caddyfile`: Reverse proxy config with automatic TLS certificate generation.
 - `.env.local.https.example`: Template for creating `.env.local.https`.
-- `deploy/generate_ca_qr.py`: Generates QR codes for mobile access and CA certificate download.
+- `deploy/generate_qr.py`: Generates QR codes for mobile access and CA certificate download.
+- `Makefile`: Automation targets for local HTTPS setup (`local-https`, `caddy-trust`, `caddy-export-ca`, `local-https-down`).
 
 ### Prerequisites
 1. Copy `.env.local.https.example` to `.env.local.https` and fill in values.
-2. Update `LOCAL_IP` to your machine's IP: `ipconfig getifaddr en0`
-3. Add domain to `/etc/hosts`: `sudo sh -c 'echo "127.0.0.1 dev.wms.local" >> /etc/hosts'`
+2. Update `DOMAIN` to your Mac's hostname: `hostname` (e.g., `alexs-macbook-pro.local`)
+3. Update `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS` to match your `DOMAIN`
 
 ### Workflow
 
@@ -110,8 +111,9 @@ This will:
 - Display QR code for mobile access
 
 **Access Points:**
-- Desktop: `https://dev.wms.local:<PORT>`
-- Mobile: `https://<LOCAL_IP>:<PORT>`
+- Desktop: `https://<DOMAIN>:8443` (e.g., `https://alexs-macbook-pro.local:8443`)
+- Desktop (HTTP redirect): `http://<DOMAIN>:8080` (redirects to HTTPS)
+- Mobile: Same URLs - works via mDNS/Bonjour
 
 #### Mobile Device Setup (One-Time)
 Mobile devices need to trust the Caddy CA certificate:
@@ -122,7 +124,7 @@ make caddy-export-ca
 
 This extracts the CA, starts an HTTP server, and displays a QR code. On your mobile device:
 
-1. Scan the QR code or visit `http://<LOCAL_IP>:8888/caddy-root-ca.crt`
+1. Scan the QR code or visit `http://<DOMAIN>:8888/caddy-root-ca.crt`
 2. **iOS**: Settings → Profile Downloaded → Install → Settings → General → About → Certificate Trust Settings → Enable trust
 3. **Android**: Settings → Security → Install from storage → Select certificate
 
@@ -130,4 +132,12 @@ This extracts the CA, starts an HTTP server, and displays a QR code. On your mob
 ```bash
 make local-https-down
 ```
+
+**Note**: Docker volumes (containing Caddy CA certificate) are preserved by default. To completely remove them: `docker volume rm wms_caddy_data wms_caddy_config`
+
+### AI-Enabled Workflows
+There are two workflows that are AI enabled.
+
+1) Item creation. See .github/instructions/item-addition.instructions.md
+2) Item search. See .github/instructions/item-search.instructions.md
 
