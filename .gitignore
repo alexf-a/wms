@@ -31,3 +31,4 @@ deploy/caddy-root-ca.crt
 deploy/caddy-ca-qr.png
 
 staticfiles/*
+.DS_Store
