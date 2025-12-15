@@ -25,4 +25,9 @@ deploy/containers.json
 
 .env.local
 
+# Local HTTPS testing artifacts
+.caddy-trusted
+deploy/caddy-root-ca.crt
+deploy/caddy-ca-qr.png
+
 staticfiles/*

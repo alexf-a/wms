@@ -17,7 +17,76 @@ ARCH_TAG?=amd64
 # Install with: cd /tmp && git clone https://github.com/paxan/lightsailctl.git -b paxan/image-push-bug-fixes && cd lightsailctl && go install ./...
 export PATH := $(PATH):$(HOME)/go/bin
 
-.PHONY: docker-build deploy up down create push install-lightsailctl-fix sync-env local-up update-hosts update-image
+.PHONY: docker-build deploy up down create push install-lightsailctl-fix sync-env local-up update-hosts update-image local-https caddy-trust caddy-export-ca local-https-down
+
+# =============================================================================
+# Helper Functions for Local HTTPS Setup
+# =============================================================================
+
+# Validate environment file contains required variables
+# Usage: $(call validate-env-file,path/to/env/file,VAR1 VAR2 VAR3)
+define validate-env-file
+    @echo "Validating environment file: $(1)"
+    @if [ ! -f "$(1)" ]; then \
+        echo "Error: Environment file not found: $(1)"; \
+        exit 1; \
+    fi
+    @for var in $(2); do \
+        if ! grep -q "^$$var=" "$(1)"; then \
+            echo "Error: Required variable $$var not found in $(1)"; \
+            exit 1; \
+        fi; \
+    done
+    @echo "Environment validation passed"
+endef
+
+# Validate environment file for local HTTPS testing (with DEBUG=False check)
+# Usage: $(call validate-local-https-env,path/to/env/file)
+define validate-local-https-env
+    $(call validate-env-file,$(1),DOMAIN LOCAL_IP ALLOWED_HOSTS CSRF_TRUSTED_ORIGINS DEBUG)
+    @if ! grep -q "^DEBUG=False" "$(1)"; then \
+        echo "Error: DEBUG must be set to False in $(1) for production mode testing"; \
+        exit 1; \
+    fi
+endef
+
+# Check /etc/hosts for required domain entry
+# Usage: $(call check-local-https-hosts-entry,path/to/env/file)
+define check-local-https-hosts-entry
+	@DOMAIN=$$(grep "^DOMAIN=" "$(1)" | cut -d= -f2); \
+	if ! grep -q "127.0.0.1.*$$DOMAIN" /etc/hosts 2>/dev/null; then \
+		echo ""; \
+		echo "WARNING: $$DOMAIN not found in /etc/hosts"; \
+		echo ""; \
+		echo "Add the following entry to /etc/hosts:"; \
+		echo "  sudo sh -c 'echo \"127.0.0.1 $$DOMAIN\" >> /etc/hosts'"; \
+		echo ""; \
+		echo "Or manually edit /etc/hosts and add: 127.0.0.1 $$DOMAIN"; \
+		echo ""; \
+	fi
+endef
+
+# Check if Caddy volumes were recreated and invalidate trust sentinel
+# Usage: $(call check-local-https-caddy-volumes)
+define check-local-https-caddy-volumes
+	@if docker volume inspect caddy_data >/dev/null 2>&1; then \
+		if [ -f .caddy-trusted ]; then \
+			VOLUME_CREATED=$$(docker volume inspect caddy_data --format '{{.CreatedAt}}' 2>/dev/null | sed 's/\..*//' | xargs -I {} date -j -f "%Y-%m-%dT%H:%M:%S" {} "+%s" 2>/dev/null); \
+			if [ -n "$$VOLUME_CREATED" ]; then \
+				SENTINEL_MTIME=$$(stat -f %m .caddy-trusted 2>/dev/null); \
+				if [ -n "$$SENTINEL_MTIME" ] && [ "$$VOLUME_CREATED" -gt "$$SENTINEL_MTIME" ]; then \
+					echo "Detected Caddy volume recreation - removing trust sentinel"; \
+					rm -f .caddy-trusted; \
+				fi; \
+			fi; \
+		fi; \
+	fi
+endef
+
+# =============================================================================
+# Production Deployment Targets
+# =============================================================================
+
 
 docker-build:
 	# Build with explicit platform to ensure compatibility with Lightsail
@@ -136,3 +205,90 @@ help:
 	@echo "  up                     - Build, push, and deploy (requires existing service)"
 	@echo "  down                   - Delete the container service"
 	@echo "  help                   - Show this help message"
+
+# =============================================================================
+# Local HTTPS Testing Targets
+# =============================================================================
+
+# Run local HTTPS development server with Caddy reverse proxy
+# Usage:
+#   make local-https                                    - Use .env.local.https
+#   make local-https ENV_FILE=.env.local.https.custom   - Use custom env file
+local-https: ENV_FILE?=.env.local.https
+local-https:
+	$(call validate-local-https-env,$(ENV_FILE))
+	$(call check-local-https-hosts-entry,$(ENV_FILE))
+	$(call check-local-https-caddy-volumes)
+	@mkdir -p .cache
+	@cp $(ENV_FILE) .cache/.env
+	@echo "Using HTTPS environment from $(ENV_FILE)"
+	@if [ ! -f .caddy-trusted ]; then \
+		echo ""; \
+		echo "First-time setup: Installing Caddy root CA..."; \
+		$(MAKE) caddy-trust; \
+	fi
+	@docker-compose up --build -d web caddy
+	@echo ""
+	@echo "============================================================"
+	@echo "Local HTTPS server running!"
+	@echo "============================================================"
+	@DOMAIN=$$(grep "^DOMAIN=" $(ENV_FILE) | cut -d= -f2); \
+	LOCAL_IP=$$(grep "^LOCAL_IP=" $(ENV_FILE) | cut -d= -f2); \
+	echo "Access points:"; \
+	echo "  Desktop: https://$$DOMAIN:8443"; \
+	echo "  Mobile:  https://$$LOCAL_IP:8443"; \
+	echo ""; \
+	echo "For mobile access, run: make caddy-export-ca ENV_FILE=$(ENV_FILE)"; \
+	echo "============================================================"
+	@echo ""
+
+# Install Caddy root CA certificate for local HTTPS trust
+caddy-trust:
+	@echo "Installing Caddy root CA certificate..."
+	@docker-compose up -d caddy 2>/dev/null || true
+	@sleep 2
+	@if ! docker-compose exec caddy caddy trust 2>/dev/null; then \
+		echo "Error: Failed to install Caddy CA. Is the caddy container running?"; \
+		echo "Try: docker-compose up -d caddy"; \
+		exit 1; \
+	fi
+	@touch .caddy-trusted
+	@echo "Caddy CA certificate installed successfully!"
+	@echo "You can now access https://dev.wms.local:8443 without certificate warnings."
+
+# Export Caddy CA certificate for mobile device installation
+# Usage:
+#   make caddy-export-ca                                - Use .env.local.https
+#   make caddy-export-ca ENV_FILE=.env.local.https.wifi - Use custom env file
+caddy-export-ca: ENV_FILE?=.env.local.https
+caddy-export-ca:
+	$(call validate-local-https-env,$(ENV_FILE))
+	@echo "Extracting Caddy root CA certificate..."
+	@if ! docker volume inspect caddy_data >/dev/null 2>&1; then \
+		echo "Error: caddy_data volume not found. Run 'make local-https' first."; \
+		exit 1; \
+	fi
+	@if ! docker run --rm -v caddy_data:/data alpine cat /data/caddy/pki/authorities/local/root.crt > deploy/caddy-root-ca.crt 2>/dev/null; then \
+		echo "Error: Failed to extract CA certificate from Caddy volume."; \
+		echo ""; \
+		echo "Troubleshooting:"; \
+		echo "  1. Ensure Caddy has generated the CA: make local-https"; \
+		echo "  2. Check Caddy logs: docker-compose logs caddy"; \
+		echo "  3. Verify volume exists: docker volume ls | grep caddy_data"; \
+		echo ""; \
+		echo "If the CA path has changed in newer Caddy versions, check:"; \
+		echo "  docker run --rm -v caddy_data:/data alpine find /data -name root.crt"; \
+		exit 1; \
+	fi
+	@echo "CA certificate extracted to: deploy/caddy-root-ca.crt"
+	@echo ""
+	@echo "Generating QR code..."
+	@poetry run python deploy/generate_ca_qr.py --cert-path deploy/caddy-root-ca.crt --env-file $(ENV_FILE)
+
+# Stop local HTTPS development server and clean up artifacts
+local-https-down:
+	@echo "Stopping local HTTPS server..."
+	@docker-compose down web caddy
+	@echo "Cleaning up HTTPS artifacts..."
+	@rm -f .caddy-trusted deploy/caddy-root-ca.crt deploy/caddy-ca-qr.png
+	@echo "Local HTTPS environment shut down successfully."

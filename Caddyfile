@@ -1,0 +1,49 @@
+# Caddyfile for local HTTPS development with Caddy reverse proxy
+#
+# This configuration enables testing the WMS app in production mode (DEBUG=False)
+# with HTTPS locally using Caddy's automatic TLS with self-signed certificates.
+#
+# Environment variables required:
+#   DOMAIN - The local domain name (e.g., dev.wms.local)
+#   LOCAL_IP - The local IP address for LAN access (e.g., 192.168.68.54)
+#
+# Access points:
+#   https://{$DOMAIN}:8443        - Local domain access
+#   https://{$LOCAL_IP}:8443      - LAN/mobile access
+#   http://{$DOMAIN}:8080         - Redirects to HTTPS
+#   http://{$LOCAL_IP}:8080       - Redirects to HTTPS
+
+# HTTPS endpoint for local domain (e.g., dev.wms.local)
+{$DOMAIN}:8443 {
+	# Reverse proxy to Django app running in web container
+	reverse_proxy web:8000 {
+		# Forward real client information to Django
+		header_up X-Forwarded-Proto https
+		header_up X-Forwarded-Host {host}
+		header_up X-Real-IP {remote_host}
+	}
+
+	# Enable automatic HTTPS with local CA
+	tls internal
+}
+
+# HTTPS endpoint for local IP (for mobile/LAN access)
+{$LOCAL_IP}:8443 {
+	reverse_proxy web:8000 {
+		header_up X-Forwarded-Proto https
+		header_up X-Forwarded-Host {host}
+		header_up X-Real-IP {remote_host}
+	}
+
+	tls internal
+}
+
+# HTTP to HTTPS redirect for domain
+{$DOMAIN}:8080 {
+	redir https://{host}:8443{uri} permanent
+}
+
+# HTTP to HTTPS redirect for IP
+{$LOCAL_IP}:8080 {
+	redir https://{host}:8443{uri} permanent
+}
