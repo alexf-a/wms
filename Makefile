@@ -43,28 +43,14 @@ endef
 # Validate environment file for local HTTPS testing (with DEBUG=False check)
 # Usage: $(call validate-local-https-env,path/to/env/file)
 define validate-local-https-env
-    $(call validate-env-file,$(1),DOMAIN LOCAL_IP ALLOWED_HOSTS CSRF_TRUSTED_ORIGINS DEBUG)
+    $(call validate-env-file,$(1),DOMAIN ALLOWED_HOSTS CSRF_TRUSTED_ORIGINS DEBUG)
     @if ! grep -q "^DEBUG=False" "$(1)"; then \
         echo "Error: DEBUG must be set to False in $(1) for production mode testing"; \
         exit 1; \
     fi
 endef
 
-# Check /etc/hosts for required domain entry
-# Usage: $(call check-local-https-hosts-entry,path/to/env/file)
-define check-local-https-hosts-entry
-	@DOMAIN=$$(grep "^DOMAIN=" "$(1)" | cut -d= -f2); \
-	if ! grep -q "127.0.0.1.*$$DOMAIN" /etc/hosts 2>/dev/null; then \
-		echo ""; \
-		echo "WARNING: $$DOMAIN not found in /etc/hosts"; \
-		echo ""; \
-		echo "Add the following entry to /etc/hosts:"; \
-		echo "  sudo sh -c 'echo \"127.0.0.1 $$DOMAIN\" >> /etc/hosts'"; \
-		echo ""; \
-		echo "Or manually edit /etc/hosts and add: 127.0.0.1 $$DOMAIN"; \
-		echo ""; \
-	fi
-endef
+
 
 # Check if Caddy volumes were recreated and invalidate trust sentinel
 # Usage: $(call check-local-https-caddy-volumes)
@@ -210,14 +196,13 @@ help:
 # Local HTTPS Testing Targets
 # =============================================================================
 
-# Run local HTTPS development server with Caddy reverse proxy
+# Run local HTTPS development server with Caddy reverse proxy using mDNS
 # Usage:
 #   make local-https                                    - Use .env.local.https
 #   make local-https ENV_FILE=.env.local.https.custom   - Use custom env file
 local-https: ENV_FILE?=.env.local.https
 local-https:
 	$(call validate-local-https-env,$(ENV_FILE))
-	$(call check-local-https-hosts-entry,$(ENV_FILE))
 	$(call check-local-https-caddy-volumes)
 	@mkdir -p .cache
 	@cp $(ENV_FILE) .cache/.env
@@ -233,13 +218,13 @@ local-https:
 	@echo "Local HTTPS server running!"
 	@echo "============================================================"
 	@DOMAIN=$$(grep "^DOMAIN=" $(ENV_FILE) | cut -d= -f2); \
-	LOCAL_IP=$$(grep "^LOCAL_IP=" $(ENV_FILE) | cut -d= -f2); \
-	echo "Access points:"; \
-	echo "  Desktop: https://$$DOMAIN:8443"; \
-	echo "  Mobile:  https://$$LOCAL_IP:8443"; \
+	echo "Access from desktop OR mobile:"; \
+	echo "  http://$$DOMAIN:8080 (redirects to HTTPS)"; \
+	echo "  https://$$DOMAIN:8443 (direct HTTPS)"; \
 	echo ""; \
-	poetry run python deploy/generate_qr.py --url "https://$$LOCAL_IP:8443" --title "Scan to access WMS on your mobile device:"; \
-	echo "For mobile CA installation: make caddy-export-ca ENV_FILE=$(ENV_FILE)"; \
+	poetry run python deploy/generate_qr.py --url "http://$$DOMAIN:8080" --title "Scan to access WMS (desktop or mobile):"; \
+	echo ""; \
+	echo "For mobile: Install certificate once with 'make caddy-export-ca'"; \
 	echo "============================================================"
 	@echo ""
 
@@ -255,10 +240,10 @@ caddy-trust:
 	fi
 	@touch .caddy-trusted
 	@echo "Caddy CA certificate installed successfully!"
-	@echo "You can now access https://dev.wms.local:8443 without certificate warnings."
+	@echo "You can now access https://<your-hostname>.local:8443 without certificate warnings."
 
 # Export Caddy CA certificate and serve it via HTTP for mobile download
-# This combines extraction, QR code generation, and HTTP serving in one command
+# Mobile devices need to install and trust this certificate to connect via HTTPS
 # Usage:
 #   make caddy-export-ca                                - Use .env.local.https
 #   make caddy-export-ca ENV_FILE=.env.local.https.wifi - Use custom env file
@@ -284,24 +269,22 @@ caddy-export-ca:
 	fi
 	@echo "CA certificate extracted to: deploy/caddy-root-ca.crt"
 	@echo ""
-	@LOCAL_IP=$$(grep "^LOCAL_IP=" $(ENV_FILE) | cut -d= -f2); \
+	@DOMAIN=$$(grep "^DOMAIN=" $(ENV_FILE) | cut -d= -f2); \
 	echo "============================================================"; \
 	echo "Starting HTTP server for CA certificate download..."; \
 	echo "============================================================"; \
-	echo "Download URL: http://$$LOCAL_IP:8888/caddy-root-ca.crt"; \
+	echo "Download URL: http://$$DOMAIN:8888/caddy-root-ca.crt"; \
 	echo ""; \
 	echo "Scan this QR code to download the certificate:"; \
 	echo ""; \
-	poetry run python -c "import qrcode; qr = qrcode.QRCode(); qr.add_data('http://$$LOCAL_IP:8888/caddy-root-ca.crt'); qr.print_ascii(invert=True)"; \
+	poetry run python deploy/generate_qr.py --url "http://$$DOMAIN:8888/caddy-root-ca.crt" --title "Scan to install certificate:"; \
 	echo ""; \
 	echo "On your mobile device:"; \
-	echo "  1. Scan the QR code above OR visit: http://$$LOCAL_IP:8888/caddy-root-ca.crt"; \
-	echo "  2. Tap 'Allow' when prompted about downloads"; \
-	echo "  3. Go to Settings → Profile Downloaded → Install"; \
-	echo "  4. Go to Settings → General → About → Certificate Trust Settings"; \
-	echo "  5. Enable full trust for 'Caddy Local Authority'"; \
+	echo "  1. Scan the QR code OR visit: http://$$DOMAIN:8888/caddy-root-ca.crt"; \
+	echo "  2. iOS: Settings → Profile Downloaded → Install → Certificate Trust Settings"; \
+	echo "  3. Android: Settings → Security → Install from storage"; \
 	echo ""; \
-	echo "Press Ctrl+C to stop the server after downloading"; \
+	echo "Press Ctrl+C to stop the server after installing"; \
 	echo "============================================================"; \
 	echo ""; \
 	cd deploy && python3 -m http.server 8888

@@ -35,13 +35,10 @@ services:
     ports:
       - "8080:8080"
       - "8443:8443"
-    environment:
-      - DOMAIN=${DOMAIN:-dev.wms.local}
-      - LOCAL_IP=${LOCAL_IP:-192.168.68.54}
+    env_file:
+      - .cache/.env
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./deploy/caddy-local.crt:/etc/caddy/certs/caddy-local.crt:ro
-      - ./deploy/caddy-local.key:/etc/caddy/certs/caddy-local.key:ro
       - caddy_data:/data
       - caddy_config:/config
     networks:

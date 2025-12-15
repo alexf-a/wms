@@ -3,39 +3,34 @@
 # This configuration enables testing the WMS app in production mode (DEBUG=False)
 # with HTTPS locally using Caddy's automatic TLS with self-signed certificates.
 #
+# Uses mDNS (.local domain) for automatic network discovery.
+# Works on both desktop and mobile devices without IP configuration.
+#
 # Environment variables required:
-#   DOMAIN - The local domain name (e.g., dev.wms.local)
-#   LOCAL_IP - The local IP address for LAN access (e.g., 192.168.68.54)
+#   DOMAIN - Your Mac's mDNS hostname (e.g., alexs-macbook-pro.local)
 #
 # Access points:
-#   https://{$DOMAIN}:8443        - Local domain access
-#   https://{$LOCAL_IP}:8443      - LAN/mobile access
-#   http://{$DOMAIN}:8080         - Redirects to HTTPS
-#   http://{$LOCAL_IP}:8080       - Redirects to HTTPS
+#   https://{$DOMAIN}:8443  - Works on desktop AND mobile
+#   http://{$DOMAIN}:8080   - Redirects to HTTPS
 
-# Global options - disable automatic HTTPS on non-standard ports  
+# Global options - disable automatic HTTPS redirects on non-standard ports
 {
 	auto_https disable_redirects
 }
 
-# HTTPS endpoint - catch-all for any hostname/IP on port 8443
-:8443 {
+# HTTPS endpoint - single domain using Caddy's internal CA
+https://{$DOMAIN}:8443 {
 	reverse_proxy web:8000 {
 		header_up X-Forwarded-Proto https
 		header_up X-Forwarded-Host {host}
 		header_up X-Real-IP {remote_host}
 	}
-
-	# Use manually generated certificate that includes both domain and IP in SANs
-	tls /etc/caddy/certs/caddy-local.crt /etc/caddy/certs/caddy-local.key
+	
+	# Let Caddy auto-generate certificate for the domain
+	tls internal
 }
 
-# HTTP to HTTPS redirect for domain
+# HTTP to HTTPS redirect
 http://{$DOMAIN}:8080 {
 	redir https://{$DOMAIN}:8443{uri} permanent
-}
-
-# HTTP to HTTPS redirect for IP
-http://{$LOCAL_IP}:8080 {
-	redir https://{$LOCAL_IP}:8443{uri} permanent
 }
