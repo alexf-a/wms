@@ -68,6 +68,7 @@ update-image:
 	@sed -i.bak 's|"image": ":.*"|"image": "$(IMAGE_NAME)"|' deploy/containers.json
 	@echo "Updated image reference to: $(IMAGE_NAME)"
 
+# Pushes container to AWS lightsail
 up: docker-build push update-image update-hosts deploy
 
 down:
@@ -82,6 +83,7 @@ sync-env:
 	@sed -i '' -e 's/^DB_NAME=.*/DB_NAME=local/' .cache/.env || true
 
 # Run containerized local development server
+# Runs Docker compose with the local dev environment
 # Usage:
 #   make local-up                              - Use env generated from containers.json
 #   make local-up ENV_FILE=.env.local          - Use custom env file (e.g., for mobile testing)
