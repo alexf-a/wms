@@ -206,6 +206,8 @@ local-https:
 	$(call check-local-https-caddy-volumes)
 	@mkdir -p .cache
 	@cp $(ENV_FILE) .cache/.env
+	@# Create root .env for docker-compose variable substitution (ports, domain)
+	@cp $(ENV_FILE) .env
 	@echo "Using HTTPS environment from $(ENV_FILE)"
 	@if [ ! -f .caddy-trusted ]; then \
 		echo ""; \
@@ -218,11 +220,13 @@ local-https:
 	@echo "Local HTTPS server running!"
 	@echo "============================================================"
 	@DOMAIN=$$(grep "^DOMAIN=" $(ENV_FILE) | cut -d= -f2); \
+	HTTP_PORT=$$(grep "^HTTP_PORT=" $(ENV_FILE) | cut -d= -f2 || echo "8080"); \
+	HTTPS_PORT=$$(grep "^HTTPS_PORT=" $(ENV_FILE) | cut -d= -f2 || echo "8443"); \
 	echo "Access from desktop OR mobile:"; \
-	echo "  http://$$DOMAIN:8080 (redirects to HTTPS)"; \
-	echo "  https://$$DOMAIN:8443 (direct HTTPS)"; \
+	echo "  http://$$DOMAIN:$$HTTP_PORT (redirects to HTTPS)"; \
+	echo "  https://$$DOMAIN:$$HTTPS_PORT (direct HTTPS)"; \
 	echo ""; \
-	poetry run python deploy/generate_qr.py --url "http://$$DOMAIN:8080" --title "Scan to access WMS (desktop or mobile):"; \
+	poetry run python deploy/generate_qr.py --url "http://$$DOMAIN:$$HTTP_PORT" --title "Scan to access WMS (desktop or mobile):"; \
 	echo ""; \
 	echo "For mobile: Install certificate once with 'make caddy-export-ca'"; \
 	echo "============================================================"
@@ -240,7 +244,7 @@ caddy-trust:
 	fi
 	@touch .caddy-trusted
 	@echo "Caddy CA certificate installed successfully!"
-	@echo "You can now access https://<your-hostname>.local:8443 without certificate warnings."
+	@echo "You can now access https://<your-hostname>.local:<HTTPS_PORT> without certificate warnings."
 
 # Export Caddy CA certificate and serve it via HTTP for mobile download
 # Mobile devices need to install and trust this certificate to connect via HTTPS
@@ -270,6 +274,7 @@ caddy-export-ca:
 	@echo "CA certificate extracted to: deploy/caddy-root-ca.crt"
 	@echo ""
 	@DOMAIN=$$(grep "^DOMAIN=" $(ENV_FILE) | cut -d= -f2); \
+	HTTP_PORT=$$(grep "^HTTP_PORT=" $(ENV_FILE) | cut -d= -f2 || echo "8080"); \
 	echo "============================================================"; \
 	echo "Starting HTTP server for CA certificate download..."; \
 	echo "============================================================"; \
@@ -294,7 +299,7 @@ local-https-down:
 	@echo "Stopping local HTTPS server..."
 	@docker-compose down web caddy
 	@echo "Cleaning up HTTPS artifacts..."
-	@rm -f .caddy-trusted deploy/caddy-root-ca.crt deploy/caddy-ca-qr.png
+	@rm -f .caddy-trusted deploy/caddy-root-ca.crt deploy/caddy-ca-qr.png .env
 	@echo "Local HTTPS environment shut down successfully."
 	@echo ""
 	@echo "Note: Docker volumes (wms_caddy_data, wms_caddy_config) are preserved."

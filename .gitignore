@@ -8,6 +8,9 @@ db.*
 
 qr_codes
 
+# Local environment file for docker-compose variable substitution
+.env
+
 notebooks
 
 poetry.lock

@@ -88,15 +88,17 @@ Static files are stored in an S3 bucket. See `settings.py` for configuration.
 Test the app locally in production mode (`DEBUG=False`) with HTTPS via Caddy reverse proxy. This is useful for testing production security settings and mobile device compatibility.
 
 ### Key Files
-- `Caddyfile`: Reverse proxy config with automatic TLS certificate generation.
+- `Caddyfile`: Reverse proxy config with automatic TLS certificate generation. Uses `{$HTTP_PORT}` and `{$HTTPS_PORT}` for port configuration.
 - `.env.local.https.example`: Template for creating `.env.local.https`.
 - `deploy/generate_qr.py`: Generates QR codes for mobile access and CA certificate download.
 - `Makefile`: Automation targets for local HTTPS setup (`local-https`, `caddy-trust`, `caddy-export-ca`, `local-https-down`).
+- `docker-compose.yml`: Passes environment variables to Caddy container for port and domain configuration.
 
 ### Prerequisites
 1. Copy `.env.local.https.example` to `.env.local.https` and fill in values.
 2. Update `DOMAIN` to your Mac's hostname: `hostname` (e.g., `alexs-macbook-pro.local`)
 3. Update `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS` to match your `DOMAIN`
+4. (Optional) Customize `HTTP_PORT` (default: 8080) and `HTTPS_PORT` (default: 8443)
 
 ### Workflow
 
@@ -111,9 +113,11 @@ This will:
 - Display QR code for mobile access
 
 **Access Points:**
-- Desktop: `https://<DOMAIN>:8443` (e.g., `https://alexs-macbook-pro.local:8443`)
-- Desktop (HTTP redirect): `http://<DOMAIN>:8080` (redirects to HTTPS)
+- Desktop: `https://<DOMAIN>:<HTTPS_PORT>` (e.g., `https://alexs-macbook-pro.local:8443`)
+- Desktop (HTTP redirect): `http://<DOMAIN>:<HTTP_PORT>` (e.g., `http://alexs-macbook-pro.local:8080` redirects to HTTPS)
 - Mobile: Same URLs - works via mDNS/Bonjour
+
+**Note:** Default ports are 8080 (HTTP) and 8443 (HTTPS). These can be customized in `.env.local.https`.
 
 #### Mobile Device Setup (One-Time)
 Mobile devices need to trust the Caddy CA certificate:
@@ -124,7 +128,7 @@ make caddy-export-ca
 
 This extracts the CA, starts an HTTP server, and displays a QR code. On your mobile device:
 
-1. Scan the QR code or visit `http://<DOMAIN>:8888/caddy-root-ca.crt`
+1. Scan the QR code or visit `http://<DOMAIN>:8888/caddy-root-ca.crt` (port 8888 is fixed for CA download)
 2. **iOS**: Settings → Profile Downloaded → Install → Settings → General → About → Certificate Trust Settings → Enable trust
 3. **Android**: Settings → Security → Install from storage → Select certificate
 

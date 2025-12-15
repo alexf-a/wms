@@ -8,10 +8,12 @@
 #
 # Environment variables required:
 #   DOMAIN - Your Mac's mDNS hostname (e.g., alexs-macbook-pro.local)
+#   HTTP_PORT - HTTP port (default: 8080)
+#   HTTPS_PORT - HTTPS port (default: 8443)
 #
 # Access points:
-#   https://{$DOMAIN}:8443  - Works on desktop AND mobile
-#   http://{$DOMAIN}:8080   - Redirects to HTTPS
+#   https://{$DOMAIN}:{$HTTPS_PORT}  - Works on desktop AND mobile
+#   http://{$DOMAIN}:{$HTTP_PORT}    - Redirects to HTTPS
 
 # Global options - disable automatic HTTPS redirects on non-standard ports
 {
@@ -19,7 +21,7 @@
 }
 
 # HTTPS endpoint - single domain using Caddy's internal CA
-https://{$DOMAIN}:8443 {
+https://{$DOMAIN}:{$HTTPS_PORT} {
 	reverse_proxy web:8000 {
 		header_up X-Forwarded-Proto https
 		header_up X-Forwarded-Host {host}
@@ -31,6 +33,6 @@ https://{$DOMAIN}:8443 {
 }
 
 # HTTP to HTTPS redirect
-http://{$DOMAIN}:8080 {
-	redir https://{$DOMAIN}:8443{uri} permanent
+http://{$DOMAIN}:{$HTTP_PORT} {
+	redir https://{$DOMAIN}:{$HTTPS_PORT}{uri} permanent
 }
