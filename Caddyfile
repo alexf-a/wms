@@ -13,37 +13,29 @@
 #   http://{$DOMAIN}:8080         - Redirects to HTTPS
 #   http://{$LOCAL_IP}:8080       - Redirects to HTTPS
 
-# HTTPS endpoint for local domain (e.g., dev.wms.local)
-{$DOMAIN}:8443 {
-	# Reverse proxy to Django app running in web container
-	reverse_proxy web:8000 {
-		# Forward real client information to Django
-		header_up X-Forwarded-Proto https
-		header_up X-Forwarded-Host {host}
-		header_up X-Real-IP {remote_host}
-	}
-
-	# Enable automatic HTTPS with local CA
-	tls internal
+# Global options - disable automatic HTTPS on non-standard ports  
+{
+	auto_https disable_redirects
 }
 
-# HTTPS endpoint for local IP (for mobile/LAN access)
-{$LOCAL_IP}:8443 {
+# HTTPS endpoint - catch-all for any hostname/IP on port 8443
+:8443 {
 	reverse_proxy web:8000 {
 		header_up X-Forwarded-Proto https
 		header_up X-Forwarded-Host {host}
 		header_up X-Real-IP {remote_host}
 	}
 
-	tls internal
+	# Use manually generated certificate that includes both domain and IP in SANs
+	tls /etc/caddy/certs/caddy-local.crt /etc/caddy/certs/caddy-local.key
 }
 
 # HTTP to HTTPS redirect for domain
-{$DOMAIN}:8080 {
-	redir https://{host}:8443{uri} permanent
+http://{$DOMAIN}:8080 {
+	redir https://{$DOMAIN}:8443{uri} permanent
 }
 
 # HTTP to HTTPS redirect for IP
-{$LOCAL_IP}:8080 {
-	redir https://{host}:8443{uri} permanent
+http://{$LOCAL_IP}:8080 {
+	redir https://{$LOCAL_IP}:8443{uri} permanent
 }
