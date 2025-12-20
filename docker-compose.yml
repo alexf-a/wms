@@ -1,4 +1,13 @@
 version: "3.8"
+
+networks:
+  wms-network:
+    driver: bridge
+
+volumes:
+  caddy_data:
+  caddy_config:
+
 services:
   web:
     build:
@@ -18,3 +27,21 @@ services:
       - ./wms:/app/wms
     entrypoint:
       - "/app/docker-entrypoint.sh"
+    networks:
+      - wms-network
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "${HTTP_PORT:-8080}:${HTTP_PORT:-8080}"
+      - "${HTTPS_PORT:-8443}:${HTTPS_PORT:-8443}"
+    env_file:
+      - .cache/.env
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - wms-network
+    depends_on:
+      - web
