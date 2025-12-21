@@ -6,8 +6,8 @@ from django.core.files.base import ContentFile
 from qrcode.image.pil import PilImage
 
 
-def generate_bin_access_token() -> str:
-    """Generate a random, URL-safe access token for a bin."""
+def generate_unit_access_token() -> str:
+    """Generate a random, URL-safe access token for a unit."""
     return secrets.token_urlsafe(16)
 
 
