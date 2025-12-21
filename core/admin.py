@@ -1,6 +1,9 @@
 from django.contrib import admin
 
-from .models import Bin
+from .models import Location, LocationSharedAccess, Unit, UnitSharedAccess
 
 # Register your models here.
-admin.site.register(Bin)
+admin.site.register(Location)
+admin.site.register(LocationSharedAccess)
+admin.site.register(Unit)
+admin.site.register(UnitSharedAccess)

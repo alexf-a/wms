@@ -9,7 +9,7 @@ from django.contrib.auth.models import User
 from django.core.files.base import ContentFile
 from django.urls import reverse
 
-from core.models import Bin, BinSharedAccess
+from core.models import Unit, UnitSharedAccess
 from core.utils import generate_bin_access_token, get_qr_code_file
 
 

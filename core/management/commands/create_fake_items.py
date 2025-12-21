@@ -8,7 +8,7 @@ from django.core.files.base import ContentFile
 from django.core.management.base import BaseCommand
 from PIL import Image, ImageDraw, ImageFont
 
-from core.models import Bin, Item
+from core.models import Unit, Item
 from lib.llm.claude4_xml_parser import Claude4XMLParsingError
 from lib.llm.llm_handler import StructuredLangChainHandler
 from lib.llm.utils import get_llm_call
