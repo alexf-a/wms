@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from faker import Faker
 
-from core.models import Bin
+from core.models import Unit
 from lib.llm.claude4_xml_parser import Claude4XMLParsingError
 from lib.llm.llm_handler import StructuredLangChainHandler
 from lib.llm.utils import get_llm_call

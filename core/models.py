@@ -37,8 +37,8 @@ class Location(models.Model):
     """
     user = models.ForeignKey(User, related_name="locations", on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
-    address = models.TextField(blank=True)
-    description = models.TextField(blank=True)
+    address = models.TextField(blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
     
     class Meta:
         """Model constraints for Location."""

@@ -28,7 +28,7 @@ from .forms import (
     ItemSearchForm,
     WMSUserCreationForm,
 )
-from .models import Bin, Item
+from .models import Unit, Item
 
 logger = logging.getLogger(__name__)
 
