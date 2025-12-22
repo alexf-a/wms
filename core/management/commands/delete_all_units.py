@@ -4,7 +4,7 @@ from core.models import Unit
 
 
 class Command(BaseCommand):
-    help = "Delete all bins from the database"
+    help = "Delete all units from the database"
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -14,23 +14,23 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        bin_count = Bin.objects.count()
+        unit_count = Unit.objects.count()
 
-        if bin_count == 0:
-            self.stdout.write(self.style.SUCCESS("No bins found in the database."))
+        if unit_count == 0:
+            self.stdout.write(self.style.SUCCESS("No units found in the database."))
             return
 
-        self.stdout.write(f"Found {bin_count} bins in the database.")
+        self.stdout.write(f"Found {unit_count} units in the database.")
 
         if not options["confirm"]:
-            confirm = input("Are you sure you want to delete ALL bins? This action cannot be undone. (yes/no): ")
+            confirm = input("Are you sure you want to delete ALL units? This action cannot be undone. (yes/no): ")
             if confirm.lower() != "yes":
                 self.stdout.write(self.style.WARNING("Operation cancelled."))
                 return
 
-        # Delete all bins
-        deleted_count, _ = Bin.objects.all().delete()
+        # Delete all units
+        deleted_count, _ = Unit.objects.all().delete()
 
         self.stdout.write(
-            self.style.SUCCESS(f"Successfully deleted {deleted_count} bins from the database.")
+            self.style.SUCCESS(f"Successfully deleted {deleted_count} units from the database.")
         )

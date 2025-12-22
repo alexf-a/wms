@@ -2,7 +2,7 @@ from django.contrib.auth import views as auth_views
 from django.urls import path
 
 from . import views
-from .views import list_bins
+from .views import list_units
 
 urlpatterns = [
     path("", views.home_view, name="home_view"),
@@ -24,18 +24,18 @@ urlpatterns = [
         name="logout",
     ),
     path("expand_inventory/", views.expand_inventory_view, name="expand_inventory"),
-    path("create_bin/", views.create_bin_view, name="create_bin"),
-    path("add_items_to_bin/", views.add_items_to_bin_view, name="add_items_to_bin"),
-    path("bins/", list_bins, name="list_bins"),
+    path("create_unit/", views.create_unit_view, name="create_unit"),
+    path("add_items_to_unit/", views.add_items_to_unit_view, name="add_items_to_unit"),
+    path("units/", list_units, name="list_units"),
     path(
-        "user/<int:user_id>/bins/<slug:access_token>/",
-        views.bin_detail,
-        name="bin_detail",
+        "user/<int:user_id>/units/<slug:access_token>/",
+        views.unit_detail,
+        name="unit_detail",
     ),
     path(
-        "user/<int:user_id>/bins/<slug:access_token>/qr/",
-        views.bin_qr_view,
-        name="bin_qr",
+        "user/<int:user_id>/units/<slug:access_token>/qr/",
+        views.unit_qr_view,
+        name="unit_qr",
     ),
     path("item/<int:item_id>/", views.item_detail, name="item_detail"),
     path("find-item/", views.item_search_view, name="item_search"),
