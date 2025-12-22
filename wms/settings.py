@@ -86,6 +86,14 @@ LOGGING = {
 
 # Application definition
 
+# Custom user model
+AUTH_USER_MODEL = "core.WMSUser"
+
+# Authentication backends - use email instead of username
+AUTHENTICATION_BACKENDS = [
+    "core.backends.EmailBackend",
+]
+
 INSTALLED_APPS = [
     "core",
     "django.contrib.admin",

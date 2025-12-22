@@ -3,7 +3,8 @@ import base64
 from typing import ClassVar
 from urllib.parse import urljoin
 
-from django.contrib.auth.models import User
+from django.conf import settings
+from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.core.files.base import ContentFile
 from django.db import models
 from django.urls import reverse
@@ -15,11 +16,63 @@ from .upload_paths import user_item_image_upload_path
 from .utils import generate_unit_access_token, get_qr_code_file
 
 
-class WMSUser(User):
-    """Custom user model extending Django's built-in User model."""
+class WMSUserManager(BaseUserManager):
+    """Custom manager for WMSUser that uses email as the username field."""
+    
+    def create_user(self, email, password=None, **extra_fields):
+        """Create and save a regular user with the given email and password."""
+        if not email:
+            raise ValueError("The Email field must be set")
+        email = self.normalize_email(email)
+        user = self.model(email=email, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+    
+    def create_superuser(self, email, password=None, **extra_fields):
+        """Create and save a superuser with the given email and password."""
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("is_superuser", True)
+        
+        if extra_fields.get("is_staff") is not True:
+            raise ValueError("Superuser must have is_staff=True.")
+        if extra_fields.get("is_superuser") is not True:
+            raise ValueError("Superuser must have is_superuser=True.")
+        
+        return self.create_user(email, password, **extra_fields)
+
+
+class WMSUser(AbstractUser):
+    """Custom user model with email as primary identifier instead of username.
+    
+    Username is optional and not required for authentication.
+    Email is required, unique, and used for login.
+    """
+    
+    # Make username optional
+    username = models.CharField(
+        max_length=150,
+        blank=True,
+        null=True,
+        help_text="Optional display name"
+    )
+    
+    # Make email required and unique
+    email = models.EmailField(
+        unique=True,
+        blank=False,
+        null=False,
+        help_text="Required. Used for authentication."
+    )
+    
+    # Use email as the username field for authentication
+    USERNAME_FIELD = "email"
+    REQUIRED_FIELDS = []  # Email is already the USERNAME_FIELD, so don't include it here
+    
+    objects = WMSUserManager()
 
     class Meta:
-        """Metadata for the WMSUser proxy."""
+        """Metadata for the WMSUser model."""
 
         app_label: ClassVar[str] = "core"
 
@@ -35,7 +88,7 @@ class Location(models.Model):
         address (str): Physical address (optional).
         description (str): Additional details about the location.
     """
-    user = models.ForeignKey(User, related_name="locations", on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="locations", on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
     address = models.TextField(blank=True, null=True)
     description = models.TextField(blank=True, null=True)
@@ -102,7 +155,7 @@ class LocationSharedAccess(models.Model):
         location (Location): The location to which access is shared.
         permission (str): The level of permission (e.g., "read", "write").
     """
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     location = models.ForeignKey(Location, on_delete=models.CASCADE)
     permission = models.CharField(max_length=50, default="read")
 
@@ -132,9 +185,9 @@ class Unit(models.Model):
         height (float): The height of the unit in inches.
         access_token (str): Unique token for QR code access.
     """
-    user = models.ForeignKey(User, related_name="units", on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="units", on_delete=models.CASCADE)
     shared_users = models.ManyToManyField(
-        User,
+        settings.AUTH_USER_MODEL,
         through="UnitSharedAccess",
         blank=True,
         related_name="shared_units"
@@ -358,7 +411,7 @@ class UnitSharedAccess(models.Model):
         unit (Unit): The unit to which access is shared.
         permission (str): The level of permission (e.g., "read", "write").
     """
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     unit = models.ForeignKey(Unit, on_delete=models.CASCADE)
     permission = models.CharField(max_length=50, default="read")
 
@@ -382,7 +435,7 @@ class Item(models.Model):
         image (ImageField): An optional image of the item.
         unit (Unit): The unit in which the item is stored.
     """
-    user = models.ForeignKey(User, related_name="items", on_delete=models.CASCADE, editable=False)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="items", on_delete=models.CASCADE, editable=False)
     name = models.CharField(max_length=255)
     description = models.TextField()
     created_on = models.DateTimeField(auto_now_add=True)
