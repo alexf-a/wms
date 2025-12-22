@@ -1,33 +1,33 @@
 {% extends "core/base.html" %}
 
-{% block title %}Your Storage Bins - WMS{% endblock %}
+{% block title %}Your Storage Units - WMS{% endblock %}
 
 {% block content %}
 <div class="m3-page-shell">
-    {% if bins %}
-        <!-- Bins Grid -->
+    {% if units %}
+        <!-- Units Grid -->
         <div class="grid-2">
-            {% for bin in bins %}
+            {% for unit in units %}
                 <div class="m3-card m3-card--filled">
                     <div class="m3-card__content">
-                        <h3 class="md-typescale-title-large m3-card__title">{{ bin.name }}</h3>
+                        <h3 class="md-typescale-title-large m3-card__title">{{ unit.name }}</h3>
                         
-                        {% if bin.description %}
-                            <p class="md-typescale-body-medium m3-card__description">{{ bin.description|truncatewords:20 }}</p>
+                        {% if unit.description %}
+                            <p class="md-typescale-body-medium m3-card__description">{{ unit.description|truncatewords:20 }}</p>
                         {% else %}
                             <p class="md-typescale-body-medium m3-card__description text-muted"><em>No description</em></p>
                         {% endif %}
                         
-                        {% if bin.location %}
+                        {% if unit.location %}
                             <p class="md-typescale-body-small text-muted" style="margin-top: 8px;">
-                                <strong>Location:</strong> {{ bin.location }}
+                                <strong>Location:</strong> {{ unit.location }}
                             </p>
                         {% endif %}
                         
                         <p class="md-typescale-label-medium text-muted" style="margin-top: 12px;">
-                            {% with item_count=bin.items.count %}
+                            {% with item_count=unit.items.count %}
                                 {% if item_count == 0 %}
-                                    Empty bin
+                                    Empty unit
                                 {% elif item_count == 1 %}
                                     1 item
                                 {% else %}
@@ -38,10 +38,10 @@
                     </div>
                     
                     <div class="m3-card__actions">
-                        <a href="{% url 'bin_detail' bin.user_id bin.access_token %}" class="m3-button m3-button-filled">
+                        <a href="{% url 'unit_detail' unit.user_id unit.access_token %}" class="m3-button m3-button-filled">
                             <span class="m3-button-label">View Details</span>
                         </a>
-                        <a href="{% url 'bin_qr' bin.user_id bin.access_token %}" class="m3-button m3-button-tonal">
+                        <a href="{% url 'unit_qr' unit.user_id unit.access_token %}" class="m3-button m3-button-tonal">
                             <span class="m3-button-label">QR Code</span>
                         </a>
                     </div>
@@ -49,13 +49,13 @@
             {% endfor %}
         </div>
         
-        <!-- Add Bin Button -->
+        <!-- Add Unit Button -->
         <div class="m3-button-centered">
-            <a href="{% url 'create_bin' %}" class="m3-button m3-button-filled m3-button-standard">
+            <a href="{% url 'create_unit' %}" class="m3-button m3-button-filled m3-button-standard">
                 <svg class="m3-button-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
                 </svg>
-                <span class="m3-button-label">Add Bin</span>
+                <span class="m3-button-label">Add Unit</span>
             </a>
         </div>
     {% else %}
@@ -64,14 +64,14 @@
             <svg width="120" height="120" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity: 0.3; margin: 0 auto var(--wms-space-lg);">
                 <path d="M20 2H4c-1 0-2 .9-2 2v3.01c0 .72.43 1.34 1 1.69V20c0 1.1 1.1 2 2 2h14c.9 0 2-.9 2-2V8.7c.57-.35 1-.97 1-1.69V4c0-1.1-1-2-2-2zm-5 12H9v-2h6v2zm5-7H4V4h16v3z" fill="currentColor"/>
             </svg>
-            <h2 class="md-typescale-headline-small">No storage bins yet</h2>
-            <p class="md-typescale-body-large text-muted">Create your first bin to start organizing your belongings</p>
+            <h2 class="md-typescale-headline-small">No storage units yet</h2>
+            <p class="md-typescale-body-large text-muted">Create your first unit to start organizing your belongings</p>
             <div class="m3-button-centered">
-                <a href="{% url 'create_bin' %}" class="m3-button m3-button-filled m3-button-standard">
+                <a href="{% url 'create_unit' %}" class="m3-button m3-button-filled m3-button-standard">
                     <svg class="m3-button-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
                     </svg>
-                    <span class="m3-button-label">Add Bin</span>
+                    <span class="m3-button-label">Add Unit</span>
                 </a>
             </div>
         </div>

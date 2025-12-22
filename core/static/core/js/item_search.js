@@ -1,6 +1,6 @@
 /**
  * Item Search Page JavaScript
- * Handles search input focus and browse-by-bin toggle functionality
+ * Handles search input focus and browse-by-unit toggle functionality
  * 
  * Dependencies: ui_utils.js (revealSection)
  */
@@ -12,25 +12,25 @@ document.addEventListener('DOMContentLoaded', function() {
         searchInput.focus();
     }
 
-    // Browse by Bin toggle functionality
-    const browseByBinBtn = document.getElementById('browse-by-bin-btn');
-    const binFilterSection = document.getElementById('bin-filter-section');
-    const binSelect = document.getElementById('bin_filter');
+    // Browse by Unit toggle functionality
+    const browseByUnitBtn = document.getElementById('browse-by-unit-btn');
+    const unitFilterSection = document.getElementById('unit-filter-section');
+    const unitSelect = document.getElementById('unit_filter');
     const searchFieldGroup = document.getElementById('search-field-group');
     
-    if (browseByBinBtn && binFilterSection) {
-        browseByBinBtn.addEventListener('click', function() {
+    if (browseByUnitBtn && unitFilterSection) {
+        browseByUnitBtn.addEventListener('click', function() {
             // Hide the search bar
             if (searchFieldGroup) {
                 searchFieldGroup.style.display = 'none';
             }
-            revealSection(binFilterSection, browseByBinBtn, binSelect);
+            revealSection(unitFilterSection, browseByUnitBtn, unitSelect);
         });
     }
 
-    // Navigate to bin detail page when a bin is selected
-    if (binSelect) {
-        binSelect.addEventListener('change', function() {
+    // Navigate to unit detail page when a unit is selected
+    if (unitSelect) {
+        unitSelect.addEventListener('change', function() {
             const selectedOption = this.options[this.selectedIndex];
             const url = selectedOption.dataset.url;
             if (url) {
@@ -41,17 +41,17 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 /**
- * Show the bin filter section if a bin is already selected
- * Called from the template when selected_bin_id is present
+ * Show the unit filter section if a unit is already selected
+ * Called from the template when selected_unit_id is present
  */
-function showBinFilterSection() {
-    const browseByBinBtn = document.getElementById('browse-by-bin-btn');
-    const binFilterSection = document.getElementById('bin-filter-section');
+function showUnitFilterSection() {
+    const browseByUnitBtn = document.getElementById('browse-by-unit-btn');
+    const unitFilterSection = document.getElementById('unit-filter-section');
     const searchFieldGroup = document.getElementById('search-field-group');
     
-    if (browseByBinBtn && binFilterSection) {
-        binFilterSection.style.display = 'block';
-        browseByBinBtn.style.display = 'none';
+    if (browseByUnitBtn && unitFilterSection) {
+        unitFilterSection.style.display = 'block';
+        browseByUnitBtn.style.display = 'none';
     }
     if (searchFieldGroup) {
         searchFieldGroup.style.display = 'none';

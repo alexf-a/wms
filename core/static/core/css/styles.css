@@ -2410,7 +2410,7 @@ input.search-input::placeholder,
     height: 24px;
 }
 
-/* Bin Filter Section (Item Search) */
-.bin-filter-section {
+/* Unit Filter Section (Item Search) */
+.unit-filter-section {
     padding-top: var(--wms-space-md);
 }

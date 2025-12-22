@@ -162,14 +162,14 @@ def expand_inventory_view(request: HttpRequest) -> HttpResponse:
     return render(request, "core/expand_inventory.html", {"active_nav": "add"})
 
 @login_required
-def create_bin_view(request: HttpRequest) -> HttpResponse:
-    """Handle the creation of a new bin.
+def create_unit_view(request: HttpRequest) -> HttpResponse:
+    """Handle the creation of a new unit.
 
     Args:
         request: The HTTP request object.
 
     Returns:
-        The rendered create bin page or a redirect to the home page.
+        The rendered create unit page or a redirect to the home page.
     """
     if request.method == "POST":
         name = request.POST["name"]
@@ -178,7 +178,7 @@ def create_bin_view(request: HttpRequest) -> HttpResponse:
         length = request.POST.get("length") or None
         width = request.POST.get("width") or None
         height = request.POST.get("height") or None
-        new_bin = Bin(
+        new_unit = Unit(
             user=request.user,
             name=name,
             description=description,
@@ -187,19 +187,19 @@ def create_bin_view(request: HttpRequest) -> HttpResponse:
             width=width,
             height=height,
         )
-        new_bin.save()
+        new_unit.save()
         return redirect("home_view")
-    return render(request, "core/create_bin.html")
+    return render(request, "core/create_unit.html")
 
 @login_required
-def add_items_to_bin_view(request: HttpRequest) -> HttpResponse:
-    """Handle adding items to a bin.
+def add_items_to_unit_view(request: HttpRequest) -> HttpResponse:
+    """Handle adding items to a unit.
 
     Args:
         request: The HTTP request object.
 
     Returns:
-        The rendered add items to bin page or a redirect to the home page.
+        The rendered add items to unit page or a redirect to the home page.
     """
     if request.method == "POST":
         form = ItemForm(request.POST, request.FILES, user=request.user)
@@ -219,50 +219,50 @@ def add_items_to_bin_view(request: HttpRequest) -> HttpResponse:
     else:
         form = ItemForm(user=request.user)
 
-    # Get user's bins for the template
-    bins = Bin.objects.filter(user=request.user)
-    return render(request, "core/add_items_to_bin.html", {"form": form, "bins": bins})
+    # Get user's units for the template
+    units = Unit.objects.filter(user=request.user)
+    return render(request, "core/add_items_to_unit.html", {"form": form, "units": units})
 
 @login_required
-def list_bins(request: HttpRequest) -> HttpResponse:
-    """List all bins for the current user.
+def list_units(request: HttpRequest) -> HttpResponse:
+    """List all units for the current user.
 
     Args:
         request: The HTTP request object.
 
     Returns:
-        The rendered list bins page.
+        The rendered list units page.
     """
-    bins = Bin.objects.filter(user=request.user)
-    return render(request, "core/list_bins.html", {"bins": bins, "active_nav": "see"})
+    units = Unit.objects.filter(user=request.user)
+    return render(request, "core/list_units.html", {"units": units, "active_nav": "see"})
 
 @login_required
-def bin_detail(request: HttpRequest, user_id: int, access_token: str) -> HttpResponse:
-    """Display the details of a specific bin using its access token.
+def unit_detail(request: HttpRequest, user_id: int, access_token: str) -> HttpResponse:
+    """Display the details of a specific unit using its access token.
 
     Args:
         request: The HTTP request object.
-        user_id: The ID of the bin owner.
-        access_token: The opaque access token assigned to the bin.
+        user_id: The ID of the unit owner.
+        access_token: The opaque access token assigned to the unit.
 
     Returns:
-        The rendered bin detail page.
+        The rendered unit detail page.
     """
-    _bin = get_object_or_404(Bin, user_id=user_id, access_token=access_token)
-    return render(request, "core/bin_detail.html", {"bin": _bin})
+    _unit = get_object_or_404(Unit, user_id=user_id, access_token=access_token)
+    return render(request, "core/unit_detail.html", {"unit": _unit})
 
 
 @login_required
-def bin_qr_view(request: HttpRequest, user_id: int, access_token: str) -> HttpResponse:
-    """Return a PNG QR code for the requested bin."""
-    _bin = get_object_or_404(Bin, user_id=user_id, access_token=access_token)
-    has_access = _bin.user_id == request.user.id or _bin.shared_users.filter(id=request.user.id).exists()
+def unit_qr_view(request: HttpRequest, user_id: int, access_token: str) -> HttpResponse:
+    """Return a PNG QR code for the requested unit."""
+    _unit = get_object_or_404(Unit, user_id=user_id, access_token=access_token)
+    has_access = _unit.user_id == request.user.id or _unit.shared_users.filter(id=request.user.id).exists()
     if not has_access:
-        message = "Bin not found."
+        message = "Unit not found."
         raise Http404(message)
 
     base_url = request.build_absolute_uri("/")
-    qr_file = _bin.get_qr_code(base_url=base_url)
+    qr_file = _unit.get_qr_code(base_url=base_url)
     qr_file.seek(0)
 
     response = HttpResponse(qr_file.read(), content_type="image/png")
@@ -295,10 +295,10 @@ def item_search_view(request: HttpRequest) -> HttpResponse:
     """
     result = None
     found_item = None
-    selected_bin_id = None
+    selected_unit_id = None
 
     if request.method == "POST":
-        selected_bin_id = request.POST.get("bin_filter")
+        selected_unit_id = request.POST.get("unit_filter")
         form = ItemSearchForm(request.POST)
         if form.is_valid():
             query = form.cleaned_data["query"]
@@ -316,8 +316,8 @@ def item_search_view(request: HttpRequest) -> HttpResponse:
         "form": form,
         "result": result,
         "found_item": found_item,
-        "bins": Bin.objects.filter(user=request.user).order_by("name"),
-        "selected_bin_id": selected_bin_id,
+        "units": Unit.objects.filter(user=request.user).order_by("name"),
+        "selected_unit_id": selected_unit_id,
         "active_nav": "find",
     })
 

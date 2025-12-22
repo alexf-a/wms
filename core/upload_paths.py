@@ -6,11 +6,11 @@ if TYPE_CHECKING:
 
 
 def user_item_image_upload_path(instance: "Item", filename: str) -> str:
-    """Generate upload path for item images specific to the bin owner.
+    """Generate upload path for item images specific to the unit owner.
 
     Path: users/{user_id}/item_images/{filename}
 
-    For shared bins, we still use the original owner's directory
+    For shared units, we still use the original owner's directory
     to maintain consistency and avoid duplication.
     """
-    return f"users/{instance.bin.user.id}/item_images/{filename}"
+    return f"users/{instance.unit.user.id}/item_images/{filename}"

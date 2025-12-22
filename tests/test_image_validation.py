@@ -79,4 +79,4 @@ def test_validate_image_upload_rejects_corrupted_file() -> None:
     with pytest.raises(ImageValidationError) as exc:
         _validate_image_upload(corrupted)
 
-    assert "corrupted" in str(exc.value).lower()
+    assert "unable to read this image file" in str(exc.value).lower()

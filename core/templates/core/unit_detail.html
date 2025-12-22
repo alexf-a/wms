@@ -1,10 +1,10 @@
 {% extends "core/base.html" %}
 
-{% block title %}{{ bin.name }} - WMS{% endblock %}
+{% block title %}{{ unit.name }} - WMS{% endblock %}
 
 {% block content %}
 <div class="m3-page-shell">
-    <!-- Bin Header Card -->
+    <!-- Unit Header Card -->
     <div class="m3-card m3-card--filled">
         <div class="m3-card__content">
             <div class="m3-card__icon">
@@ -12,19 +12,19 @@
                     <path d="M4 4H20V20H4V4ZM6 6V18H18V6H6ZM8 8H16V10H8V8ZM8 12H16V14H8V12Z" fill="currentColor"/>
                 </svg>
             </div>
-            <h1 class="md-typescale-headline-medium m3-card__title">{{ bin.name }}</h1>
+            <h1 class="md-typescale-headline-medium m3-card__title">{{ unit.name }}</h1>
             <p class="md-typescale-body-medium m3-card__description">
-                {{ bin.description }}
+                {{ unit.description }}
             </p>
         </div>
         <div class="m3-card__actions">
-            <a href="{% url 'bin_qr' bin.user_id bin.access_token %}" class="m3-button m3-button-tonal">
+            <a href="{% url 'unit_qr' unit.user_id unit.access_token %}" class="m3-button m3-button-tonal">
                 <svg class="m3-button-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M3 11h8V3H3v8zm2-6h4v4H5V5zm8-2v8h8V3h-8zm6 6h-4V5h4v4zM3 21h8v-8H3v8zm2-6h4v4H5v-4zm13 2h3v3h2v-3h3v-2h-3v-3h-2v3h-3v2z"/>
                 </svg>
                 <span class="m3-button-label">Download QR Code</span>
             </a>
-            <a href="{% url 'add_items_to_bin' %}" class="m3-button m3-button-filled">
+            <a href="{% url 'add_items_to_unit' %}" class="m3-button m3-button-filled">
                 <svg class="m3-button-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M19 13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
                 </svg>
@@ -36,9 +36,9 @@
     <!-- Items Section -->
     <h2 class="md-typescale-title-large" style="margin-top: var(--wms-space-xl); margin-bottom: var(--wms-space-md); color: var(--md-sys-color-on-surface);"> Your Items </h2>
     
-    {% if bin.items.all %}
+    {% if unit.items.all %}
         <div class="m3-list">
-            {% for item in bin.items.all %}
+            {% for item in unit.items.all %}
                 <a href="{% url 'item_detail' item.id %}" class="m3-list-item" style="text-decoration: none; color: inherit;">
                     <div class="m3-list-item__leading{% if item.image %} m3-list-item__leading--has-image{% endif %}">
                         {% if item.image %}
@@ -62,7 +62,7 @@
                 </a>
             {% endfor %}
                 <div class="m3-button-centered">
-                    <a href="{% url 'add_items_to_bin' %}" class="m3-button m3-button-filled m3-button-small" style="flex-direction: column; gap: 4px; padding: 16px 24px;">
+                    <a href="{% url 'add_items_to_unit' %}" class="m3-button m3-button-filled m3-button-small" style="flex-direction: column; gap: 4px; padding: 16px 24px;">
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M19 13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
                         </svg>
@@ -79,10 +79,10 @@
                     </svg>
                 </div>
                 <p class="md-typescale-body-large" style="color: var(--md-sys-color-on-surface-variant); margin-bottom: var(--wms-space-md);">
-                    This bin is empty
+                    This unit is empty
                 </p>
                 <div class="m3-button-centered">
-                    <a href="{% url 'add_items_to_bin' %}" class="m3-button m3-button-filled m3-button-small" style="flex-direction: column; gap: 4px; padding: 16px 24px;">
+                    <a href="{% url 'add_items_to_unit' %}" class="m3-button m3-button-filled m3-button-small" style="flex-direction: column; gap: 4px; padding: 16px 24px;">
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M19 13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
                         </svg>
@@ -95,7 +95,7 @@
 
     <!-- Back Button -->
     <div style="margin-top: var(--wms-space-xl);">
-        <a href="{% url 'list_bins' %}" class="m3-button m3-button-tonal m3-button-small">
+        <a href="{% url 'list_units' %}" class="m3-button m3-button-tonal m3-button-small">
             <svg class="m3-button-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
             </svg>
@@ -114,7 +114,7 @@
         <span class="m3-nav-label">Home</span>
     </a>
 
-    <a href="{% url 'list_bins' %}" class="m3-nav-item m3-nav-item-active">
+    <a href="{% url 'list_units' %}" class="m3-nav-item m3-nav-item-active">
         <div class="m3-nav-icon-container">
             <svg class="m3-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M20 2H4c-1 0-2 .9-2 2v3.01c0 .72.43 1.34 1 1.69V20c0 1.1 1.1 2 2 2h14c.9 0 2-.9 2-2V8.7c.57-.35 1-.97 1-1.69V4c0-1.1-1-2-2-2zm-5 12H9v-2h6v2zm5-7H4V4h16v3z" />
