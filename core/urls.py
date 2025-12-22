@@ -9,15 +9,7 @@ urlpatterns = [
     path("healthz/", views.healthcheck_view, name="healthcheck"),
     path("account/", views.account_view, name="account"),
     path("register/", views.register_view, name="register"),
-    path(
-        "login/",
-        auth_views.LoginView.as_view(
-            redirect_authenticated_user=True,
-            template_name="core/auth/login.html",
-            next_page="home_view",
-        ),
-        name="login",
-    ),
+    path("login/", views.login_view, name="login"),
     path(
         "logout/",
         auth_views.LogoutView.as_view(next_page="home_view"),

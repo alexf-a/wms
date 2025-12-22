@@ -24,6 +24,7 @@ from lib.llm.llm_search import find_item_location
 
 from .forms import (
     AccountForm,
+    WMSUserAuthForm,
     ItemForm,
     ItemSearchForm,
     WMSUserCreationForm,
@@ -111,10 +112,38 @@ def register_view(request: HttpRequest) -> HttpResponse:
         if form.is_valid():
             user = form.save()
             login(request, user)
+            return redirect("home_view")
         logger.error("Registration form errors: %s", form.errors)
     else:
         form = WMSUserCreationForm()
     return render(request, "core/auth/register.html", {"form": form})
+
+
+def login_view(request: HttpRequest) -> HttpResponse:
+    """Handle user login with email authentication.
+
+    Args:
+        request: The HTTP request object.
+
+    Returns:
+        The rendered login page or a redirect to the home page.
+    """
+    # Redirect if already authenticated
+    if request.user.is_authenticated:
+        return redirect("home_view")
+    
+    if request.method == "POST":
+        form = WMSUserAuthForm(request, data=request.POST)
+        if form.is_valid():
+            user = form.get_user()
+            login(request, user)
+            # Redirect to 'next' parameter or home
+            next_page = request.GET.get('next', 'home_view')
+            return redirect(next_page)
+    else:
+        form = WMSUserAuthForm(request)
+    
+    return render(request, "core/auth/login.html", {"form": form})
 
 
 @login_required

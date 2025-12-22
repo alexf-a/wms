@@ -3,10 +3,66 @@ from __future__ import annotations
 from enum import Enum
 
 from django import forms
+from django.contrib.auth import authenticate
 from django.contrib.auth.forms import UserCreationForm
 from django.core.exceptions import ValidationError
 
 from .models import Location, Unit, Item, WMSUser
+
+
+class WMSUserAuthForm(forms.Form):
+    """Authentication form that uses email instead of username."""
+    
+    email = forms.EmailField(
+        widget=forms.EmailInput(attrs={
+            'placeholder': 'Enter your email',
+            'autofocus': True,
+            'autocomplete': 'email'
+        })
+    )
+    password = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'placeholder': 'Enter your password'
+        })
+    )
+    
+    error_messages = {
+        'invalid_login': "Please enter a correct email and password.",
+        'inactive': "This account is inactive.",
+    }
+    
+    def __init__(self, request=None, *args, **kwargs):
+        """Initialize form with request object for authentication."""
+        self.request = request
+        self.user_cache = None
+        super().__init__(*args, **kwargs)
+    
+    def clean(self):
+        """Validate email and password."""
+        email = self.cleaned_data.get('email')
+        password = self.cleaned_data.get('password')
+        
+        if email is not None and password:
+            self.user_cache = authenticate(
+                self.request,
+                username=email,  # Backend expects 'username' parameter
+                password=password
+            )
+            if self.user_cache is None:
+                raise forms.ValidationError(
+                    self.error_messages['invalid_login'],
+                    code='invalid_login',
+                )
+            elif not self.user_cache.is_active:
+                raise forms.ValidationError(
+                    self.error_messages['inactive'],
+                    code='inactive',
+                )
+        return self.cleaned_data
+    
+    def get_user(self):
+        """Return authenticated user."""
+        return self.user_cache
 
 
 # Storage type constants
@@ -93,13 +149,21 @@ def build_container_choices(user: WMSUser, exclude_unit: Unit | None = None) -> 
 
 
 class WMSUserCreationForm(UserCreationForm):
-    """Form for creating a new WMSUser."""
+    """Form for creating a new WMSUser with email-based authentication."""
+    
+    email = forms.EmailField(
+        required=True,
+        widget=forms.EmailInput(attrs={
+            'placeholder': 'Email address',
+            'autocomplete': 'email'
+        })
+    )
 
     class Meta:
         """Metadata options for WMSUserCreationForm."""
 
         model = WMSUser
-        fields = ("username", "password1", "password2")
+        fields = ("email", "password1", "password2")
 
 
 class StorageSpaceForm(forms.Form):
@@ -403,9 +467,8 @@ class AccountForm(forms.ModelForm):
         """Metadata options for AccountForm."""
 
         model = WMSUser
-        fields = ("username", "email", "first_name", "last_name")
+        fields = ("email", "first_name", "last_name")
         widgets = {
-            "username": forms.TextInput(attrs={"placeholder": "Username"}),
             "email": forms.EmailInput(attrs={"placeholder": "Email"}),
             "first_name": forms.TextInput(attrs={"placeholder": "First name"}),
             "last_name": forms.TextInput(attrs={"placeholder": "Last name"}),
