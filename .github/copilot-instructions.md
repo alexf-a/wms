@@ -63,9 +63,14 @@ This project deploys to AWS Lightsail Container Service using a container image 
    - Update `HOST_SUFFIX` in `Makefile` to use the URL from the output. Use the suffix after the service name (e.g. `us-west-2.cs.amazonlightsail.com`)
    - Run `make up`
 2. **Regular deployments**: `make up` (builds, pushes, and deploys)
-3. **Local deployment (debugging)**: `make local-up`
+3. **Local development (HTTP)**: `make local-up` or `make local-up ENV_FILE=.env.local`
+4. **Local production testing (HTTPS)**: `make local-https` (see Local Production Testing section)
 
 Note: `make` commands will modify your containers.json file.
+
+#### Stopping Local Servers
+- **HTTP mode**: `make local-down`
+- **HTTPS mode**: `make local-https-down`
 
 #### Manual Steps
 1. Build image with correct platform: `make docker-build` (uses linux/amd64)
@@ -82,6 +87,43 @@ Static files are stored in an S3 bucket. See `settings.py` for configuration.
 - If you get "image push response does not contain the image digest" error, run `make install-lightsailctl-fix`
 - The Makefile automatically uses `--platform linux/amd64` to ensure Lightsail compatibility
 - Patched lightsailctl is installed to `~/go/bin/` and automatically added to PATH
+
+## Local Development (HTTP)
+
+For local development and debugging with `DEBUG=True`, use HTTP mode which runs only the Django web service.
+
+### Key Files
+- `.env.local.example`: Template for creating `.env.local` with mobile testing configuration.
+- `docker-compose.yml`: Defines the `web` service for Django.
+- `Makefile`: Automation targets (`local-up`, `local-down`).
+
+### Prerequisites
+1. Copy `.env.local.example` to `.env.local` and fill in values.
+2. Update `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS` with your Mac's IP address (find it with `ipconfig getifaddr en0`).
+
+### Workflow
+
+#### Start Local HTTP Server
+```bash
+make local-up ENV_FILE=.env.local
+```
+This will:
+- Start only the Django web service (no Caddy)
+- Run in `DEBUG=True` mode
+- Be accessible at `http://localhost:8000` or `http://<your-ip>:8000` for mobile
+
+#### Stop Local HTTP Server
+```bash
+make local-down
+```
+
+### Troubleshooting: Browser Forcing HTTPS
+If you previously used `make local-https`, your browser may have cached HSTS (HTTP Strict Transport Security) settings and automatically redirect HTTP to HTTPS. To fix:
+
+- **Chrome/Edge**: Visit `chrome://net-internals/#hsts`, enter `localhost` in "Delete domain security policies", click Delete
+- **Firefox**: Clear browsing data, specifically "Active Logins"
+- **Safari**: Quit Safari, delete `~/Library/Cookies/HSTS.plist`, restart Safari
+- **Alternative**: Access via IP address instead of `localhost` (e.g., `http://192.168.x.x:8000`)
 
 ## Local Production Testing (HTTPS)
 
