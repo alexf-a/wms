@@ -10,7 +10,10 @@ class ItemLocation(BaseModel):
     item_name: str
     unit_name: str
     confidence: str  # High, Medium, Low
-    additional_info: str = Field(..., description="Any helpful additional information about the item location, or your reasoning for the confidence level.")
+    additional_info: str = Field(
+        ...,
+        description="Any helpful additional information about the item location, or your reasoning for the confidence level.",
+    )
 
     def __str__(self) -> str:
         """Return a string representation of the item location."""

@@ -71,7 +71,7 @@ def get_item_location(candidates: ItemSearchCandidates, user_id: int, user_query
         )
         return ItemLocation(
             item_name=candidate.name,
-            bin_name=candidate.bin_name,
+            unit_name=candidate.unit_name,
             confidence="High",
             additional_info=f"Found with confidence score: {candidate.confidence}"
         )
