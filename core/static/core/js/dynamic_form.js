@@ -271,11 +271,11 @@
                     const shouldShow = currentValue === conditional.expectedValue;
                     
                     if (shouldShow) {
-                        // Remove display:none and allow step logic to control visibility
-                        conditional.element.style.removeProperty('display');
+                        // Remove the hidden class to allow step logic to control visibility
+                        conditional.element.classList.remove('m3-conditional-hidden');
                     } else {
-                        // Hide the element
-                        conditional.element.style.display = 'none';
+                        // Add the hidden class
+                        conditional.element.classList.add('m3-conditional-hidden');
                     }
                 });
             };

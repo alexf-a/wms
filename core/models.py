@@ -77,29 +77,47 @@ class WMSUser(AbstractUser):
         app_label: ClassVar[str] = "core"
 
 
-class Location(models.Model):
+class StorageSpace(models.Model):
+    """Abstract base class for storage containers.
+    
+    Provides common fields and behavior for both Locations and Units.
+    Never instantiated directly - only used as a base class.
+    
+    Attributes:
+        user (User): The owner of the storage space.
+        name (str): The name of the storage space.
+        description (str): Additional details about the storage space.
+    """
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    
+    class Meta:
+        """Mark this as an abstract base class."""
+        
+        abstract = True
+    
+    def __str__(self) -> str:
+        return self.name
+
+
+class Location(StorageSpace):
     """Organizational location (address, building, room).
     
     Pure metadata - does not contain items directly. Items must be in Units.
     
     Attributes:
-        user (User): The owner of the location.
-        name (str): The name of the location (e.g., "My House", "Storage Facility A").
+        user (User): Inherited from StorageSpace.
+        name (str): Inherited from StorageSpace.
+        description (str): Inherited from StorageSpace.
         address (str): Physical address (optional).
-        description (str): Additional details about the location.
     """
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="locations", on_delete=models.CASCADE)
-    name = models.CharField(max_length=255)
     address = models.TextField(blank=True, null=True)
-    description = models.TextField(blank=True, null=True)
     
     class Meta:
         """Model constraints for Location."""
         
         unique_together: ClassVar = ("user", "name")
-    
-    def __str__(self) -> str:
-        return self.name
     
     def can_promote_to_unit(self) -> bool:
         """Check if this Location can be safely promoted to a Unit.
@@ -137,7 +155,7 @@ class Location(models.Model):
         
         # Reassign all child Units from this Location to the new Unit
         # Change their location FK to None and set parent_unit to the new Unit
-        self.units.all().update(location=None, parent_unit=unit)
+        self.unit_set.all().update(location=None, parent_unit=unit)
         
         # Delete the Location
         self.delete()
@@ -156,7 +174,7 @@ class LocationSharedAccess(models.Model):
         permission (str): The level of permission (e.g., "read", "write").
     """
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    location = models.ForeignKey(Location, on_delete=models.CASCADE)
+    location = models.ForeignKey(Location, related_name="shared_access", on_delete=models.CASCADE)
     permission = models.CharField(max_length=50, default="read")
 
     class Meta:
@@ -168,16 +186,16 @@ class LocationSharedAccess(models.Model):
         return f"{self.user.username} → {self.location.name} ({self.permission})"
 
 
-class Unit(models.Model):
+class Unit(StorageSpace):
     """Generic storage unit (bin, locker, garage, van, shelf, workbench, etc.).
     
     Can exist standalone or within a Location. Can be nested within another Unit.
     
     Attributes:
-        user (User): The primary owner of the unit.
+        user (User): Inherited from StorageSpace.
+        name (str): Inherited from StorageSpace.
+        description (str): Inherited from StorageSpace.
         shared_users (ManyToManyField): Users with shared access to the unit.
-        name (str): The name of the unit.
-        description (str): A description of the unit.
         location (Location): Location containing this unit (if top-level).
         parent_unit (Unit): Parent unit containing this unit (if nested).
         length (float): The length of the unit in inches.
@@ -185,20 +203,17 @@ class Unit(models.Model):
         height (float): The height of the unit in inches.
         access_token (str): Unique token for QR code access.
     """
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="units", on_delete=models.CASCADE)
     shared_users = models.ManyToManyField(
         settings.AUTH_USER_MODEL,
         through="UnitSharedAccess",
         blank=True,
         related_name="shared_units"
     )
-    name = models.CharField(max_length=255)
-    description = models.TextField(blank=True)
     
     # Parent can be either a Location OR another Unit (but not both)
     location = models.ForeignKey(
         Location,
-        related_name="units",
+        related_name="unit_set",
         on_delete=models.SET_NULL,
         blank=True,
         null=True,
@@ -240,9 +255,6 @@ class Unit(models.Model):
                 name="unit_has_location_or_parent_not_both"
             )
         ]
-    
-    def __str__(self) -> str:
-        return self.name
     
     def get_container(self) -> Location | Unit | None:
         """Return the parent container (either Location or parent Unit).
