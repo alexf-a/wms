@@ -27,6 +27,7 @@ from .forms import (
     WMSUserAuthForm,
     ItemForm,
     ItemSearchForm,
+    StorageSpaceForm,
     WMSUserCreationForm,
 )
 from .models import Unit, Item
@@ -191,34 +192,30 @@ def expand_inventory_view(request: HttpRequest) -> HttpResponse:
     return render(request, "core/expand_inventory.html", {"active_nav": "add"})
 
 @login_required
-def create_unit_view(request: HttpRequest) -> HttpResponse:
-    """Handle the creation of a new unit.
+def create_storage_view(request: HttpRequest) -> HttpResponse:
+    """Handle the creation of a new storage space (Location or Unit).
 
     Args:
         request: The HTTP request object.
 
     Returns:
-        The rendered create unit page or a redirect to the home page.
+        The rendered create storage page or a redirect to the created object's detail page.
     """
     if request.method == "POST":
-        name = request.POST["name"]
-        description = request.POST["description"]
-        location = request.POST.get("location", "")
-        length = request.POST.get("length") or None
-        width = request.POST.get("width") or None
-        height = request.POST.get("height") or None
-        new_unit = Unit(
-            user=request.user,
-            name=name,
-            description=description,
-            location=location,
-            length=length,
-            width=width,
-            height=height,
-        )
-        new_unit.save()
-        return redirect("home_view")
-    return render(request, "core/create_unit.html")
+        form = StorageSpaceForm(request.POST, user=request.user)
+        if form.is_valid():
+            created_object = form.save()
+            
+            # Redirect to the appropriate detail page
+            if hasattr(created_object, 'access_token'):  # It's a Unit
+                return redirect('unit_detail', user_id=request.user.id, access_token=created_object.access_token)
+            else:  # It's a Location - redirect to list_units for now (no location detail view exists)
+                messages.success(request, f"Location '{created_object.name}' created successfully!")
+                return redirect('expand_inventory')
+    else:
+        form = StorageSpaceForm(user=request.user)
+    
+    return render(request, "core/create_storage.html", {"form": form})
 
 @login_required
 def add_items_to_unit_view(request: HttpRequest) -> HttpResponse:

@@ -6,6 +6,7 @@
     const NEXT_BTN_SELECTOR = '.m3-next-btn';
     const SKIP_BTN_SELECTOR = '.m3-skip-btn';
     const STEP_INPUT_SELECTOR = '[data-step-input]';
+    const CONDITIONAL_SELECTOR = '[data-show-if]';
     const DEFAULT_VISIBLE_DISPLAY = 'flex';
     const FOCUS_DELAY = 100;
     const ANIMATION_DURATION = 300;
@@ -26,6 +27,10 @@
         const initialStep = getInitialStep(form, stepsMap);
         const stepInputs = resolveStepInputs(stepsMap);
         let currentStep = initialStep;
+
+        // Initialize conditional step visibility
+        const conditionalElements = form.querySelectorAll(CONDITIONAL_SELECTOR);
+        initializeConditionalSteps(form, conditionalElements, stepsMap);
 
         const updateNextButton = (step) => {
             const input = stepInputs[step];
@@ -220,6 +225,76 @@
                 showStep(targetStep);
             });
         });
+    }
+
+    function initializeConditionalSteps(form, conditionalElements, stepsMap) {
+        if (!conditionalElements.length) {
+            return;
+        }
+
+        // Parse all conditional rules and group by control field
+        const conditionalsByField = {};
+        conditionalElements.forEach((el) => {
+            const condition = el.dataset.showIf;
+            if (!condition) {
+                return;
+            }
+
+            const [fieldName, expectedValue] = condition.split('=').map(s => s.trim());
+            if (!fieldName || !expectedValue) {
+                return;
+            }
+
+            if (!conditionalsByField[fieldName]) {
+                conditionalsByField[fieldName] = [];
+            }
+
+            conditionalsByField[fieldName].push({
+                element: el,
+                expectedValue: expectedValue,
+                step: Number(el.dataset.step)
+            });
+        });
+
+        // Attach listeners to control fields
+        Object.keys(conditionalsByField).forEach((fieldName) => {
+            const controls = form.querySelectorAll(`[name="${escapeCssIdentifier(fieldName)}"]`);
+            if (!controls.length) {
+                return;
+            }
+
+            const updateConditionalVisibility = () => {
+                const currentValue = getFieldValue(form, fieldName);
+                const conditionals = conditionalsByField[fieldName];
+
+                conditionals.forEach((conditional) => {
+                    const shouldShow = currentValue === conditional.expectedValue;
+                    
+                    if (shouldShow) {
+                        // Remove display:none and allow step logic to control visibility
+                        conditional.element.style.removeProperty('display');
+                    } else {
+                        // Hide the element
+                        conditional.element.style.display = 'none';
+                    }
+                });
+            };
+
+            // Attach change listeners
+            controls.forEach((control) => {
+                control.addEventListener('change', updateConditionalVisibility);
+                control.addEventListener('input', updateConditionalVisibility);
+            });
+
+            // Initial update
+            updateConditionalVisibility();
+        });
+    }
+
+    function getFieldValue(form, fieldName) {
+        const input = form.querySelector(`[name="${escapeCssIdentifier(fieldName)}"]:checked`) ||
+                     form.querySelector(`[name="${escapeCssIdentifier(fieldName)}"]`);
+        return input ? input.value : '';
     }
 
     function escapeCssIdentifier(value) {

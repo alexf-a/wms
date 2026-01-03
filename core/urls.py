@@ -16,7 +16,7 @@ urlpatterns = [
         name="logout",
     ),
     path("expand_inventory/", views.expand_inventory_view, name="expand_inventory"),
-    path("create_unit/", views.create_unit_view, name="create_unit"),
+    path("create_storage/", views.create_storage_view, name="create_storage"),
     path("add_items_to_unit/", views.add_items_to_unit_view, name="add_items_to_unit"),
     path("units/", list_units, name="list_units"),
     path(
