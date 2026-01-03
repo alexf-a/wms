@@ -175,7 +175,11 @@ class StorageSpaceForm(forms.Form):
     
     name = forms.CharField(
         max_length=255,
-        widget=forms.TextInput(attrs={'placeholder': 'e.g., Garage, Red Toolbox'})
+        widget=forms.TextInput(attrs={
+            'placeholder': 'e.g., Garage, Red Toolbox',
+            'class': 'search-input',
+            'autocomplete': 'off'
+        })
     )
     
     stores_items = forms.ChoiceField(
@@ -187,14 +191,19 @@ class StorageSpaceForm(forms.Form):
     
     description = forms.CharField(
         required=False,
-        widget=forms.Textarea(attrs={'placeholder': 'Optional description', 'rows': 3})
+        widget=forms.Textarea(attrs={
+            'placeholder': 'Optional description',
+            'rows': 3,
+            'class': 'search-input'
+        })
     )
     
     address = forms.CharField(
         required=False,
         widget=forms.Textarea(attrs={
-            'placeholder': 'Optional address (for locations only)',
-            'rows': 2
+            'placeholder': 'e.g., 123 Main St, Apt 4B',
+            'rows': 2,
+            'class': 'search-input'
         }),
         help_text='Only applicable for storage locations.'
     )
@@ -203,24 +212,37 @@ class StorageSpaceForm(forms.Form):
     container = forms.ChoiceField(
         required=False,
         label='Container (optional)',
-        help_text='Select a location or parent unit'
+        help_text='Select a location or parent unit',
+        widget=forms.Select(attrs={'class': 'm3-select'})
     )
     
     length = forms.FloatField(
         required=False,
-        widget=forms.NumberInput(attrs={'placeholder': 'Length in inches'}),
+        widget=forms.NumberInput(attrs={
+            'placeholder': '0.00',
+            'step': '0.01',
+            'class': 'search-input'
+        }),
         label='Length (inches)'
     )
     
     width = forms.FloatField(
         required=False,
-        widget=forms.NumberInput(attrs={'placeholder': 'Width in inches'}),
+        widget=forms.NumberInput(attrs={
+            'placeholder': '0.00',
+            'step': '0.01',
+            'class': 'search-input'
+        }),
         label='Width (inches)'
     )
     
     height = forms.FloatField(
         required=False,
-        widget=forms.NumberInput(attrs={'placeholder': 'Height in inches'}),
+        widget=forms.NumberInput(attrs={
+            'placeholder': '0.00',
+            'step': '0.01',
+            'class': 'search-input'
+        }),
         label='Height (inches)'
     )
     
