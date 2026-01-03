@@ -7,7 +7,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.forms import UserCreationForm
 from django.core.exceptions import ValidationError
 
-from .models import Location, Unit, Item, WMSUser
+from .models import Location, Unit, Item, WMSUser, DIMENSION_UNIT_CHOICES
 
 
 class WMSUserAuthForm(forms.Form):
@@ -223,7 +223,7 @@ class StorageSpaceForm(forms.Form):
             'step': '0.01',
             'class': 'search-input'
         }),
-        label='Length (inches)'
+        label='Length'
     )
     
     width = forms.FloatField(
@@ -233,7 +233,7 @@ class StorageSpaceForm(forms.Form):
             'step': '0.01',
             'class': 'search-input'
         }),
-        label='Width (inches)'
+        label='Width'
     )
     
     height = forms.FloatField(
@@ -243,7 +243,14 @@ class StorageSpaceForm(forms.Form):
             'step': '0.01',
             'class': 'search-input'
         }),
-        label='Height (inches)'
+        label='Height'
+    )
+    
+    dimensions_unit = forms.ChoiceField(
+        required=False,
+        choices=DIMENSION_UNIT_CHOICES,
+        widget=forms.Select(attrs={'class': 'm3-select'}),
+        label='Unit of Measurement'
     )
     
     def __init__(self, *args: object, user: WMSUser | None = None, **kwargs: object) -> None:
@@ -293,6 +300,26 @@ class StorageSpaceForm(forms.Form):
                     parse_container_string(container)
                 except ValidationError:
                     raise
+            
+            # Validate dimensions: all-or-nothing with required unit
+            length = cleaned_data.get('length')
+            width = cleaned_data.get('width')
+            height = cleaned_data.get('height')
+            dimensions_unit = cleaned_data.get('dimensions_unit')
+            
+            dimensions_provided = [length, width, height]
+            any_dimension = any(d is not None for d in dimensions_provided)
+            all_dimensions = all(d is not None for d in dimensions_provided)
+            
+            if any_dimension:
+                if not all_dimensions:
+                    raise ValidationError(
+                        'If you provide any dimension, all three dimensions (length, width, height) are required.'
+                    )
+                if not dimensions_unit:
+                    raise ValidationError(
+                        'Unit of measurement is required when dimensions are provided.'
+                    )
         
         return cleaned_data
     
@@ -334,7 +361,8 @@ class StorageSpaceForm(forms.Form):
                 description=description,
                 length=self.cleaned_data.get('length'),
                 width=self.cleaned_data.get('width'),
-                height=self.cleaned_data.get('height')
+                height=self.cleaned_data.get('height'),
+                dimensions_unit=self.cleaned_data.get('dimensions_unit')
             )
             
             # Set container relationship
@@ -363,12 +391,13 @@ class UnitForm(forms.ModelForm):
         """Metadata options for UnitForm."""
         
         model = Unit
-        fields = ('name', 'description', 'length', 'width', 'height')
+        fields = ('name', 'description', 'length', 'width', 'height', 'dimensions_unit')
         widgets = {
             'description': forms.Textarea(attrs={'rows': 3}),
-            'length': forms.NumberInput(attrs={'placeholder': 'inches'}),
-            'width': forms.NumberInput(attrs={'placeholder': 'inches'}),
-            'height': forms.NumberInput(attrs={'placeholder': 'inches'}),
+            'length': forms.NumberInput(attrs={'placeholder': '0.00', 'step': '0.01'}),
+            'width': forms.NumberInput(attrs={'placeholder': '0.00', 'step': '0.01'}),
+            'height': forms.NumberInput(attrs={'placeholder': '0.00', 'step': '0.01'}),
+            'dimensions_unit': forms.Select(attrs={'class': 'm3-select'}),
         }
     
     def __init__(self, *args: object, user: WMSUser | None = None, instance: Unit | None = None, **kwargs: object) -> None:
@@ -415,6 +444,31 @@ class UnitForm(forms.ModelForm):
                 )
         
         return name
+    
+    def clean(self) -> dict:
+        """Validate dimensions: all-or-nothing with required unit."""
+        cleaned_data = super().clean()
+        
+        length = cleaned_data.get('length')
+        width = cleaned_data.get('width')
+        height = cleaned_data.get('height')
+        dimensions_unit = cleaned_data.get('dimensions_unit')
+        
+        dimensions_provided = [length, width, height]
+        any_dimension = any(d is not None for d in dimensions_provided)
+        all_dimensions = all(d is not None for d in dimensions_provided)
+        
+        if any_dimension:
+            if not all_dimensions:
+                raise ValidationError(
+                    'If you provide any dimension, all three dimensions (length, width, height) are required.'
+                )
+            if not dimensions_unit:
+                raise ValidationError(
+                    'Unit of measurement is required when dimensions are provided.'
+                )
+        
+        return cleaned_data
     
     def save(self, commit: bool = True) -> Unit:
         """Save the unit with the selected container."""

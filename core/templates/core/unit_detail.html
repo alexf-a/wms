@@ -16,6 +16,11 @@
             <p class="md-typescale-body-medium m3-card__description">
                 {{ unit.description }}
             </p>
+            {% if unit.length and unit.width and unit.height and unit.dimensions_unit %}
+                <p class="md-typescale-body-small m3-card__description" style="margin-top: 0.5rem; opacity: 0.8;">
+                    📏 Dimensions: {{ unit.length }} × {{ unit.width }} × {{ unit.height }} {{ unit.get_dimensions_unit_display|lower }}
+                </p>
+            {% endif %}
         </div>
         <div class="m3-card__actions">
             <a href="{% url 'unit_qr' unit.user_id unit.access_token %}" class="m3-button m3-button-tonal">

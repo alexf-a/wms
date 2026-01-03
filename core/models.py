@@ -186,6 +186,15 @@ class LocationSharedAccess(models.Model):
         return f"{self.user.username} → {self.location.name} ({self.permission})"
 
 
+# Dimension unit choices
+DIMENSION_UNIT_CHOICES = [
+    ('in', 'Inches'),
+    ('cm', 'Centimeters'),
+    ('ft', 'Feet'),
+    ('m', 'Meters'),
+]
+
+
 class Unit(StorageSpace):
     """Generic storage unit (bin, locker, garage, van, shelf, workbench, etc.).
     
@@ -230,9 +239,16 @@ class Unit(StorageSpace):
     )
     
     # Physical properties
-    length = models.FloatField(blank=True, null=True, help_text="in inches")
-    width = models.FloatField(blank=True, null=True, help_text="in inches")
-    height = models.FloatField(blank=True, null=True, help_text="in inches")
+    length = models.FloatField(blank=True, null=True, help_text="Length dimension")
+    width = models.FloatField(blank=True, null=True, help_text="Width dimension")
+    height = models.FloatField(blank=True, null=True, help_text="Height dimension")
+    dimensions_unit = models.CharField(
+        max_length=2,
+        choices=DIMENSION_UNIT_CHOICES,
+        blank=True,
+        null=True,
+        help_text="Unit of measurement for dimensions"
+    )
     
     # QR code support
     access_token = models.CharField(
@@ -253,6 +269,25 @@ class Unit(StorageSpace):
                     models.Q(location__isnull=True, parent_unit__isnull=True)
                 ),
                 name="unit_has_location_or_parent_not_both"
+            ),
+            models.CheckConstraint(
+                condition=(
+                    # All dimensions NULL (no dimensions provided)
+                    models.Q(
+                        length__isnull=True,
+                        width__isnull=True,
+                        height__isnull=True,
+                        dimensions_unit__isnull=True
+                    ) |
+                    # All dimensions NOT NULL (complete dimensions with unit)
+                    models.Q(
+                        length__isnull=False,
+                        width__isnull=False,
+                        height__isnull=False,
+                        dimensions_unit__isnull=False
+                    )
+                ),
+                name="unit_dimensions_all_or_nothing"
             )
         ]
     
