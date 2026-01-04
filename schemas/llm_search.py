@@ -17,7 +17,7 @@ class ItemLocation(BaseModel):
 
     def __str__(self) -> str:
         """Return a string representation of the item location."""
-        return f"Item: {self.item_name}\nUnit: {self.unit_name}\nConfidence: {self.confidence}\nAdditional Info: {self.additional_info}"
+        return f"Item: {self.item_name}\nUnit: {self.unit_name}\nConfidence: {self.confidence}"
 
 
 class ItemSearchCandidate(BaseModel):
