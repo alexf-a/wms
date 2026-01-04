@@ -84,14 +84,14 @@ def parse_container_string(container_string: str) -> tuple[ContainerType, int]:
     """Parse container string into type and ID.
     
     Args:
-        container_string: Non-empty container string in format '<type>_<id>' where type
+        container_string: Container string in format '<type>_<id>' where type
             matches ContainerType enum values ('location' or 'unit').
     
     Returns:
         Tuple of (ContainerType, id).
     
     Raises:
-        ValidationError: If container format is invalid or empty.
+        ValidationError: If container string is empty or has invalid format.
     
     Examples:
         >>> parse_container_string('location_123')
