@@ -14,4 +14,4 @@ I want to minimize manual data entry by using features like barcode scanning, im
 
 The Item Addition process will prompt the user to upload an image, and generate the text-based features of the item using an LLM. The user will then be able to review and edit these features before confirming the addition of the item.
 
-The core logic for this is implemented in `llm/item_generation.py` and the relevant LLMCalls are in `llm_calls/item_search`.
+The core logic for this is implemented in `llm/item_generation.py` and the relevant LLMCalls are in `llm_calls/item_generation`.
