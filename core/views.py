@@ -24,11 +24,14 @@ from lib.llm.llm_search import find_item_location
 
 from .forms import (
     AccountForm,
+    WMSUserAuthForm,
     ItemForm,
     ItemSearchForm,
+    StorageSpaceForm,
+    UnitForm,
     WMSUserCreationForm,
 )
-from .models import Bin, Item
+from .models import Unit, Item
 
 logger = logging.getLogger(__name__)
 
@@ -111,10 +114,38 @@ def register_view(request: HttpRequest) -> HttpResponse:
         if form.is_valid():
             user = form.save()
             login(request, user)
+            return redirect("home_view")
         logger.error("Registration form errors: %s", form.errors)
     else:
         form = WMSUserCreationForm()
     return render(request, "core/auth/register.html", {"form": form})
+
+
+def login_view(request: HttpRequest) -> HttpResponse:
+    """Handle user login with email authentication.
+
+    Args:
+        request: The HTTP request object.
+
+    Returns:
+        The rendered login page or a redirect to the home page.
+    """
+    # Redirect if already authenticated
+    if request.user.is_authenticated:
+        return redirect("home_view")
+    
+    if request.method == "POST":
+        form = WMSUserAuthForm(request, data=request.POST)
+        if form.is_valid():
+            user = form.get_user()
+            login(request, user)
+            # Redirect to 'next' parameter or home
+            next_page = request.GET.get('next', 'home_view')
+            return redirect(next_page)
+    else:
+        form = WMSUserAuthForm(request)
+    
+    return render(request, "core/auth/login.html", {"form": form})
 
 
 @login_required
@@ -162,44 +193,40 @@ def expand_inventory_view(request: HttpRequest) -> HttpResponse:
     return render(request, "core/expand_inventory.html", {"active_nav": "add"})
 
 @login_required
-def create_bin_view(request: HttpRequest) -> HttpResponse:
-    """Handle the creation of a new bin.
+def create_storage_view(request: HttpRequest) -> HttpResponse:
+    """Handle the creation of a new storage space (Location or Unit).
 
     Args:
         request: The HTTP request object.
 
     Returns:
-        The rendered create bin page or a redirect to the home page.
+        The rendered create storage page or a redirect to the created object's detail page.
     """
     if request.method == "POST":
-        name = request.POST["name"]
-        description = request.POST["description"]
-        location = request.POST.get("location", "")
-        length = request.POST.get("length") or None
-        width = request.POST.get("width") or None
-        height = request.POST.get("height") or None
-        new_bin = Bin(
-            user=request.user,
-            name=name,
-            description=description,
-            location=location,
-            length=length,
-            width=width,
-            height=height,
-        )
-        new_bin.save()
-        return redirect("home_view")
-    return render(request, "core/create_bin.html")
+        form = StorageSpaceForm(request.POST, user=request.user)
+        if form.is_valid():
+            created_object = form.save()
+            
+            # Redirect to the appropriate detail page
+            if hasattr(created_object, 'access_token'):  # It's a Unit
+                return redirect('unit_detail', user_id=request.user.id, access_token=created_object.access_token)
+            else:  # It's a Location - redirect to list_units for now (no location detail view exists)
+                messages.success(request, f"Location '{created_object.name}' created successfully!")
+                return redirect('expand_inventory')
+    else:
+        form = StorageSpaceForm(user=request.user)
+    
+    return render(request, "core/create_storage.html", {"form": form})
 
 @login_required
-def add_items_to_bin_view(request: HttpRequest) -> HttpResponse:
-    """Handle adding items to a bin.
+def add_items_to_unit_view(request: HttpRequest) -> HttpResponse:
+    """Handle adding items to a unit.
 
     Args:
         request: The HTTP request object.
 
     Returns:
-        The rendered add items to bin page or a redirect to the home page.
+        The rendered add items to unit page or a redirect to the home page.
     """
     if request.method == "POST":
         form = ItemForm(request.POST, request.FILES, user=request.user)
@@ -219,50 +246,50 @@ def add_items_to_bin_view(request: HttpRequest) -> HttpResponse:
     else:
         form = ItemForm(user=request.user)
 
-    # Get user's bins for the template
-    bins = Bin.objects.filter(user=request.user)
-    return render(request, "core/add_items_to_bin.html", {"form": form, "bins": bins})
+    # Get user's units for the template
+    units = Unit.objects.filter(user=request.user)
+    return render(request, "core/add_items_to_unit.html", {"form": form, "units": units})
 
 @login_required
-def list_bins(request: HttpRequest) -> HttpResponse:
-    """List all bins for the current user.
+def list_units(request: HttpRequest) -> HttpResponse:
+    """List all units for the current user.
 
     Args:
         request: The HTTP request object.
 
     Returns:
-        The rendered list bins page.
+        The rendered list units page.
     """
-    bins = Bin.objects.filter(user=request.user)
-    return render(request, "core/list_bins.html", {"bins": bins, "active_nav": "see"})
+    units = Unit.objects.filter(user=request.user)
+    return render(request, "core/list_units.html", {"units": units, "active_nav": "see"})
 
 @login_required
-def bin_detail(request: HttpRequest, user_id: int, access_token: str) -> HttpResponse:
-    """Display the details of a specific bin using its access token.
+def unit_detail(request: HttpRequest, user_id: int, access_token: str) -> HttpResponse:
+    """Display the details of a specific unit using its access token.
 
     Args:
         request: The HTTP request object.
-        user_id: The ID of the bin owner.
-        access_token: The opaque access token assigned to the bin.
+        user_id: The ID of the unit owner.
+        access_token: The opaque access token assigned to the unit.
 
     Returns:
-        The rendered bin detail page.
+        The rendered unit detail page.
     """
-    _bin = get_object_or_404(Bin, user_id=user_id, access_token=access_token)
-    return render(request, "core/bin_detail.html", {"bin": _bin})
+    _unit = get_object_or_404(Unit, user_id=user_id, access_token=access_token)
+    return render(request, "core/unit_detail.html", {"unit": _unit})
 
 
 @login_required
-def bin_qr_view(request: HttpRequest, user_id: int, access_token: str) -> HttpResponse:
-    """Return a PNG QR code for the requested bin."""
-    _bin = get_object_or_404(Bin, user_id=user_id, access_token=access_token)
-    has_access = _bin.user_id == request.user.id or _bin.shared_users.filter(id=request.user.id).exists()
+def unit_qr_view(request: HttpRequest, user_id: int, access_token: str) -> HttpResponse:
+    """Return a PNG QR code for the requested unit."""
+    _unit = get_object_or_404(Unit, user_id=user_id, access_token=access_token)
+    has_access = _unit.user_id == request.user.id or _unit.shared_users.filter(id=request.user.id).exists()
     if not has_access:
-        message = "Bin not found."
+        message = "Unit not found."
         raise Http404(message)
 
     base_url = request.build_absolute_uri("/")
-    qr_file = _bin.get_qr_code(base_url=base_url)
+    qr_file = _unit.get_qr_code(base_url=base_url)
     qr_file.seek(0)
 
     response = HttpResponse(qr_file.read(), content_type="image/png")
@@ -283,6 +310,131 @@ def item_detail(request: HttpRequest, item_id: int) -> HttpResponse:
     item = get_object_or_404(Item, id=item_id)
     return render(request, "core/item_detail.html", {"item": item})
 
+
+@login_required
+def item_edit_view(request: HttpRequest, item_id: int) -> HttpResponse:
+    """Handle editing an existing item.
+
+    Args:
+        request: The HTTP request object.
+        item_id: The ID of the item to edit.
+
+    Returns:
+        The rendered item edit page or a redirect to the item detail page.
+    """
+    item = get_object_or_404(Item, id=item_id, user=request.user)
+
+    if request.method == "POST":
+        form = ItemForm(request.POST, request.FILES, instance=item, user=request.user)
+        if form.is_valid():
+            try:
+                form.save()
+                messages.success(request, f"Item '{item.name}' has been updated successfully!")
+                return redirect("item_detail", item_id=item.id)
+            except IntegrityError:
+                form.add_error(
+                    "name",
+                    f"You already have an item named '{form.cleaned_data['name']}'. Please choose a different name."
+                )
+    else:
+        form = ItemForm(instance=item, user=request.user)
+
+    return render(request, "core/item_edit.html", {"form": form, "item": item})
+
+
+@login_required
+def item_delete_view(request: HttpRequest, item_id: int) -> HttpResponse:
+    """Handle deleting an existing item.
+
+    Args:
+        request: The HTTP request object.
+        item_id: The ID of the item to delete.
+
+    Returns:
+        Redirect to the parent unit's detail page.
+    """
+    item = get_object_or_404(Item, id=item_id, user=request.user)
+
+    if request.method != "POST":
+        return redirect("item_detail", item_id=item.id)
+
+    # Store parent unit reference before deletion
+    parent_unit = item.unit
+    item_name = item.name
+
+    # Delete the item
+    item.delete()
+
+    messages.success(request, f"Item '{item_name}' has been deleted successfully.")
+    return redirect("unit_detail", user_id=parent_unit.user_id, access_token=parent_unit.access_token)
+
+
+@login_required
+def unit_edit_view(request: HttpRequest, user_id: int, access_token: str) -> HttpResponse:
+    """Handle editing an existing unit.
+
+    Args:
+        request: The HTTP request object.
+        user_id: The ID of the unit owner.
+        access_token: The unit's access token.
+
+    Returns:
+        The rendered unit edit page or a redirect to the unit detail page.
+    """
+    unit = get_object_or_404(Unit, user_id=user_id, access_token=access_token)
+    
+    # Check user permissions
+    if unit.user != request.user:
+        raise Http404("Unit not found")
+
+    if request.method == "POST":
+        form = UnitForm(request.POST, instance=unit, user=request.user)
+        if form.is_valid():
+            try:
+                form.save()
+                messages.success(request, f"Unit '{unit.name}' has been updated successfully!")
+                return redirect("unit_detail", user_id=unit.user_id, access_token=unit.access_token)
+            except IntegrityError:
+                form.add_error(
+                    "name",
+                    f"You already have a unit named '{form.cleaned_data['name']}'. Please choose a different name."
+                )
+    else:
+        form = UnitForm(instance=unit, user=request.user)
+
+    return render(request, "core/unit_edit.html", {"form": form, "unit": unit})
+
+
+@login_required
+def unit_delete_view(request: HttpRequest, user_id: int, access_token: str) -> HttpResponse:
+    """Handle deleting an existing unit.
+
+    Args:
+        request: The HTTP request object.
+        user_id: The ID of the unit owner.
+        access_token: The unit's access token.
+
+    Returns:
+        Redirect to the units list page.
+    """
+    unit = get_object_or_404(Unit, user_id=user_id, access_token=access_token)
+    
+    # Check user permissions
+    if unit.user != request.user:
+        raise Http404("Unit not found")
+
+    if request.method != "POST":
+        return redirect("unit_detail", user_id=unit.user_id, access_token=unit.access_token)
+
+    unit_name = unit.name
+
+    # Delete the unit (cascade will handle items and child units)
+    unit.delete()
+
+    messages.success(request, f"Unit '{unit_name}' has been deleted successfully.")
+    return redirect("list_units")
+
+
 @login_required
 def item_search_view(request: HttpRequest) -> HttpResponse:
     """Handle item search using LLM.
@@ -295,10 +447,10 @@ def item_search_view(request: HttpRequest) -> HttpResponse:
     """
     result = None
     found_item = None
-    selected_bin_id = None
+    selected_unit_id = None
 
     if request.method == "POST":
-        selected_bin_id = request.POST.get("bin_filter")
+        selected_unit_id = request.POST.get("unit_filter")
         form = ItemSearchForm(request.POST)
         if form.is_valid():
             query = form.cleaned_data["query"]
@@ -316,8 +468,8 @@ def item_search_view(request: HttpRequest) -> HttpResponse:
         "form": form,
         "result": result,
         "found_item": found_item,
-        "bins": Bin.objects.filter(user=request.user).order_by("name"),
-        "selected_bin_id": selected_bin_id,
+        "units": Unit.objects.filter(user=request.user).order_by("name"),
+        "selected_unit_id": selected_unit_id,
         "active_nav": "find",
     })
 
