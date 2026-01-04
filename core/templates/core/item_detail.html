@@ -26,11 +26,10 @@
                 <p class="md-typescale-body-medium m3-card__description" style="color: var(--md-sys-color-on-surface-variant);"><em>No description available</em></p>
             {% endif %}
             
-            {% if item.bin %}
+            {% if item.unit %}
                 <div class="m3-card m3-card--tonal" style="margin-top: var(--wms-space-md); padding: var(--wms-space-md);">
                     <p class="md-typescale-body-medium">
-                        <strong>📍 Location:</strong> 
-                        Stored in <a href="{% url 'bin_detail' item.bin.user_id item.bin.access_token %}">{{ item.bin.name }}</a>
+                        Stored in <a href="{% url 'unit_detail' item.unit.user_id item.unit.access_token %}">{{ item.unit.name }}</a>
                     </p>
                 </div>
             {% endif %}
@@ -39,19 +38,19 @@
 
     <!-- Navigation Buttons -->
     <div class="m3-button-centered">
-        {% if item.bin %}
-            <a href="{% url 'bin_detail' item.bin.user_id item.bin.access_token %}" class="m3-button m3-button-tonal m3-button-small">
+        {% if item.unit %}
+            <a href="{% url 'unit_detail' item.unit.user_id item.unit.access_token %}" class="m3-button m3-button-tonal m3-button-small">
                 <svg class="m3-button-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
                 </svg>
-                <span class="m3-button-label">Back to Bin</span>
+                <span class="m3-button-label">Back to Unit</span>
             </a>
         {% endif %}
-        <a href="{% url 'list_bins' %}" class="m3-button m3-button-tonal m3-button-small">
+        <a href="{% url 'list_units' %}" class="m3-button m3-button-tonal m3-button-small">
             <svg class="m3-button-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M4 4H20V20H4V4ZM6 6V18H18V6H6ZM8 8H16V10H8V8ZM8 12H16V14H8V12Z"/>
             </svg>
-            <span class="m3-button-label">All Bins</span>
+            <span class="m3-button-label">All Units</span>
         </a>
     </div>
 </div>
@@ -66,7 +65,7 @@
         <span class="m3-nav-label">Home</span>
     </a>
 
-    <a href="{% url 'list_bins' %}" class="m3-nav-item m3-nav-item-active">
+    <a href="{% url 'list_units' %}" class="m3-nav-item m3-nav-item-active">
         <div class="m3-nav-icon-container">
             <svg class="m3-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M20 2H4c-1 0-2 .9-2 2v3.01c0 .72.43 1.34 1 1.69V20c0 1.1 1.1 2 2 2h14c.9 0 2-.9 2-2V8.7c.57-.35 1-.97 1-1.69V4c0-1.1-1-2-2-2zm-5 12H9v-2h6v2zm5-7H4V4h16v3z" />
