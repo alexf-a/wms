@@ -8,10 +8,10 @@ This script generates QR codes for various purposes:
 
 Usage:
     # Generate QR code for CA certificate download
-    python deploy/generate_ca_qr.py --cert-path deploy/caddy-root-ca.crt --env-file .env.local.https
+    python deploy/generate_qr.py --cert-path deploy/caddy-root-ca.crt --env-file .env.local.https
     
     # Generate QR code for WMS URL
-    python deploy/generate_ca_qr.py --url https://192.168.68.54:8443 --title "WMS App"
+    python deploy/generate_qr.py --url https://192.168.68.54:8443 --title "WMS App"
 """
 
 import argparse
