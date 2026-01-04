@@ -1,0 +1,38 @@
+# Caddyfile for local HTTPS development with Caddy reverse proxy
+#
+# This configuration enables testing the WMS app in production mode (DEBUG=False)
+# with HTTPS locally using Caddy's automatic TLS with self-signed certificates.
+#
+# Uses mDNS (.local domain) for automatic network discovery.
+# Works on both desktop and mobile devices without IP configuration.
+#
+# Environment variables required:
+#   DOMAIN - Your Mac's mDNS hostname (e.g., alexs-macbook-pro.local)
+#   HTTP_PORT - HTTP port (default: 8080)
+#   HTTPS_PORT - HTTPS port (default: 8443)
+#
+# Access points:
+#   https://{$DOMAIN}:{$HTTPS_PORT}  - Works on desktop AND mobile
+#   http://{$DOMAIN}:{$HTTP_PORT}    - Redirects to HTTPS
+
+# Global options - disable automatic HTTPS redirects on non-standard ports
+{
+	auto_https disable_redirects
+}
+
+# HTTPS endpoint - single domain using Caddy's internal CA
+https://{$DOMAIN}:{$HTTPS_PORT} {
+	reverse_proxy web:8000 {
+		header_up X-Forwarded-Proto https
+		header_up X-Forwarded-Host {host}
+		header_up X-Real-IP {remote_host}
+	}
+	
+	# Let Caddy auto-generate certificate for the domain
+	tls internal
+}
+
+# HTTP to HTTPS redirect - bind to port for all hostnames
+:{$HTTP_PORT} {
+	redir https://{host}:{$HTTPS_PORT}{uri} permanent
+}

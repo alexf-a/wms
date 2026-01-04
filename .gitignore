@@ -8,6 +8,9 @@ db.*
 
 qr_codes
 
+# Local environment file for docker-compose variable substitution
+.env
+
 notebooks
 
 poetry.lock
@@ -23,6 +26,12 @@ deploy/containers.json
 
 .cache
 
-.env.local
+.env.local*
+
+# Local HTTPS testing artifacts
+.caddy-trusted
+deploy/caddy-root-ca.crt
+deploy/caddy-ca-qr.png
 
 staticfiles/*
+.DS_Store
