@@ -28,6 +28,7 @@ from .forms import (
     ItemForm,
     ItemSearchForm,
     StorageSpaceForm,
+    UnitForm,
     WMSUserCreationForm,
 )
 from .models import Unit, Item
@@ -366,6 +367,72 @@ def item_delete_view(request: HttpRequest, item_id: int) -> HttpResponse:
 
     messages.success(request, f"Item '{item_name}' has been deleted successfully.")
     return redirect("unit_detail", user_id=parent_unit.user_id, access_token=parent_unit.access_token)
+
+
+@login_required
+def unit_edit_view(request: HttpRequest, user_id: int, access_token: str) -> HttpResponse:
+    """Handle editing an existing unit.
+
+    Args:
+        request: The HTTP request object.
+        user_id: The ID of the unit owner.
+        access_token: The unit's access token.
+
+    Returns:
+        The rendered unit edit page or a redirect to the unit detail page.
+    """
+    unit = get_object_or_404(Unit, user_id=user_id, access_token=access_token)
+    
+    # Check user permissions
+    if unit.user != request.user:
+        raise Http404("Unit not found")
+
+    if request.method == "POST":
+        form = UnitForm(request.POST, instance=unit, user=request.user)
+        if form.is_valid():
+            try:
+                form.save()
+                messages.success(request, f"Unit '{unit.name}' has been updated successfully!")
+                return redirect("unit_detail", user_id=unit.user_id, access_token=unit.access_token)
+            except IntegrityError:
+                form.add_error(
+                    "name",
+                    f"You already have a unit named '{form.cleaned_data['name']}'. Please choose a different name."
+                )
+    else:
+        form = UnitForm(instance=unit, user=request.user)
+
+    return render(request, "core/unit_edit.html", {"form": form, "unit": unit})
+
+
+@login_required
+def unit_delete_view(request: HttpRequest, user_id: int, access_token: str) -> HttpResponse:
+    """Handle deleting an existing unit.
+
+    Args:
+        request: The HTTP request object.
+        user_id: The ID of the unit owner.
+        access_token: The unit's access token.
+
+    Returns:
+        Redirect to the units list page.
+    """
+    unit = get_object_or_404(Unit, user_id=user_id, access_token=access_token)
+    
+    # Check user permissions
+    if unit.user != request.user:
+        raise Http404("Unit not found")
+
+    if request.method != "POST":
+        return redirect("unit_detail", user_id=unit.user_id, access_token=unit.access_token)
+
+    unit_name = unit.name
+
+    # Delete the unit (cascade will handle items and child units)
+    unit.delete()
+
+    messages.success(request, f"Unit '{unit_name}' has been deleted successfully.")
+    return redirect("list_units")
 
 
 @login_required

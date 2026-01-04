@@ -1,4 +1,5 @@
 {% extends "core/base.html" %}
+{% load static %}
 
 {% block title %}{{ unit.name }} - WMS{% endblock %}
 
@@ -12,13 +13,47 @@
                     <path d="M4 4H20V20H4V4ZM6 6V18H18V6H6ZM8 8H16V10H8V8ZM8 12H16V14H8V12Z" fill="currentColor"/>
                 </svg>
             </div>
-            <h1 class="md-typescale-headline-medium m3-card__title">{{ unit.name }}</h1>
+            
+            <div class="m3-card__header">
+                <h1 class="md-typescale-headline-medium m3-card__title">{{ unit.name }}</h1>
+                
+                <!-- Overflow Menu -->
+                <div class="m3-overflow-menu">
+                    <button type="button" class="m3-overflow-menu-button" id="unit-menu-button" aria-label="Unit options" aria-haspopup="true" aria-expanded="false">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                        </svg>
+                    </button>
+                    
+                    <div class="m3-overflow-menu-dropdown" id="unit-menu-dropdown">
+                        <a href="{% url 'unit_edit' unit.user_id unit.access_token %}" class="m3-overflow-menu-item">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                            </svg>
+                            <span>Edit</span>
+                        </a>
+                        
+                        <form method="POST" action="{% url 'unit_delete' unit.user_id unit.access_token %}" style="margin: 0;" id="delete-form">
+                            {% csrf_token %}
+                            <button type="button" class="m3-overflow-menu-item m3-overflow-menu-item--danger" id="delete-button">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                                </svg>
+                                <span>Delete</span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            {% if unit.description %}
             <p class="md-typescale-body-medium m3-card__description">
                 {{ unit.description }}
             </p>
+            {% endif %}
             {% if unit.length and unit.width and unit.height and unit.dimensions_unit %}
                 <p class="md-typescale-body-small m3-card__description" style="margin-top: 0.5rem; opacity: 0.8;">
-                    📏 Dimensions: {{ unit.length }} × {{ unit.width }} × {{ unit.height }} {{ unit.get_dimensions_unit_display|lower }}
+                    Dimensions: {{ unit.length }} × {{ unit.width }} × {{ unit.height }} {{ unit.get_dimensions_unit_display|lower }}
                 </p>
             {% endif %}
         </div>
@@ -137,4 +172,11 @@
         <span class="m3-nav-label">Search</span>
     </a>
 </nav>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'core/js/ui_utils.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', initUnitDetailPage);
+</script>
 {% endblock %}

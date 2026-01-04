@@ -29,6 +29,16 @@ urlpatterns = [
         views.unit_qr_view,
         name="unit_qr",
     ),
+    path(
+        "user/<int:user_id>/units/<slug:access_token>/edit/",
+        views.unit_edit_view,
+        name="unit_edit",
+    ),
+    path(
+        "user/<int:user_id>/units/<slug:access_token>/delete/",
+        views.unit_delete_view,
+        name="unit_delete",
+    ),
     path("item/<int:item_id>/", views.item_detail, name="item_detail"),
     path("item/<int:item_id>/edit/", views.item_edit_view, name="item_edit"),
     path("item/<int:item_id>/delete/", views.item_delete_view, name="item_delete"),

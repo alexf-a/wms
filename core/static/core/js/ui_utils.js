@@ -132,3 +132,14 @@ function initOverflowMenu(buttonId, dropdownId, options = {}) {
         }
     }
 }
+
+/**
+ * Initialize unit detail page overflow menu
+ */
+function initUnitDetailPage() {
+    initOverflowMenu('unit-menu-button', 'unit-menu-dropdown', {
+        deleteButtonId: 'delete-button',
+        deleteFormId: 'delete-form',
+        confirmMessage: 'Are you sure you want to delete this unit? All items inside will be permanently deleted. Child units will survive but become standalone. This action cannot be undone.'
+    });
+}
