@@ -49,7 +49,7 @@ def perform_candidate_search(user_query: str, user_id: int, k: int = 10) -> Item
         ItemSearchCandidates: A list of candidate items returned by the LLM,
             matching the search query.
     """
-    items = Item.objects.filter(bin__user_id=user_id)
+    items = Item.objects.filter(unit__user_id=user_id)
     prompt_ctxt = get_item_search_context(items)
 
     # Create the StructuredLangChainHandler using the global LLMCall instance
@@ -71,7 +71,7 @@ def get_item_location(candidates: ItemSearchCandidates, user_id: int, user_query
         )
         return ItemLocation(
             item_name=candidate.name,
-            bin_name=candidate.bin_name,
+            unit_name=candidate.unit_name,
             confidence="High",
             additional_info=f"Found with confidence score: {candidate.confidence}"
         )
@@ -81,7 +81,7 @@ def get_item_location(candidates: ItemSearchCandidates, user_id: int, user_query
 
     # Prepare context from all candidates by retrieving the relevant Items from the DB
     candidate_item_names = [candidate.name for candidate in candidates.candidates]
-    relevant_items = Item.objects.filter(name__in=candidate_item_names, bin__user_id=user_id)
+    relevant_items = Item.objects.filter(name__in=candidate_item_names, unit__user_id=user_id)
     formatted_context = get_item_search_context(relevant_items)
 
     # Create the StructuredLangChainHandler using the global LLMCall instance

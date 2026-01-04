@@ -6,6 +6,7 @@
     const NEXT_BTN_SELECTOR = '.m3-next-btn';
     const SKIP_BTN_SELECTOR = '.m3-skip-btn';
     const STEP_INPUT_SELECTOR = '[data-step-input]';
+    const CONDITIONAL_SELECTOR = '[data-show-if]';
     const DEFAULT_VISIBLE_DISPLAY = 'flex';
     const FOCUS_DELAY = 100;
     const ANIMATION_DURATION = 300;
@@ -27,8 +28,11 @@
         const stepInputs = resolveStepInputs(stepsMap);
         let currentStep = initialStep;
 
+        // Initialize conditional step visibility
+        const conditionalElements = form.querySelectorAll(CONDITIONAL_SELECTOR);
+        initializeConditionalSteps(form, conditionalElements, stepsMap);
+
         const updateNextButton = (step) => {
-            const input = stepInputs[step];
             const groups = stepsMap[step] || [];
 
             groups.forEach((group) => {
@@ -37,10 +41,17 @@
                     return;
                 }
 
+                // Find the input within THIS group, not shared across all groups for the step
+                const groupInput = findEligibleInput(group);
                 const visibleDisplay = nextBtn.dataset.visibleDisplay || DEFAULT_VISIBLE_DISPLAY;
+                
+                // Optional fields always show their Continue button
+                const isOptional = group.hasAttribute('data-optional');
 
-                if (input) {
-                    nextBtn.style.display = hasInputValue(input) ? visibleDisplay : 'none';
+                if (isOptional) {
+                    nextBtn.style.display = visibleDisplay;
+                } else if (groupInput) {
+                    nextBtn.style.display = hasInputValue(groupInput) ? visibleDisplay : 'none';
                 } else {
                     nextBtn.style.display = visibleDisplay;
                 }
@@ -72,7 +83,7 @@
             showStep(currentStep + 1);
         };
 
-        attachInputListeners(stepInputs, updateNextButton, goToNextStep);
+        attachInputListeners(stepsMap, updateNextButton, goToNextStep);
         attachNextButtonListeners(form, goToNextStep);
         attachSkipButtonListeners(form, totalSteps, showStep);
 
@@ -173,30 +184,40 @@
         }, FOCUS_DELAY);
     }
 
-    function attachInputListeners(stepInputs, updateNextButton, goToNextStep) {
-        Object.entries(stepInputs).forEach(([stepKey, input]) => {
+    function attachInputListeners(stepsMap, updateNextButton, goToNextStep) {
+        // Iterate over all groups to attach listeners to each group's input
+        Object.entries(stepsMap).forEach(([stepKey, groups]) => {
             const step = Number(stepKey);
-            if (!input) {
-                return;
-            }
+            
+            groups.forEach((group) => {
+                const input = findEligibleInput(group);
+                if (!input) {
+                    return;
+                }
 
-            input.addEventListener('input', () => updateNextButton(step));
+                input.addEventListener('input', () => updateNextButton(step));
+                
+                // Select elements also need 'change' event for better cross-browser support
+                if (input.tagName === 'SELECT') {
+                    input.addEventListener('change', () => updateNextButton(step));
+                }
 
-            if (input.tagName === 'TEXTAREA') {
-                input.addEventListener('keydown', (event) => {
-                    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter' && hasInputValue(input)) {
-                        event.preventDefault();
-                        goToNextStep();
-                    }
-                });
-            } else {
-                input.addEventListener('keydown', (event) => {
-                    if (event.key === 'Enter' && hasInputValue(input)) {
-                        event.preventDefault();
-                        goToNextStep();
-                    }
-                });
-            }
+                if (input.tagName === 'TEXTAREA') {
+                    input.addEventListener('keydown', (event) => {
+                        if ((event.ctrlKey || event.metaKey) && event.key === 'Enter' && hasInputValue(input)) {
+                            event.preventDefault();
+                            goToNextStep();
+                        }
+                    });
+                } else {
+                    input.addEventListener('keydown', (event) => {
+                        if (event.key === 'Enter' && hasInputValue(input)) {
+                            event.preventDefault();
+                            goToNextStep();
+                        }
+                    });
+                }
+            });
         });
     }
 
@@ -220,6 +241,76 @@
                 showStep(targetStep);
             });
         });
+    }
+
+    function initializeConditionalSteps(form, conditionalElements, stepsMap) {
+        if (!conditionalElements.length) {
+            return;
+        }
+
+        // Parse all conditional rules and group by control field
+        const conditionalsByField = {};
+        conditionalElements.forEach((el) => {
+            const condition = el.dataset.showIf;
+            if (!condition) {
+                return;
+            }
+
+            const [fieldName, expectedValue] = condition.split('=').map(s => s.trim());
+            if (!fieldName || !expectedValue) {
+                return;
+            }
+
+            if (!conditionalsByField[fieldName]) {
+                conditionalsByField[fieldName] = [];
+            }
+
+            conditionalsByField[fieldName].push({
+                element: el,
+                expectedValue: expectedValue,
+                step: Number(el.dataset.step)
+            });
+        });
+
+        // Attach listeners to control fields
+        Object.keys(conditionalsByField).forEach((fieldName) => {
+            const controls = form.querySelectorAll(`[name="${escapeCssIdentifier(fieldName)}"]`);
+            if (!controls.length) {
+                return;
+            }
+
+            const updateConditionalVisibility = () => {
+                const currentValue = getFieldValue(form, fieldName);
+                const conditionals = conditionalsByField[fieldName];
+
+                conditionals.forEach((conditional) => {
+                    const shouldShow = currentValue === conditional.expectedValue;
+                    
+                    if (shouldShow) {
+                        // Remove the hidden class to allow step logic to control visibility
+                        conditional.element.classList.remove('m3-conditional-hidden');
+                    } else {
+                        // Add the hidden class
+                        conditional.element.classList.add('m3-conditional-hidden');
+                    }
+                });
+            };
+
+            // Attach change listeners
+            controls.forEach((control) => {
+                control.addEventListener('change', updateConditionalVisibility);
+                control.addEventListener('input', updateConditionalVisibility);
+            });
+
+            // Initial update
+            updateConditionalVisibility();
+        });
+    }
+
+    function getFieldValue(form, fieldName) {
+        const input = form.querySelector(`[name="${escapeCssIdentifier(fieldName)}"]:checked`) ||
+                     form.querySelector(`[name="${escapeCssIdentifier(fieldName)}"]`);
+        return input ? input.value : '';
     }
 
     function escapeCssIdentifier(value) {

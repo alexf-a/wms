@@ -8,7 +8,7 @@ from django.core.files.base import ContentFile
 from django.core.management.base import BaseCommand
 from PIL import Image, ImageDraw, ImageFont
 
-from core.models import Bin, Item
+from core.models import Unit, Item
 from lib.llm.claude4_xml_parser import Claude4XMLParsingError
 from lib.llm.llm_handler import StructuredLangChainHandler
 from lib.llm.utils import get_llm_call
@@ -19,17 +19,17 @@ class Command(BaseCommand):
     help = "Create fake items with realistic names for testing"
 
     def add_arguments(self, parser):
-        parser.add_argument("count", type=int, help="Number of items to create per bin")
-        parser.add_argument("--username", "-u", type=str, required=True, help="Username of the bin owner")
-        parser.add_argument("--all-bins", "-a", action="store_true", help="Create items for all user's bins")
-        parser.add_argument("--bin-name", "-b", type=str, help="Name of specific bin to populate")
+        parser.add_argument("count", type=int, help="Number of items to create per unit")
+        parser.add_argument("--username", "-u", type=str, required=True, help="Username of the unit owner")
+        parser.add_argument("--all-units", "-a", action="store_true", help="Create items for all user's units")
+        parser.add_argument("--unit-name", "-u", type=str, help="Name of specific unit to populate")
 
     def handle(self, *args, **options):
         user_model = get_user_model()
         username = options.get("username")
         count = options["count"]
-        bin_name = options.get("bin_name")
-        all_bins = options.get("all_bins")
+        unit_name = options.get("unit_name")
+        all_units = options.get("all_units")
 
         try:
             user = user_model.objects.get(username=username)
@@ -45,32 +45,32 @@ class Command(BaseCommand):
             output_schema=ItemGenerationOutput
         )
 
-        # Get bins to populate
-        if bin_name:
+        # Get units to populate
+        if unit_name:
             try:
-                bins = [Bin.objects.get(user=user, name=bin_name)]
-            except Bin.DoesNotExist:
-                self.stdout.write(self.style.ERROR(f"Bin '{bin_name}' not found for user '{username}'."))
+                units = [Unit.objects.get(user=user, name=unit_name)]
+            except Unit.DoesNotExist:
+                self.stdout.write(self.style.ERROR(f"Unit '{unit_name}' not found for user '{username}'."))
                 return
-        elif all_bins:
-            bins = Bin.objects.filter(user=user)
-            if not bins.exists():
-                self.stdout.write(self.style.ERROR(f"No bins found for user '{username}'."))
+        elif all_units:
+            units = Unit.objects.filter(user=user)
+            if not units.exists():
+                self.stdout.write(self.style.ERROR(f"No units found for user '{username}'."))
                 return
         else:
-            bins = Bin.objects.filter(user=user).order_by("?")[:1]
-            if not bins:
-                self.stdout.write(self.style.ERROR(f"No bins found for user '{username}'."))
+            units = Unit.objects.filter(user=user).order_by("?")[:1]
+            if not units:
+                self.stdout.write(self.style.ERROR(f"No units found for user '{username}'."))
                 return
 
-        # Generate items for each bin
-        for storage_bin in bins:
-            self.stdout.write(self.style.SUCCESS(f"Creating {count} items for bin: {storage_bin.name}"))
-            self.stdout.write(f"  Description: {storage_bin.description}")
+        # Generate items for each unit
+        for storage_unit in units:
+            self.stdout.write(self.style.SUCCESS(f"Creating {count} items for unit: {storage_unit.name}"))
+            self.stdout.write(f"  Description: {storage_unit.description}")
 
-            # Get existing item names for this bin to avoid duplicates
+            # Get existing item names for this unit to avoid duplicates
             existing_item_names = set(
-                Item.objects.filter(bin=storage_bin).values_list("name", flat=True)
+                Item.objects.filter(unit=storage_unit).values_list("name", flat=True)
             )
 
             for i in range(count):
@@ -84,8 +84,8 @@ class Command(BaseCommand):
                     try:
                         # Generate complete item using structured LLM
                         result = item_handler.query(
-                            bin_name=storage_bin.name,
-                            bin_description=storage_bin.description,
+                            unit_name=storage_unit.name,
+                            unit_description=storage_unit.description,
                             existing_items=existing_items_str
                         )
                         candidate_name = result.name.strip().title()
@@ -132,7 +132,7 @@ class Command(BaseCommand):
                 item = Item(
                     name=item_name,
                     description=description,
-                    bin=storage_bin
+                    unit=storage_unit
                 )
 
                 # Generate image via AWS Bedrock using text-to-image

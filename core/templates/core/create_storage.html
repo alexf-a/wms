@@ -1,0 +1,316 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Create Storage Space - WMS{% endblock %}
+
+{% block content %}
+<div class="m3-page-shell">
+    <!-- Form Card -->
+    <div class="m3-card m3-card--filled">
+        <div class="m3-card__content">
+            <div class="m3-card__icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M4 4H20V20H4V4ZM6 6V18H18V6H6ZM8 8H16V10H8V8ZM8 12H16V14H8V12Z"/>
+                </svg>
+            </div>
+            <h1 class="md-typescale-headline-small m3-card__title">Create Storage Space</h1>
+            <form method="post" enctype="multipart/form-data" class="m3-form-vertical" id="create-storage-form" data-m3-dynamic-form data-total-steps="6" data-initial-step="1">
+                {% csrf_token %}
+                
+                <!-- Step 1: Name -->
+                <div class="m3-field-group m3-dynamic-field" data-step="1">
+                    <label for="{{ form.name.id_for_label }}" class="m3-field-label">Name <span class="text-error">*</span></label>
+                    <div class="m3-filled-text-field {% if form.name.errors %}m3-form-field--error{% endif %}">
+                        {{ form.name }}
+                        <button type="button" class="m3-input-action m3-next-btn" aria-label="Next field" style="display: none;" data-visible-display="flex">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
+                            </svg>
+                        </button>
+                    </div>
+                    {% if form.name.errors %}
+                        <div class="m3-form-error">
+                            {% for error in form.name.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Step 2: Storage Type (Location vs Unit) -->
+                <div class="m3-field-group m3-dynamic-field" data-step="2" style="display: none;">
+                    <label class="m3-field-label">What kind of storage space are you creating? <span class="text-error">*</span></label>
+                    <div class="m3-segmented-button-group">
+                        {% for value, label in form.stores_items.field.choices %}
+                        <div class="m3-segmented-button">
+                            <input type="radio" 
+                                   id="id_stores_items_{{ forloop.counter0 }}" 
+                                   name="stores_items" 
+                                   value="{{ value }}"
+                                   {% if form.stores_items.value == value or forloop.first and not form.stores_items.value %}checked{% endif %}
+                                   data-step-input>
+                            <label for="id_stores_items_{{ forloop.counter0 }}">
+                                {% if value == 'location' %}📍 Location{% else %}📦 Unit{% endif %}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <small class="m3-field-label" style="display: block; margin-top: 0.5rem; opacity: 0.7;">
+                        Choose "Location" for organizational spaces (e.g., shed, garage). Choose "Unit" for containers that directly hold items (e.g., bin, shelf).
+                    </small>
+                    <button type="button" class="m3-button m3-button-tonal m3-button-small m3-next-btn m3-next-btn--below" style="display: none; margin-top: 0.75rem;" data-visible-display="inline-flex">
+                        <span class="m3-button-label">Continue</span>
+                        <svg class="m3-button-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
+                        </svg>
+                    </button>
+                    {% if form.stores_items.errors %}
+                        <div class="m3-form-error">
+                            {% for error in form.stores_items.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Step 3: Description -->
+                <div class="m3-field-group m3-dynamic-field" data-step="3" data-optional style="display: none;">
+                    <label for="{{ form.description.id_for_label }}" class="m3-field-label">Description</label>
+                    <div class="m3-filled-text-field {% if form.description.errors %}m3-form-field--error{% endif %}">
+                        {{ form.description }}
+                    </div>
+                    <button type="button" class="m3-button m3-button-tonal m3-button-small m3-next-btn m3-next-btn--below" style="display: none; margin-top: 0.5rem;" data-visible-display="inline-flex">
+                        <span class="m3-button-label">Continue</span>
+                        <svg class="m3-button-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
+                        </svg>
+                    </button>
+                    <button type="button" class="m3-button m3-button-text m3-button-small m3-skip-btn" style="margin-top: 0.25rem; align-self: flex-start;" data-skip-to="4">
+                        <span class="m3-button-label">Skip</span>
+                    </button>
+                    {% if form.description.errors %}
+                        <div class="m3-form-error">
+                            {% for error in form.description.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Step 4a: Address (for Locations only) -->
+                <div class="m3-field-group m3-dynamic-field m3-conditional-hidden" data-step="4" data-show-if="stores_items=location" data-optional style="display: none;">
+                    <label for="{{ form.address.id_for_label }}" class="m3-field-label">Physical Address</label>
+                    <div class="m3-filled-text-field {% if form.address.errors %}m3-form-field--error{% endif %}">
+                        {{ form.address }}
+                    </div>
+                    <button type="button" class="m3-button m3-button-tonal m3-button-small m3-next-btn m3-next-btn--below" style="display: none; margin-top: 0.5rem;" data-visible-display="inline-flex">
+                        <span class="m3-button-label">Continue</span>
+                        <svg class="m3-button-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
+                        </svg>
+                    </button>
+                    <button type="button" class="m3-button m3-button-text m3-button-small m3-skip-btn" style="margin-top: 0.25rem; align-self: flex-start;" data-skip-to="6">
+                        <span class="m3-button-label">Skip</span>
+                    </button>
+                    {% if form.address.errors %}
+                        <div class="m3-form-error">
+                            {% for error in form.address.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Step 4b: Container (for Units only) -->
+                <div class="m3-field-group m3-dynamic-field m3-conditional-hidden" data-step="4" data-show-if="stores_items=unit" data-optional style="display: none;">
+                    <label for="{{ form.container.id_for_label }}" class="m3-field-label">Container</label>
+                    <div class="m3-select-wrapper">
+                        {{ form.container }}
+                    </div>
+                    <small class="m3-field-label" style="display: block; margin-top: 0.25rem; opacity: 0.7;">
+                        Select a location or parent unit (optional)
+                    </small>
+                    <button type="button" class="m3-button m3-button-tonal m3-button-small m3-next-btn m3-next-btn--below" style="display: none; margin-top: 0.5rem;" data-visible-display="inline-flex">
+                        <span class="m3-button-label">Continue</span>
+                        <svg class="m3-button-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
+                        </svg>
+                    </button>
+                    <button type="button" class="m3-button m3-button-text m3-button-small m3-skip-btn" style="margin-top: 0.25rem; align-self: flex-start;" data-skip-to="5">
+                        <span class="m3-button-label">Skip</span>
+                    </button>
+                    {% if form.container.errors %}
+                        <div class="m3-form-error">
+                            {% for error in form.container.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Step 5: Dimensions (for Units only) -->
+                <div class="m3-dynamic-field m3-conditional-hidden" data-step="5" data-show-if="stores_items=unit" data-optional style="display: none;">
+                    <div class="m3-field-group" style="margin-bottom: 1rem;">
+                        <label for="{{ form.dimensions_unit.id_for_label }}" class="m3-field-label">Unit of Measurement</label>
+                        <div class="m3-select-wrapper">
+                            {{ form.dimensions_unit }}
+                        </div>
+                        {% if form.dimensions_unit.errors %}
+                            <div class="m3-form-error">
+                                {% for error in form.dimensions_unit.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="grid-3">
+                        <div class="m3-field-group">
+                            <label for="{{ form.length.id_for_label }}" class="m3-field-label">Length</label>
+                            <div class="m3-filled-text-field {% if form.length.errors %}m3-form-field--error{% endif %}">
+                                {{ form.length }}
+                            </div>
+                            {% if form.length.errors %}
+                                <div class="m3-form-error">
+                                    {% for error in form.length.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="m3-field-group">
+                            <label for="{{ form.width.id_for_label }}" class="m3-field-label">Width</label>
+                            <div class="m3-filled-text-field {% if form.width.errors %}m3-form-field--error{% endif %}">
+                                {{ form.width }}
+                            </div>
+                            {% if form.width.errors %}
+                                <div class="m3-form-error">
+                                    {% for error in form.width.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="m3-field-group">
+                            <label for="{{ form.height.id_for_label }}" class="m3-field-label">Height</label>
+                            <div class="m3-filled-text-field {% if form.height.errors %}m3-form-field--error{% endif %}">
+                                {{ form.height }}
+                            </div>
+                            {% if form.height.errors %}
+                                <div class="m3-form-error">
+                                    {% for error in form.height.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="m3-dimension-actions">
+                        <button type="button" class="m3-button m3-button-tonal m3-button-small m3-next-btn" data-visible-display="inline-flex">
+                            <span class="m3-button-label">Continue</span>
+                            <svg class="m3-button-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
+                            </svg>
+                        </button>
+                        <button type="button" class="m3-button m3-button-text m3-button-small m3-skip-btn" data-skip-to="6">
+                            <span class="m3-button-label">Skip Dimensions</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 6: Actions -->
+                <div class="m3-card__actions m3-dynamic-field" data-step="6" style="display: none;">
+                    <button type="submit" class="m3-button m3-button-filled m3-button-standard">
+                        <svg class="m3-button-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
+                        </svg>
+                        <span class="m3-button-label">Create Storage Space</span>
+                    </button>
+                    <a href="{% url 'expand_inventory' %}" class="m3-button m3-button-tonal m3-button-standard">
+                        <svg class="m3-button-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+                        </svg>
+                        <span class="m3-button-label">Cancel</span>
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<nav class="m3-bottom-nav">
+    <a href="{% url 'home_view' %}" class="m3-nav-item">
+        <div class="m3-nav-icon-container">
+            <svg class="m3-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+            </svg>
+        </div>
+        <span class="m3-nav-label">Home</span>
+    </a>
+
+    <a href="{% url 'list_units' %}" class="m3-nav-item">
+        <div class="m3-nav-icon-container">
+            <svg class="m3-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M20 2H4c-1 0-2 .9-2 2v3.01c0 .72.43 1.34 1 1.69V20c0 1.1 1.1 2 2 2h14c.9 0 2-.9 2-2V8.7c.57-.35 1-.97 1-1.69V4c0-1.1-1-2-2-2zm-5 12H9v-2h6v2zm5-7H4V4h16v3z" />
+            </svg>
+        </div>
+        <span class="m3-nav-label">Inventory</span>
+    </a>
+
+    <a href="{% url 'item_search' %}" class="m3-nav-item">
+        <div class="m3-nav-icon-container">
+            <svg class="m3-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.71.71l.27.28v.79l5 4.99L20.49 19zM9.5 14a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z" />
+            </svg>
+        </div>
+        <span class="m3-nav-label">Search</span>
+    </a>
+</nav>
+<style>
+/* Dynamic form field animations */
+.m3-dynamic-field {
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.m3-dynamic-field.slide-in {
+    animation: slideInUp 0.3s ease forwards;
+}
+
+.m3-next-btn {
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.m3-next-btn--below {
+    align-self: flex-end;
+}
+
+.m3-skip-btn {
+    opacity: 0.7;
+}
+
+.m3-skip-btn:hover {
+    opacity: 1;
+}
+
+/* Ensure text field can contain the next button */
+.m3-dynamic-field .m3-filled-text-field {
+    position: relative;
+}
+
+.m3-dimension-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+}
+
+/* Conditional fields are hidden via inline styles - JS will manage visibility */
+.m3-conditional-hidden {
+    display: none;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+    {{ block.super }}
+    <script src="{% static 'core/js/dynamic_form.js' %}"></script>
+{% endblock %}

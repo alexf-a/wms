@@ -1,9 +1,9 @@
 """Pydantic schemas for synthetic data generation."""
 
-from .bin_generation import BinGenerationOutput
+from .unit_generation import UnitGenerationOutput
 from .item_generation import ItemGenerationOutput
 
 __all__ = [
-    "BinGenerationOutput",
+    "UnitGenerationOutput",
     "ItemGenerationOutput",
 ]

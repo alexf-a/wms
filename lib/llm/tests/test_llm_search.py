@@ -1,4 +1,4 @@
-# ruff: noqa
+# ruff: noqa: E402
 import os
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "wms.settings")
 import django
@@ -38,7 +38,7 @@ def setup_monkeypatch(monkeypatch, dummy_instances):
             self.queries.append(kwargs)
             return ItemLocation(
                 item_name="fake_item",
-                bin_name="fake_bin",
+                unit_name="fake_unit",
                 confidence="Medium",
                 additional_info="fake_info",
             )
@@ -75,7 +75,7 @@ def test_follow_up_query_called(monkeypatch, confidences):
 
     # Build candidate models according to provided confidences
     candidates = [
-        ItemSearchCandidate(name=f"Item{i}", bin_name=f"Bin{i}", confidence=conf)
+        ItemSearchCandidate(name=f"Item{i}", unit_name=f"Unit{i}", confidence=conf)
         for i, conf in enumerate(confidences, start=1)
     ]
     candidates_model = ItemSearchCandidates(candidates=candidates)
@@ -102,7 +102,7 @@ def test_follow_up_query_called(monkeypatch, confidences):
     # Verify returned result is from DummyHandler.query
     assert isinstance(result, ItemLocation)
     assert result.item_name == "fake_item"
-    assert result.bin_name == "fake_bin"
+    assert result.unit_name == "fake_unit"
     assert result.confidence == "Medium"
     assert result.additional_info == "fake_info"
 
@@ -128,8 +128,8 @@ def test_single_high_confidence_direct_return(monkeypatch, high_confidence):
 
     # One candidate at/above threshold, one below
     candidates = [
-        ItemSearchCandidate(name="HighItem", bin_name="HighBin", confidence=high_confidence),
-        ItemSearchCandidate(name="LowItem", bin_name="LowBin", confidence=HIGH_CONFIDENCE_THRESHOLD - 0.1),
+        ItemSearchCandidate(name="HighItem", unit_name="HighUnit", confidence=high_confidence),
+        ItemSearchCandidate(name="LowItem", unit_name="LowUnit", confidence=HIGH_CONFIDENCE_THRESHOLD - 0.1),
     ]
     candidates_model = ItemSearchCandidates(candidates=candidates)
     should_return_early: bool = _should_return_early(candidates_model)
@@ -151,7 +151,7 @@ def test_single_high_confidence_direct_return(monkeypatch, high_confidence):
     # Verify returned result is built from the high-confidence candidate
     assert isinstance(result, ItemLocation)
     assert result.item_name == "HighItem"
-    assert result.bin_name == "HighBin"
+    assert result.unit_name == "HighUnit"
     assert result.confidence == "High"
     assert result.additional_info == f"Found with confidence score: {high_confidence}"
 
@@ -174,7 +174,7 @@ def test_should_return_early_helper(confidences, expected):
 
     # Build ItemSearchCandidates from confidences
     candidates = [
-        ItemSearchCandidate(name=f"I{i}", bin_name=f"B{i}", confidence=conf)
+        ItemSearchCandidate(name=f"I{i}", unit_name=f"U{i}", confidence=conf)
         for i, conf in enumerate(confidences)
     ]
     model = ItemSearchCandidates(candidates=candidates)
@@ -241,14 +241,14 @@ def test_perform_candidate_search_wiring(monkeypatch, scenario, confidences, exp
                 if self._llm_call_name == "mock_candidates_llm_call":
                     candidates_query_args = kwargs
                     return ItemSearchCandidates(candidates=[
-                        ItemSearchCandidate(name=f"Item{i}", bin_name=f"Bin{i}", confidence=conf)
+                        ItemSearchCandidate(name=f"Item{i}", unit_name=f"Unit{i}", confidence=conf)
                         for i, conf in enumerate(confidences, start=1)
                     ])
                 elif self._llm_call_name == "mock_location_llm_call":
                     location_query_args = kwargs
                     return ItemLocation(
                         item_name="MockLocationItem",
-                        bin_name="MockLocationBin", 
+                        unit_name="MockLocationUnit", 
                         confidence="Medium",
                         additional_info="Mock location info"
                     )
@@ -258,7 +258,7 @@ def test_perform_candidate_search_wiring(monkeypatch, scenario, confidences, exp
                     # First call - must be candidates
                     candidates_query_args = kwargs
                     return ItemSearchCandidates(candidates=[
-                        ItemSearchCandidate(name=f"Item{i}", bin_name=f"Bin{i}", confidence=conf)
+                        ItemSearchCandidate(name=f"Item{i}", unit_name=f"Unit{i}", confidence=conf)
                         for i, conf in enumerate(confidences, start=1)
                     ])
                 else:
@@ -266,7 +266,7 @@ def test_perform_candidate_search_wiring(monkeypatch, scenario, confidences, exp
                     location_query_args = kwargs
                     return ItemLocation(
                         item_name="MockLocationItem",
-                        bin_name="MockLocationBin", 
+                        unit_name="MockLocationUnit", 
                         confidence="Medium",
                         additional_info="Mock location info"
                     )
@@ -352,7 +352,7 @@ def test_perform_candidate_search_wiring(monkeypatch, scenario, confidences, exp
         
         # Verify the result comes from the location handler
         assert location_result.item_name == "MockLocationItem", "Should return item from location handler"
-        assert location_result.bin_name == "MockLocationBin", "Should return bin from location handler"
+        assert location_result.unit_name == "MockLocationUnit", "Should return unit from location handler"
     else:
         # Verify location handler was NOT called (early return scenario)
         assert location_handler_args is None, f"Location StructuredLangChainHandler should NOT be instantiated for scenario: {scenario}"
@@ -361,7 +361,7 @@ def test_perform_candidate_search_wiring(monkeypatch, scenario, confidences, exp
         # Verify the result comes from direct candidate mapping
         high_confidence_candidate = next(c for c in candidates_result.candidates if c.confidence >= HIGH_CONFIDENCE_THRESHOLD)
         assert location_result.item_name == high_confidence_candidate.name, "Should return item from high confidence candidate"
-        assert location_result.bin_name == high_confidence_candidate.bin_name, "Should return bin from high confidence candidate"
+        assert location_result.unit_name == high_confidence_candidate.unit_name, "Should return unit from high confidence candidate"
         assert location_result.confidence == "High", "Should have High confidence for direct return"
 
 
@@ -373,13 +373,13 @@ def test_find_item_location_orchestration(monkeypatch):
     
     # Create mock candidates result
     mock_candidates = ItemSearchCandidates(candidates=[
-        ItemSearchCandidate(name="TestItem", bin_name="TestBin", confidence=0.9)
+        ItemSearchCandidate(name="TestItem", unit_name="TestUnit", confidence=0.9)
     ])
     
     # Create mock location result
     mock_location = ItemLocation(
         item_name="TestItem",
-        bin_name="TestBin", 
+        unit_name="TestUnit", 
         confidence="High",
         additional_info="Test info"
     )
@@ -409,7 +409,7 @@ def test_find_item_location_orchestration(monkeypatch):
     # Verify the final result is returned from get_item_location
     assert result == mock_location
     assert result.item_name == "TestItem"
-    assert result.bin_name == "TestBin"
+    assert result.unit_name == "TestUnit"
     assert result.confidence == "High"
     assert result.additional_info == "Test info"
     

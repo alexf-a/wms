@@ -144,6 +144,7 @@ sync-env:
 #   make local-up ENV_FILE=.env.local          - Use custom env file (e.g., for mobile testing)
 #   make local-up CONTAINERS=deploy/other.json - Use different containers.json for sync-env
 local-up:
+	@rm -f .env  # Clean up any leftover from local-https
 	@mkdir -p .cache
 	@if [ -n "$(ENV_FILE)" ] && [ -f "$(ENV_FILE)" ]; then \
 		cp $(ENV_FILE) .cache/.env; \
@@ -159,7 +160,14 @@ local-up:
 		$(MAKE) sync-env; \
 		echo "Using environment generated from containers.json"; \
 	fi
-	@docker-compose up --build -d
+	@docker-compose up --build -d web
+
+# Stop local development server (HTTP-only mode)
+local-down:
+	@echo "Stopping local development server..."
+	@docker-compose down
+	@rm -f .env  # Clean up root .env file
+	@echo "Local development server stopped."
 
 # Help target to document the bug fix
 help:
