@@ -125,7 +125,9 @@ function initOverflowMenu(buttonId, dropdownId, options = {}) {
         
         if (deleteButton && deleteForm) {
             deleteButton.addEventListener('click', function() {
-                if (confirm(confirmMessage)) {
+                // Read from data attribute first, fall back to options.confirmMessage
+                const message = deleteButton.dataset.confirmMessage || confirmMessage;
+                if (confirm(message)) {
                     deleteForm.submit();
                 }
             });
@@ -139,7 +141,6 @@ function initOverflowMenu(buttonId, dropdownId, options = {}) {
 function initUnitDetailPage() {
     initOverflowMenu('unit-menu-button', 'unit-menu-dropdown', {
         deleteButtonId: 'delete-button',
-        deleteFormId: 'delete-form',
-        confirmMessage: 'Are you sure you want to delete this unit? All items inside will be permanently deleted. Child units will survive but become standalone. This action cannot be undone.'
+        deleteFormId: 'delete-form'
     });
 }
