@@ -38,10 +38,10 @@
                 
                 <!-- Image Upload Field -->
                 <div class="m3-form-field">
-                    <label for="id_image" class="m3-form-label">
+                    <label for="id_{{ form.image.name }}" class="m3-form-label">
                         {% if item.image %}Replace Image{% else %}Add Image{% endif %}
                     </label>
-                    <input type="file" name="image" id="id_image" accept="image/*" class="m3-text-field" style="padding: var(--wms-space-xs);">
+                    <input type="file" name="{{ form.image.name }}" id="id_{{ form.image.name }}" accept="image/*" class="m3-text-field" style="padding: var(--wms-space-xs);">
                     <span class="m3-form-helper-text">
                         {% if item.image %}
                         {% else %}
@@ -52,8 +52,8 @@
                 
                 <!-- Name Field -->
                 <div class="m3-form-field{% if form.name.errors %} m3-form-field--error{% endif %}">
-                    <label for="id_name" class="m3-form-label">Name</label>
-                    <input type="text" name="name" id="id_name" class="m3-text-field{% if form.name.errors %} m3-text-field--error{% endif %}" value="{{ form.name.value|default:'' }}" required>
+                    <label for="id_{{ form.name.name }}" class="m3-form-label">Name</label>
+                    <input type="text" name="{{ form.name.name }}" id="id_{{ form.name.name }}" class="m3-text-field{% if form.name.errors %} m3-text-field--error{% endif %}" value="{{ form.name.value|default:'' }}" required>
                     {% if form.name.errors %}
                     <span class="m3-form-error">{{ form.name.errors.0 }}</span>
                     {% endif %}
@@ -61,14 +61,14 @@
                 
                 <!-- Description Field -->
                 <div class="m3-form-field">
-                    <label for="id_description" class="m3-form-label">Description</label>
-                    <textarea name="description" id="id_description" class="m3-text-field" rows="4">{{ form.description.value|default:'' }}</textarea>
+                    <label for="id_{{ form.description.name }}" class="m3-form-label">Description</label>
+                    <textarea name="{{ form.description.name }}" id="id_{{ form.description.name }}" class="m3-text-field" rows="4">{{ form.description.value|default:'' }}</textarea>
                 </div>
                 
                 <!-- Unit Field -->
                 <div class="m3-form-field">
-                    <label for="id_unit" class="m3-form-label">Unit</label>
-                    <select name="unit" id="id_unit" class="m3-text-field" required>
+                    <label for="id_{{ form.unit.name }}" class="m3-form-label">Unit</label>
+                    <select name="{{ form.unit.name }}" id="id_{{ form.unit.name }}" class="m3-text-field" required>
                         <option value="">Select a unit...</option>
                         {% for unit_option in form.unit.field.queryset %}
                         <option value="{{ unit_option.id }}"{% if form.unit.value == unit_option.id or item.unit.id == unit_option.id %} selected{% endif %}>{{ unit_option.name }}</option>
