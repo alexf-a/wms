@@ -80,3 +80,55 @@ function showFormSectionWithErrors(formSectionId, formCardId) {
     if (formSection) formSection.style.display = 'block';
     if (formCard) formCard.style.display = 'block';
 }
+
+/**
+ * Initialize overflow menu dropdown functionality
+ * @param {string} buttonId - ID of the menu button element
+ * @param {string} dropdownId - ID of the dropdown element
+ * @param {Object} [options] - Optional configuration
+ * @param {string} [options.deleteButtonId] - ID of delete button for confirmation
+ * @param {string} [options.deleteFormId] - ID of delete form to submit
+ * @param {string} [options.confirmMessage] - Custom confirmation message
+ */
+function initOverflowMenu(buttonId, dropdownId, options = {}) {
+    const {
+        deleteButtonId,
+        deleteFormId,
+        confirmMessage = 'Are you sure you want to delete this item? This action cannot be undone.'
+    } = options;
+    
+    const menuButton = document.getElementById(buttonId);
+    const menuDropdown = document.getElementById(dropdownId);
+    
+    if (!menuButton || !menuDropdown) return;
+    
+    // Toggle dropdown
+    menuButton.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const isActive = menuDropdown.classList.contains('active');
+        menuDropdown.classList.toggle('active');
+        menuButton.setAttribute('aria-expanded', !isActive);
+    });
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!menuButton.contains(e.target) && !menuDropdown.contains(e.target)) {
+            menuDropdown.classList.remove('active');
+            menuButton.setAttribute('aria-expanded', 'false');
+        }
+    });
+    
+    // Delete confirmation (if applicable)
+    if (deleteButtonId && deleteFormId) {
+        const deleteButton = document.getElementById(deleteButtonId);
+        const deleteForm = document.getElementById(deleteFormId);
+        
+        if (deleteButton && deleteForm) {
+            deleteButton.addEventListener('click', function() {
+                if (confirm(confirmMessage)) {
+                    deleteForm.submit();
+                }
+            });
+        }
+    }
+}

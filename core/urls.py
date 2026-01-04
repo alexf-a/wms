@@ -30,6 +30,8 @@ urlpatterns = [
         name="unit_qr",
     ),
     path("item/<int:item_id>/", views.item_detail, name="item_detail"),
+    path("item/<int:item_id>/edit/", views.item_edit_view, name="item_edit"),
+    path("item/<int:item_id>/delete/", views.item_delete_view, name="item_delete"),
     path("find-item/", views.item_search_view, name="item_search"),
     path("api/extract-item-features/", views.extract_item_features_api, name="extract_item_features_api"),
     path("caddy-ca/download", views.caddy_ca_download_view, name="caddy_ca_download"),
