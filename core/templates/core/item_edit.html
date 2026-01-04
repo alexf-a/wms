@@ -1,0 +1,141 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Edit {{ item.name }} - WMS{% endblock %}
+
+{% block content %}
+<div class="m3-page-shell">
+    
+    <!-- Snackbar for error messages -->
+    <div id="error-snackbar" class="m3-snackbar" role="alert" aria-live="polite">
+        <span id="error-snackbar-text" class="m3-snackbar-text"></span>
+        <button type="button" id="error-snackbar-dismiss" class="m3-snackbar-action" aria-label="Dismiss">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+            </svg>
+        </button>
+    </div>
+    
+    <form method="post" enctype="multipart/form-data" id="item-form" class="m3-form-vertical">
+        {% csrf_token %}
+        
+        <div class="m3-card m3-card--filled">
+            <div class="m3-card__content">
+                <div class="m3-card__icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                    </svg>
+                </div>
+                <h1 class="md-typescale-headline-medium m3-card__title">Edit Item</h1>
+                
+                <!-- Current Image Preview (if exists) -->
+                {% if item.image %}
+                <div class="image-container" style="margin: var(--wms-space-md) 0;">
+                    <img src="{{ item.image.url }}" alt="{{ item.name }} current photo" class="image-preview">
+                    <p class="md-typescale-body-small" style="color: var(--md-sys-color-on-surface-variant); text-align: center; margin-top: var(--wms-space-xs);">Current image</p>
+                </div>
+                {% endif %}
+                
+                <!-- Image Upload Field -->
+                <div class="m3-form-field">
+                    <label for="id_image" class="m3-form-label">
+                        {% if item.image %}Replace Image{% else %}Add Image{% endif %}
+                    </label>
+                    <input type="file" name="image" id="id_image" accept="image/*" class="m3-text-field" style="padding: var(--wms-space-xs);">
+                    <span class="m3-form-helper-text">
+                        {% if item.image %}
+                        {% else %}
+                        Optional - add a photo of this item
+                        {% endif %}
+                    </span>
+                </div>
+                
+                <!-- Name Field -->
+                <div class="m3-form-field{% if form.name.errors %} m3-form-field--error{% endif %}">
+                    <label for="id_name" class="m3-form-label">Name</label>
+                    <input type="text" name="name" id="id_name" class="m3-text-field{% if form.name.errors %} m3-text-field--error{% endif %}" value="{{ form.name.value|default:'' }}" required>
+                    {% if form.name.errors %}
+                    <span class="m3-form-error">{{ form.name.errors.0 }}</span>
+                    {% endif %}
+                </div>
+                
+                <!-- Description Field -->
+                <div class="m3-form-field">
+                    <label for="id_description" class="m3-form-label">Description</label>
+                    <textarea name="description" id="id_description" class="m3-text-field" rows="4">{{ form.description.value|default:'' }}</textarea>
+                </div>
+                
+                <!-- Unit Field -->
+                <div class="m3-form-field">
+                    <label for="id_unit" class="m3-form-label">Unit</label>
+                    <select name="unit" id="id_unit" class="m3-text-field" required>
+                        <option value="">Select a unit...</option>
+                        {% for unit_option in form.unit.field.queryset %}
+                        <option value="{{ unit_option.id }}"{% if form.unit.value == unit_option.id or item.unit.id == unit_option.id %} selected{% endif %}>{{ unit_option.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="m3-card__actions form-actions-spacing">
+                    <button type="submit" class="m3-button m3-button-filled m3-button-standard">
+                        <svg class="m3-button-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                        </svg>
+                        <span class="m3-button-label">Save Changes</span>
+                    </button>
+                    <a href="{% url 'item_detail' item.id %}" class="m3-button m3-button-tonal m3-button-standard">
+                        <svg class="m3-button-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+                        </svg>
+                        <span class="m3-button-label">Cancel</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<nav class="m3-bottom-nav">
+    <a href="{% url 'home_view' %}" class="m3-nav-item">
+        <div class="m3-nav-icon-container">
+            <svg class="m3-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+            </svg>
+        </div>
+        <span class="m3-nav-label">Home</span>
+    </a>
+
+    <a href="{% url 'list_units' %}" class="m3-nav-item m3-nav-item-active">
+        <div class="m3-nav-icon-container">
+            <svg class="m3-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M20 2H4c-1 0-2 .9-2 2v3.01c0 .72.43 1.34 1 1.69V20c0 1.1 1.1 2 2 2h14c.9 0 2-.9 2-2V8.7c.57-.35 1-.97 1-1.69V4c0-1.1-1-2-2-2zm-5 12H9v-2h6v2zm5-7H4V4h16v3z" />
+            </svg>
+        </div>
+        <span class="m3-nav-label">Inventory</span>
+    </a>
+
+    <a href="{% url 'item_search' %}" class="m3-nav-item">
+        <div class="m3-nav-icon-container">
+            <svg class="m3-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.71.71l.27.28v.79l5 4.99L20.49 19zM9.5 14a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z" />
+            </svg>
+        </div>
+        <span class="m3-nav-label">Search</span>
+    </a>
+</nav>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'core/js/ui_utils.js' %}"></script>
+{% if form.errors %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    {% for field, errors in form.errors.items %}
+    {% for error in errors %}
+    showErrorSnackbar("{{ error|escapejs }}");
+    {% endfor %}
+    {% endfor %}
+});
+</script>
+{% endif %}
+{% endblock %}

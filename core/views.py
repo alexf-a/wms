@@ -309,6 +309,65 @@ def item_detail(request: HttpRequest, item_id: int) -> HttpResponse:
     item = get_object_or_404(Item, id=item_id)
     return render(request, "core/item_detail.html", {"item": item})
 
+
+@login_required
+def item_edit_view(request: HttpRequest, item_id: int) -> HttpResponse:
+    """Handle editing an existing item.
+
+    Args:
+        request: The HTTP request object.
+        item_id: The ID of the item to edit.
+
+    Returns:
+        The rendered item edit page or a redirect to the item detail page.
+    """
+    item = get_object_or_404(Item, id=item_id, user=request.user)
+
+    if request.method == "POST":
+        form = ItemForm(request.POST, request.FILES, instance=item, user=request.user)
+        if form.is_valid():
+            try:
+                form.save()
+                messages.success(request, f"Item '{item.name}' has been updated successfully!")
+                return redirect("item_detail", item_id=item.id)
+            except IntegrityError:
+                form.add_error(
+                    "name",
+                    f"You already have an item named '{form.cleaned_data['name']}'. Please choose a different name."
+                )
+    else:
+        form = ItemForm(instance=item, user=request.user)
+
+    return render(request, "core/item_edit.html", {"form": form, "item": item})
+
+
+@login_required
+def item_delete_view(request: HttpRequest, item_id: int) -> HttpResponse:
+    """Handle deleting an existing item.
+
+    Args:
+        request: The HTTP request object.
+        item_id: The ID of the item to delete.
+
+    Returns:
+        Redirect to the parent unit's detail page.
+    """
+    item = get_object_or_404(Item, id=item_id, user=request.user)
+
+    if request.method != "POST":
+        return redirect("item_detail", item_id=item.id)
+
+    # Store parent unit reference before deletion
+    parent_unit = item.unit
+    item_name = item.name
+
+    # Delete the item
+    item.delete()
+
+    messages.success(request, f"Item '{item_name}' has been deleted successfully.")
+    return redirect("unit_detail", user_id=parent_unit.user_id, access_token=parent_unit.access_token)
+
+
 @login_required
 def item_search_view(request: HttpRequest) -> HttpResponse:
     """Handle item search using LLM.
