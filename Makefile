@@ -251,6 +251,16 @@ caddy-trust:
 # Usage:
 #   make caddy-export-ca                                - Use .env.local.https
 #   make caddy-export-ca ENV_FILE=.env.local.https.wifi - Use custom env file
+# NOTE: caddy-export-ca serves the Caddy root CA certificate over plain HTTP
+# (http://$DOMAIN:8888/caddy-root-ca.crt) using python3 -m http.server 8888,
+# which allows a network attacker in a shared Wi-Fi or LAN environment to
+# man-in-the-middle the download and substitute their own malicious root CA.
+# If a developer then installs this spoofed CA on a mobile device as
+# instructed, the attacker could intercept or tamper with all TLS traffic from
+# that device. To mitigate this, distribute the CA certificate over a channel
+# with integrity (e.g., HTTPS with an already-trusted CA, an authenticated file
+# transfer, or an out-of-band/manual copy) and avoid relying on unauthenticated
+# HTTP for trust bootstrapping.
 caddy-export-ca: ENV_FILE?=.env.local.https
 caddy-export-ca:
 	$(call validate-local-https-env,$(ENV_FILE))
