@@ -389,10 +389,6 @@ def caddy_ca_download_view(request: HttpRequest) -> HttpResponse:
     Returns:
         HttpResponse with CA certificate file or 404 JsonResponse if not found.
     """
-    # Block access in production
-    if not settings.DEBUG:
-        raise Http404("Endpoint only available in development mode")
-
     ca_cert_path = Path(settings.BASE_DIR) / "deploy" / "caddy-root-ca.crt"
 
     if not ca_cert_path.exists():
