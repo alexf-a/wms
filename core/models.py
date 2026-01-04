@@ -389,7 +389,7 @@ class Unit(StorageSpace):
         """
         return self.child_units.exists()
     
-    def user_has_access(self, user: User) -> bool:
+    def user_has_access(self, user: WMSUser) -> bool:
         """Check if a user has access to this Unit.
         
         Checks:
