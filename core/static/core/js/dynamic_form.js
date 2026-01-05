@@ -41,12 +41,7 @@
                     return;
                 }
 
-                // Find the input within THIS group, not shared across all groups for the step
-                const groupInput = findEligibleInput(group);
-                const visibleDisplay = nextBtn.dataset.visibleDisplay || DEFAULT_VISIBLE_DISPLAY;
-                
-                // Optional fields always show their Continue button
-                const isOptional = group.hasAttribute('data-optional');
+        // Find the eligible input for this specific group
 
                 if (isOptional) {
                     nextBtn.style.display = visibleDisplay;
