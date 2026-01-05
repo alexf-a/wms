@@ -41,7 +41,10 @@
                     return;
                 }
 
-        // Find the eligible input for this specific group
+                // Find the eligible input for this specific group
+                const groupInput = findEligibleInput(group);
+                const isOptional = group.hasAttribute('data-optional');
+                const visibleDisplay = nextBtn.dataset.visibleDisplay || DEFAULT_VISIBLE_DISPLAY;
 
                 if (isOptional) {
                     nextBtn.style.display = visibleDisplay;
