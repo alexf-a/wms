@@ -92,25 +92,26 @@ def parse_container_string(container_string: str) -> tuple[ContainerType, int]:
     
     Raises:
         ValidationError: If container string is empty or has invalid format.
-    
+
     Examples:
         >>> parse_container_string('location_123')
         (ContainerType.LOCATION, 123)
         >>> parse_container_string('unit_456')
         (ContainerType.UNIT, 456)
     """
-    if not container_string:
-        raise ValidationError("Container cannot be empty")
-    
+    if not container_string or not container_string.strip():
+        msg = "Container string cannot be empty"
+        raise ValidationError(msg)
     try:
-        prefix, id_str = container_string.split('_', 1)
+        prefix, id_str = container_string.split("_", 1)
         container_type = ContainerType(prefix)
         container_id = int(id_str)
     except ValueError as e:
-        raise ValidationError(f"Invalid container format: {container_string}") from e
+        msg = f"Invalid container format: {container_string}"
+        raise ValidationError(msg) from e
     except (IndexError, AttributeError) as e:
-        raise ValidationError(f"Invalid container ID format: {container_string}") from e
-    
+        msg = f"Invalid container ID format: {container_string}"
+        raise ValidationError(msg) from e
     return container_type, container_id
 
 
