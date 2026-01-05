@@ -40,6 +40,12 @@
                 <!-- Step 2: Storage Type (Location vs Unit) -->
                 <div class="m3-field-group m3-dynamic-field" data-step="2" style="display: none;">
                     <label class="m3-field-label">What kind of storage space are you creating? <span class="text-error">*</span></label>
+                    <a href="{% url 'getting_started' %}#core-concepts" class="m3-help-link" target="_blank">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                        </svg>
+                        <span>What's the difference?</span>
+                    </a>
                     <div class="m3-segmented-button-group">
                         {% for value, label in form.stores_items.field.choices %}
                         <div class="m3-segmented-button">
