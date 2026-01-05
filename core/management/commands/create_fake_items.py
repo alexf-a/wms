@@ -22,7 +22,7 @@ class Command(BaseCommand):
         parser.add_argument("count", type=int, help="Number of items to create per unit")
         parser.add_argument("--username", "-u", type=str, required=True, help="Username of the unit owner")
         parser.add_argument("--all-units", "-a", action="store_true", help="Create items for all user's units")
-        parser.add_argument("--unit-name", "-u", type=str, help="Name of specific unit to populate")
+        parser.add_argument("--unit-name", "-n", type=str, help="Name of specific unit to populate")
 
     def handle(self, *args, **options):
         user_model = get_user_model()
