@@ -16,7 +16,7 @@ from PIL import Image as PILImage
 
 # Local application imports
 from aws_utils.region import AWSRegion
-from core.models import Bin, Item
+from core.models import Unit, Item
 from lib.llm.llm_handler import StructuredLangChainHandler
 from lib.llm.utils import get_llm_call
 from schemas.item_generation import GeneratedItem

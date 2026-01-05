@@ -7,7 +7,7 @@ class ItemGenerationOutput(BaseModel):
     """Schema for item generation output including name and description."""
 
     name: str = Field(
-        description="Realistic item name that would logically belong in the specified storage bin, maximum 30 characters"
+        description="Realistic item name that would logically belong in the specified storage unit, maximum 30 characters"
     )
     description: str = Field(
         description="Realistic, detailed description including relevant details like condition, size, color, "

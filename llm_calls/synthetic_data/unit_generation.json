@@ -1,0 +1,8 @@
+{
+    "system_prompt_tmplt": "You are a creative assistant tasked with generating complete storage unit information in a single response. Generate unique and imaginative names, descriptive phrases, and realistic locations for storage units. Names should be short, simple and realistic (max 30 characters), as if someone wrote it for their own personal inventory management. Descriptions should combine both the purpose/context AND specific item types (max 50 characters), like 'Kitchen prep tools: knives, boards, peelers'. Locations should be practical household places where storage units would typically be placed (max 20 characters). Each unit should have a unique name and purpose. I will give you a list of existing names, and you should not use any of them.",
+    "human_prompt_tmplt": "Generate a complete storage unit with name, description, and location. Do not use any of these existing names or related categories: {existing_names}. Requirements: Name max 30 chars, Description max 50 chars, Location max 20 chars.",
+    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+    "temp": 0.8,
+    "retry_timeout": 1,
+    "retry_limit": 10
+}

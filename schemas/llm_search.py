@@ -8,19 +8,22 @@ from pydantic import BaseModel, Field
 class ItemLocation(BaseModel):
     """Model for the response from the LLM describing item locations."""
     item_name: str
-    bin_name: str
+    unit_name: str
     confidence: str  # High, Medium, Low
-    additional_info: str = Field(..., description="Any helpful additional information about the item location, or your reasoning for the confidence level.")
+    additional_info: str = Field(
+        ...,
+        description="Any helpful additional information about the item location, or your reasoning for the confidence level.",
+    )
 
     def __str__(self) -> str:
         """Return a string representation of the item location."""
-        return f"Item: {self.item_name}\nBin: {self.bin_name}\nConfidence: {self.confidence}\nAdditional Info: {self.additional_info}"
+        return f"Item: {self.item_name}\nUnit: {self.unit_name}\nConfidence: {self.confidence}\nAdditional Info: {self.additional_info}"
 
 
 class ItemSearchCandidate(BaseModel):
     """Model representing a candidate item match for search, with confidence score."""
     name: str = Field(..., description="Item name")
-    bin_name: str = Field(..., description="Bin name")
+    unit_name: str = Field(..., description="Unit name")
     confidence: float = Field(
         ..., description="Confidence score between 0 and 1 (inclusive)", ge=0.0, le=1.0
     )
@@ -44,12 +47,12 @@ class ItemSearchInput(BaseModel):
     Attributes:
         name: The name of the item
         description: The description of the item
-        bin_name: The name of the bin containing the item
+        unit_name: The name of the unit containing the item
         image: Base64 encoded image data (optional)
     """
     name: str
     description: str
-    bin_name: str
+    unit_name: str
     image: str | None = None
 
     def to_prompt(self, exclude_fields: None | list[str] = None) -> str:
