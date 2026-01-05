@@ -18,6 +18,7 @@ class LLMCall(BaseModel):
     output_schema: type[BaseModel] | None = None
     model_id: ModelID
     temp: float = 0.7
+    max_tokens: int | None = None
     retry_timeout: float | None = None
     retry_limit: int | None = None
 

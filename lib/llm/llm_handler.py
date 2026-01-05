@@ -59,11 +59,15 @@ class LangChainHandler(LLMHandler):
         self.llm_call = llm_call
         self._additional_messages: list[SystemMessage | HumanMessage] = []
 
-        self.langchain_client = ChatBedrock(
-            model_id=self.llm_call.model_id.value,
-            temperature=self.llm_call.temp,
-            region=region.value
-        )
+        client_params = {
+            "model_id": self.llm_call.model_id.value,
+            "temperature": self.llm_call.temp,
+            "region": region.value,
+        }
+        if self.llm_call.max_tokens is not None:
+            client_params["max_tokens"] = self.llm_call.max_tokens
+
+        self.langchain_client = ChatBedrock(**client_params)
         self._configure_langchain_client()
 
     def _maybe_configure_retry(self) -> None:
