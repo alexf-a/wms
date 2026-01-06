@@ -2630,6 +2630,7 @@ input.search-input::placeholder,
     text-decoration: none;
     padding: 0.25rem 0.5rem;
     border-radius: 8px;
+    margin-left: 0.5rem;
     transition: background-color 0.2s ease, opacity 0.2s ease;
     opacity: 0.8;
 }
