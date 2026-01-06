@@ -180,6 +180,17 @@ def home_view(request: HttpRequest) -> HttpResponse:
     # Pass authentication status to the template
     return render(request, "core/home.html", {"is_authenticated": request.user.is_authenticated, "active_nav": "home"})
 
+def getting_started_view(request: HttpRequest) -> HttpResponse:
+    """Render the getting started guide page.
+
+    Args:
+        request: The HTTP request object.
+
+    Returns:
+        The rendered getting started page accessible to all users.
+    """
+    return render(request, "core/getting_started.html", {"active_nav": None})
+
 @login_required
 def expand_inventory_view(request: HttpRequest) -> HttpResponse:
     """Render the expand inventory page.

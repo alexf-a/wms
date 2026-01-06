@@ -494,6 +494,10 @@ strong {
     margin-top: var(--wms-space-lg);
 }
 
+.mt-sm {
+    margin-top: var(--wms-space-sm);
+}
+
 .my-xl {
     margin-top: var(--wms-space-xl);
     margin-bottom: var(--wms-space-xl);
@@ -1220,8 +1224,9 @@ legend {
 .empty-state svg,
 .empty-state img {
     max-width: 200px;
-    opacity: 0.5;
-    margin-bottom: var(--wms-space-md);
+    opacity: 0.3;
+    margin: 0 auto var(--wms-space-lg);
+    display: block;
 }
 
 /* Loading States */
@@ -2164,6 +2169,14 @@ input.search-input::placeholder,
     flex: 1;
 }
 
+.m3-card__meta {
+    margin-top: 0.5rem;
+}
+
+.m3-card__meta-spacing {
+    margin-top: 0.75rem;
+}
+
 /* Overflow Menu (Three-dot dropdown) */
 .m3-overflow-menu {
     position: relative;
@@ -2611,4 +2624,302 @@ input.search-input::placeholder,
 .m3-segmented-button input[type="radio"]:disabled + label {
     opacity: 0.38;
     cursor: not-allowed;
+}
+
+/* ==========================================
+   Help Links
+   ========================================== */
+
+.m3-help-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.875rem;
+    color: var(--md-sys-color-primary);
+    text-decoration: none;
+    padding: 0.25rem 0.5rem;
+    border-radius: 8px;
+    margin-left: 0.5rem;
+    transition: background-color 0.2s ease, opacity 0.2s ease;
+    opacity: 0.8;
+}
+
+.m3-help-link:hover {
+    background-color: var(--md-sys-color-primary-container);
+    opacity: 1;
+}
+
+.m3-help-link:focus {
+    outline: 2px solid var(--md-sys-color-primary);
+    outline-offset: 2px;
+    opacity: 1;
+}
+
+.m3-help-link svg {
+    flex-shrink: 0;
+}
+
+.hero-upload-button-wrapper .m3-help-link {
+    margin-top: 0.75rem;
+}
+
+/* ==========================================
+   Getting Started Page
+   ========================================== */
+
+/* Section scrolling */
+.getting-started .m3-card {
+    scroll-margin-top: 1rem;
+}
+
+/* Section anchor links */
+.section-header {
+    position: relative;
+}
+
+.section-anchor {
+    color: inherit;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    position: relative;
+}
+
+.section-anchor::after {
+    content: "#";
+    position: absolute;
+    right: -1.5rem;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    color: var(--md-sys-color-primary);
+    font-weight: 500;
+    font-size: 1.2rem;
+}
+
+.section-header:hover .section-anchor::after {
+    opacity: 0.6;
+}
+
+.section-anchor:focus {
+    outline: 2px solid var(--md-sys-color-primary);
+    outline-offset: 4px;
+    border-radius: 4px;
+}
+
+/* Highlight targeted section */
+.m3-card:target {
+    animation: highlight-section 1s ease;
+}
+
+@keyframes highlight-section {
+    0% {
+        box-shadow: 0 0 0 4px var(--md-sys-color-primary);
+    }
+    100% {
+        box-shadow: 0 0 0 0 transparent;
+    }
+}
+
+/* Pain points section */
+.getting-started-pain-points {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.pain-point {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    padding: 1rem;
+    background: var(--md-sys-color-surface-container-low);
+    border-radius: 12px;
+}
+
+.pain-point-icon {
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+    border-radius: 12px;
+}
+
+.pain-point-content h3 {
+    margin-bottom: 0.25rem;
+}
+
+/* Concept cards */
+.concept-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.concept-card {
+    padding: 1rem;
+    background: var(--md-sys-color-surface-container-low);
+    border-radius: 12px;
+    text-align: center;
+}
+
+.concept-icon {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+}
+
+.location-icon {
+    background: #E8F5E9;
+    color: #2E7D32;
+}
+
+.unit-icon {
+    background: #E3F2FD;
+    color: #1565C0;
+}
+
+.item-icon {
+    background: #FFF3E0;
+    color: #E65100;
+}
+
+.concept-card h3 {
+    margin-bottom: 0.5rem;
+}
+
+.concept-example {
+    margin-top: 0.75rem;
+    padding: 0.5rem;
+    background: var(--md-sys-color-surface);
+    border-radius: 8px;
+    font-style: italic;
+    color: var(--md-sys-color-on-surface-variant);
+}
+
+/* Hierarchy visualization */
+.hierarchy-example {
+    padding: 1rem;
+    background: var(--md-sys-color-surface-container);
+    border-radius: 12px;
+    text-align: center;
+}
+
+.hierarchy-visual {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.hierarchy-location {
+    padding: 0.25rem 0.75rem;
+    background: #E8F5E9;
+    color: #2E7D32;
+    border-radius: 16px;
+    font-weight: 500;
+}
+
+.hierarchy-unit {
+    padding: 0.25rem 0.75rem;
+    background: #E3F2FD;
+    color: #1565C0;
+    border-radius: 16px;
+    font-weight: 500;
+}
+
+.hierarchy-item {
+    padding: 0.25rem 0.75rem;
+    background: #FFF3E0;
+    color: #E65100;
+    border-radius: 16px;
+    font-weight: 500;
+}
+
+.hierarchy-arrow {
+    color: var(--md-sys-color-on-surface-variant);
+}
+
+/* Steps list */
+.getting-started-steps {
+    margin: 0;
+    padding-left: 1.5rem;
+}
+
+.getting-started-steps li {
+    margin-bottom: 0.75rem;
+    line-height: 1.5;
+}
+
+.getting-started-steps li:last-child {
+    margin-bottom: 0;
+}
+
+/* Tip box */
+.tip-box {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    padding: 1rem;
+    margin-top: 1rem;
+    background: var(--md-sys-color-tertiary-container);
+    color: var(--md-sys-color-on-tertiary-container);
+    border-radius: 12px;
+}
+
+.tip-box svg {
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.tip-box p {
+    margin: 0;
+}
+
+/* Search examples */
+.search-examples {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.search-example {
+    padding: 0.75rem 1rem;
+    background: var(--md-sys-color-surface-container-high);
+    border-radius: 20px;
+}
+
+.search-query {
+    font-style: italic;
+    color: var(--md-sys-color-on-surface-variant);
+}
+
+/* Mobile responsive */
+@media (max-width: 600px) {
+    .pain-point {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .pain-point-icon {
+        margin: 0 auto;
+    }
+    
+    .hierarchy-visual {
+        flex-direction: column;
+    }
+    
+    .hierarchy-arrow {
+        transform: rotate(90deg);
+    }
 }

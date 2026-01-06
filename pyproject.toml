@@ -43,7 +43,7 @@ ignore = [
 line-length = 150
 
 [tool.ruff.per-file-ignores]
-"test_*.py" = [
+"{test_*.py,conftest.py}" = [
     "D100",  # Missing docstring in public module
     "D101",  # Missing docstring in public class
     "D102",  # Missing docstring in public method
@@ -51,7 +51,9 @@ line-length = 150
     "D104",  # Missing docstring in public package
     "D105",  # Missing docstring in magic method
     "S101", # Use of assert
-    "ANN201"
+    "S311", # Standard pseudo-random generators are not suitable for cryptographic purposes
+    "ANN201",
+    "S106"  # Possible hardcoded password assigned to argument: "password"
 ]
 
 [tool.poetry.group.dev]

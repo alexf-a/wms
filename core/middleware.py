@@ -1,7 +1,7 @@
 from typing import Callable
 
 from django.conf import settings
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 
 
 class HealthCheckMiddleware:
@@ -34,5 +34,5 @@ class HealthCheckMiddleware:
     def __call__(self, request: HttpRequest) -> HttpResponse:
         """Process the request and return either health check or normal response."""
         if request.path == self.health_check_path:
-            return HttpResponse("ok")
+            return JsonResponse({"status": "ok"})
         return self.get_response(request)

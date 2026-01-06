@@ -34,9 +34,16 @@
             <div class="m3-welcome-content">
                 <h1 class="m3-headline-large" id="dynamic-welcome">Welcome to WMS</h1>
                 <div class="m3-welcome-buttons">
+                    <!-- Getting Started Button (Outlined) -->
+                    <a href="{% url 'getting_started' %}" class="m3-button m3-button-outlined">
+                        <svg class="m3-button-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+                        </svg>
+                        <span class="m3-button-label">Getting Started</span>
+                    </a>
                     <!-- Get Started Button (Filled) -->
                     <a href="{% url 'register' %}" class="m3-button m3-button-filled">
-                        <span class="m3-button-label">Get Started</span>
+                        <span class="m3-button-label">Sign Up</span>
                     </a>
                     <!-- Login Button (Tonal) -->
                     <a href="{% url 'login' %}" class="m3-button m3-button-tonal">
