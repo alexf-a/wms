@@ -24,9 +24,8 @@ Tertiary: Soft Teal #3D8B83
 - Prefer icons to text
 
 ## UI/UX Coding Process
-
+- DO NOT USE INLINE OR PAGE-SPECIFIC STYLES. Use `styles.css` instead.
 - Use and/or extend existing styles before adding new ones
-- Prefer `styles.css` to inline styles
 
 
 ### UI/UX Figma Workflow

@@ -1,0 +1,348 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Getting Started - WMS{% endblock %}
+
+{% block content %}
+<div class="m3-page-shell getting-started">
+    <!-- Hero Section -->
+    <div class="m3-card m3-card--filled" style="margin-bottom: 2rem;">
+        <div class="m3-card__content">
+            <div class="m3-card__icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+                </svg>
+            </div>
+            <h1 class="md-typescale-headline-small m3-card__title">Getting Started with WMS</h1>
+            <p class="md-typescale-body-medium m3-card__description">
+                Learn how to organize your personal belongings with WMS. This guide will walk you through the core concepts and features.
+            </p>
+        </div>
+    </div>
+
+    <!-- Section 1: The Problem WMS Solves -->
+    <div id="what-wms-solves" class="m3-card m3-card--outlined" style="margin-bottom: 1.5rem;">
+        <div class="m3-card__content">
+            <h2 class="md-typescale-title-large m3-card__title section-header">
+                <a href="#what-wms-solves" class="section-anchor" aria-label="Link to this section">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 0.5rem;">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                    What WMS Solves
+                </a>
+            </h2>
+            <p class="md-typescale-body-medium" style="margin-bottom: 1rem;">
+                Personal storage comes with two major pain points that WMS addresses:
+            </p>
+            <div class="getting-started-pain-points">
+                <div class="pain-point">
+                    <div class="pain-point-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M20 2H4c-1 0-2 .9-2 2v3.01c0 .72.43 1.34 1 1.69V20c0 1.1 1.1 2 2 2h14c.9 0 2-.9 2-2V8.7c.57-.35 1-.97 1-1.69V4c0-1.1-1-2-2-2zm-5 12H9v-2h6v2zm5-7H4V4h16v3z"/>
+                        </svg>
+                    </div>
+                    <div class="pain-point-content">
+                        <h3 class="md-typescale-title-medium">Storage Unit Transparency</h3>
+                        <p class="md-typescale-body-medium">
+                            Ever forget what's inside a bin, locker, or storage box? WMS provides a simple digital inventory so you always know what's in each storage unit.
+                        </p>
+                    </div>
+                </div>
+                <div class="pain-point">
+                    <div class="pain-point-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.71.71l.27.28v.79l5 4.99L20.49 19zM9.5 14a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z"/>
+                        </svg>
+                    </div>
+                    <div class="pain-point-content">
+                        <h3 class="md-typescale-title-medium">Item Location</h3>
+                        <p class="md-typescale-body-medium">
+                            Can't find your red jacket or holiday decorations? WMS uses AI-powered search to help you locate items using natural language queries like "where is my winter coat?"
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 2: Core Concepts -->
+    <div id="core-concepts" class="m3-card m3-card--outlined" style="margin-bottom: 1.5rem;">
+        <div class="m3-card__content">
+            <h2 class="md-typescale-title-large m3-card__title section-header">
+                <a href="#core-concepts" class="section-anchor" aria-label="Link to this section">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 0.5rem;">
+                        <path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/>
+                    </svg>
+                    Core Concepts
+                </a>
+            </h2>
+            <p class="md-typescale-body-medium" style="margin-bottom: 1.5rem;">
+                WMS organizes your belongings using a simple hierarchy:
+            </p>
+            
+            <div class="concept-cards">
+                <!-- Location -->
+                <div class="concept-card">
+                    <div class="concept-icon location-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                        </svg>
+                    </div>
+                    <h3 class="md-typescale-title-medium">Location</h3>
+                    <p class="md-typescale-body-small">
+                        A physical place like your home, office, or storage facility. Locations are organizational containers—they hold Units but not Items directly.
+                    </p>
+                    <p class="md-typescale-label-small concept-example">
+                        Example: "My House", "Office Building", "Mom's Garage"
+                    </p>
+                </div>
+
+                <!-- Unit -->
+                <div class="concept-card">
+                    <div class="concept-icon unit-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M20 2H4c-1 0-2 .9-2 2v3.01c0 .72.43 1.34 1 1.69V20c0 1.1 1.1 2 2 2h14c.9 0 2-.9 2-2V8.7c.57-.35 1-.97 1-1.69V4c0-1.1-1-2-2-2zm-5 12H9v-2h6v2zm5-7H4V4h16v3z"/>
+                        </svg>
+                    </div>
+                    <h3 class="md-typescale-title-medium">Unit</h3>
+                    <p class="md-typescale-body-small">
+                        A physical container that holds your Items. Units can exist inside Locations, or be nested inside other Units for complex organization.
+                    </p>
+                    <p class="md-typescale-label-small concept-example">
+                        Example: "Blue Storage Bin", "Garage Shelf", "Closet Drawer"
+                    </p>
+                </div>
+
+                <!-- Item -->
+                <div class="concept-card">
+                    <div class="concept-icon item-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z"/>
+                        </svg>
+                    </div>
+                    <h3 class="md-typescale-title-medium">Item</h3>
+                    <p class="md-typescale-body-small">
+                        Your actual belongings! Items always live inside a Unit. Each item has a name, description, and optional photo for easy identification.
+                    </p>
+                    <p class="md-typescale-label-small concept-example">
+                        Example: "Red Winter Jacket", "Holiday Lights", "Power Drill"
+                    </p>
+                </div>
+            </div>
+
+            <div class="hierarchy-example">
+                <p class="md-typescale-label-medium">Example Hierarchy:</p>
+                <div class="hierarchy-visual">
+                    <span class="hierarchy-location">My House</span>
+                    <span class="hierarchy-arrow">→</span>
+                    <span class="hierarchy-unit">Garage Shelf</span>
+                    <span class="hierarchy-arrow">→</span>
+                    <span class="hierarchy-unit">Blue Bin</span>
+                    <span class="hierarchy-arrow">→</span>
+                    <span class="hierarchy-item">Holiday Lights</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 3: Creating Storage Spaces -->
+    <div id="creating-storage" class="m3-card m3-card--outlined" style="margin-bottom: 1.5rem;">
+        <div class="m3-card__content">
+            <h2 class="md-typescale-title-large m3-card__title section-header">
+                <a href="#creating-storage" class="section-anchor" aria-label="Link to this section">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 0.5rem;">
+                        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                    </svg>
+                    Creating Storage Spaces
+                </a>
+            </h2>
+            <p class="md-typescale-body-medium" style="margin-bottom: 1rem;">
+                Start by creating the storage spaces where your items live:
+            </p>
+            <ol class="getting-started-steps">
+                <li>
+                    <strong>Name your space</strong> — Give it a memorable name like "Garage" or "Hall Closet"
+                </li>
+                <li>
+                    <strong>Choose the type</strong> — Select whether it's a <em>Location</em> (organizational) or a <em>Unit</em> (holds items)
+                </li>
+                <li>
+                    <strong>Add details</strong> (optional) — Include a description, address (for Locations), or dimensions (for Units)
+                </li>
+                <li>
+                    <strong>Nest if needed</strong> — Place Units inside Locations or other Units to mirror your real organization
+                </li>
+            </ol>
+            {% if user.is_authenticated %}
+            <div class="m3-card__actions" style="margin-top: 1rem;">
+                <a href="{% url 'create_storage' %}" class="m3-button m3-button-tonal">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 0.5rem;">
+                        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                    </svg>
+                    <span class="m3-button-label">Create Storage Space</span>
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Section 4: Adding Items -->
+    <div id="adding-items" class="m3-card m3-card--outlined" style="margin-bottom: 1.5rem;">
+        <div class="m3-card__content">
+            <h2 class="md-typescale-title-large m3-card__title section-header">
+                <a href="#adding-items" class="section-anchor" aria-label="Link to this section">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 0.5rem;">
+                        <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                    </svg>
+                    Adding Items
+                </a>
+            </h2>
+            <p class="md-typescale-body-medium" style="margin-bottom: 1rem;">
+                WMS makes adding items quick and easy with AI-powered auto-fill:
+            </p>
+            <ol class="getting-started-steps">
+                <li>
+                    <strong>Take a photo</strong> — Snap a picture of your item, or upload an existing image
+                </li>
+                <li>
+                    <strong>AI auto-fills details</strong> — Our AI analyzes the image and suggests a name and description
+                </li>
+                <li>
+                    <strong>Review and confirm</strong> — Edit the suggested details if needed, then save
+                </li>
+                <li>
+                    <strong>Or skip the photo</strong> — Enter item details manually if you prefer
+                </li>
+            </ol>
+            <div class="tip-box">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z"/>
+                </svg>
+                <p class="md-typescale-body-small">
+                    <strong>Tip:</strong> Better photos lead to better AI suggestions! Try to capture the item clearly, entirely, singularly and with good lighting. 
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 5: Finding Items -->
+    <div id="finding-items" class="m3-card m3-card--outlined" style="margin-bottom: 1.5rem;">
+        <div class="m3-card__content">
+            <h2 class="md-typescale-title-large m3-card__title section-header">
+                <a href="#finding-items" class="section-anchor" aria-label="Link to this section">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 0.5rem;">
+                        <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.71.71l.27.28v.79l5 4.99L20.49 19zM9.5 14a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z"/>
+                    </svg>
+                    Finding Items with AI Search
+                </a>
+            </h2>
+            <p class="md-typescale-body-medium" style="margin-bottom: 1rem;">
+                When you need to find something, just ask in plain English:
+            </p>
+            <div class="search-examples">
+                <div class="search-example">
+                    <span class="search-query">"Where is my red jacket?"</span>
+                </div>
+                <div class="search-example">
+                    <span class="search-query">"Find the holiday decorations"</span>
+                </div>
+                <div class="search-example">
+                    <span class="search-query">"I need my power tools"</span>
+                </div>
+            </div>
+            <p class="md-typescale-body-medium" style="margin-top: 1rem;">
+                WMS uses AI to understand your query and match it against your item descriptions and images. It will tell you exactly which Unit contains your item.
+            </p>
+            {% if user.is_authenticated %}
+            <div class="m3-card__actions" style="margin-top: 1rem;">
+                <a href="{% url 'item_search' %}" class="m3-button m3-button-tonal">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 0.5rem;">
+                        <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.71.71l.27.28v.79l5 4.99L20.49 19zM9.5 14a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z"/>
+                    </svg>
+                    <span class="m3-button-label">Search Items</span>
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Section 6: QR Codes -->
+    <div id="qr-codes" class="m3-card m3-card--outlined" style="margin-bottom: 1.5rem;">
+        <div class="m3-card__content">
+            <h2 class="md-typescale-title-large m3-card__title section-header">
+                <a href="#qr-codes" class="section-anchor" aria-label="Link to this section">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 0.5rem;">
+                        <path d="M3 11h8V3H3v8zm2-6h4v4H5V5zm8-2v8h8V3h-8zm6 6h-4V5h4v4zM3 21h8v-8H3v8zm2-6h4v4H5v-4zm13-2h-2v3h-3v2h3v3h2v-3h3v-2h-3v-3zm-8 4h2v2h-2v-2z"/>
+                    </svg>
+                    QR Codes for Quick Access
+                </a>
+            </h2>
+            <p class="md-typescale-body-medium" style="margin-bottom: 1rem;">
+                Every Unit gets a unique QR code. Print it and attach it to your physical storage container for instant access:
+            </p>
+            <ol class="getting-started-steps">
+                <li>
+                    <strong>Download the QR code</strong> — From any Unit's detail page, download its unique QR code
+                </li>
+                <li>
+                    <strong>Print and attach</strong> — Print the QR code and stick it on your physical bin, box, or shelf
+                </li>
+                <li>
+                    <strong>Scan anytime</strong> — Use your phone's camera to scan the QR code
+                </li>
+                <li>
+                    <strong>Instant inventory</strong> — You'll be taken directly to that Unit's contents in WMS
+                </li>
+            </ol>
+            <div class="tip-box">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z"/>
+                </svg>
+                <p class="md-typescale-body-small">
+                    <strong>Tip:</strong> Laminate your QR codes if they will be exposed to weather.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Call to Action -->
+    {% if not user.is_authenticated %}
+    <div class="m3-card m3-card--filled">
+        <div class="m3-card__content" style="text-align: center;">
+            <h2 class="md-typescale-title-large m3-card__title">Ready to Get Organized?</h2>
+            <p class="md-typescale-body-medium" style="margin-bottom: 1.5rem;">
+                Create your free account and start organizing your belongings today.
+            </p>
+            <div class="m3-card__actions" style="justify-content: center;">
+                <a href="{% url 'register' %}" class="m3-button m3-button-filled">
+                    <span class="m3-button-label">Sign Up Free</span>
+                </a>
+                <a href="{% url 'login' %}" class="m3-button m3-button-outlined">
+                    <span class="m3-button-label">Login</span>
+                </a>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="m3-card m3-card--filled">
+        <div class="m3-card__content" style="text-align: center;">
+            <h2 class="md-typescale-title-large m3-card__title">You're All Set!</h2>
+            <p class="md-typescale-body-medium" style="margin-bottom: 1.5rem;">
+                Start by creating your first storage space, then add your items.
+            </p>
+            <div class="m3-card__actions" style="justify-content: center;">
+                <a href="{% url 'create_storage' %}" class="m3-button m3-button-filled">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 0.5rem;">
+                        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                    </svg>
+                    <span class="m3-button-label">Create First Storage</span>
+                </a>
+                <a href="{% url 'home_view' %}" class="m3-button m3-button-outlined">
+                    <span class="m3-button-label">Go to Dashboard</span>
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
