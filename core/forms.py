@@ -356,6 +356,9 @@ class StorageSpaceForm(forms.Form):
             # Create Unit
             container = self.cleaned_data.get('container')
             
+            # Convert empty string to None for dimensions_unit
+            dimensions_unit = self.cleaned_data.get('dimensions_unit') or None
+            
             unit = Unit(
                 user=self.user,
                 name=name,
@@ -363,7 +366,7 @@ class StorageSpaceForm(forms.Form):
                 length=self.cleaned_data.get('length'),
                 width=self.cleaned_data.get('width'),
                 height=self.cleaned_data.get('height'),
-                dimensions_unit=self.cleaned_data.get('dimensions_unit')
+                dimensions_unit=dimensions_unit
             )
             
             # Set container relationship
