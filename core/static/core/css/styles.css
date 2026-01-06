@@ -2612,3 +2612,35 @@ input.search-input::placeholder,
     opacity: 0.38;
     cursor: not-allowed;
 }
+
+/* ==========================================
+   Help Links
+   ========================================== */
+
+.m3-help-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.875rem;
+    color: var(--md-sys-color-primary);
+    text-decoration: none;
+    padding: 0.25rem 0.5rem;
+    border-radius: 8px;
+    transition: background-color 0.2s ease, opacity 0.2s ease;
+    opacity: 0.8;
+}
+
+.m3-help-link:hover {
+    background-color: var(--md-sys-color-primary-container);
+    opacity: 1;
+}
+
+.m3-help-link:focus {
+    outline: 2px solid var(--md-sys-color-primary);
+    outline-offset: 2px;
+    opacity: 1;
+}
+
+.m3-help-link svg {
+    flex-shrink: 0;
+}
