@@ -816,20 +816,25 @@ class TestExtractItemFeaturesAPI:
 
     def test_extract_rejects_oversized_image(self, client: Client, user: User):
         """Test extraction rejects images that are too large."""
-        # Create an image that's too large
-        large_img = Image.new("RGB", (100, 100), color="blue")
+        # Create an image large enough to exceed MAX_IMAGE_UPLOAD_SIZE (10MB default)
+        # 2000x2000 RGB BMP = ~12MB (uncompressed, no random data needed)
+        large_img = Image.new("RGB", (2000, 2000), color="blue")
         img_io = BytesIO()
-        large_img.save(img_io, format="JPEG")
+        # Save as BMP (uncompressed) to ensure large file size
+        large_img.save(img_io, format="BMP")
         img_io.seek(0)
-
-        # Create a mock file that reports size > MAX_IMAGE_UPLOAD_SIZE
-        image_file = SimpleUploadedFile(
-            "large.jpg",
-            img_io.getvalue(),
-            content_type="image/jpeg"
+        file_size = len(img_io.getvalue())
+        # Verify our test image is actually larger than the limit
+        assert file_size > MAX_IMAGE_UPLOAD_SIZE, (
+            f"Test image ({file_size} bytes) must be larger than "
+            f"MAX_IMAGE_UPLOAD_SIZE ({MAX_IMAGE_UPLOAD_SIZE} bytes)"
         )
-        # Patch the size attribute
-        image_file.size = MAX_IMAGE_UPLOAD_SIZE + 1
+
+        image_file = SimpleUploadedFile(
+            "large.bmp",
+            img_io.getvalue(),
+            content_type="image/bmp"
+        )
 
         client.force_login(user)
         response = client.post(
@@ -887,11 +892,10 @@ class TestCaddyCADownloadView:
         assert response.status_code in [http.HTTPStatus.OK, http.HTTPStatus.NOT_FOUND]
 
     @patch("core.views.Path")
-    def test_caddy_ca_returns_404_if_not_exists(self, mock_path: Mock, client: Client):
+    def test_caddy_ca_returns_404_if_not_exists(self, mock_path_class: Mock, mock_path, client: Client):
         """Test returns 404 if CA certificate doesn't exist."""
-        mock_path_instance = Mock()
-        mock_path_instance.exists.return_value = False
-        mock_path.return_value = mock_path_instance
+        path_instance = mock_path(exists=False)
+        mock_path_class.return_value = path_instance
 
         response = client.get(reverse("caddy_ca_download"))
         assert response.status_code == http.HTTPStatus.NOT_FOUND
@@ -899,19 +903,11 @@ class TestCaddyCADownloadView:
         assert "error" in data
 
     @patch("core.views.Path")
-    def test_caddy_ca_returns_certificate_if_exists(self, mock_path: Mock, client: Client):
+    def test_caddy_ca_returns_certificate_if_exists(self, mock_path_class: Mock, mock_path, client: Client):
         """Test returns certificate file if it exists."""
-        # Create a temporary certificate file
         ca_content = b"-----BEGIN CERTIFICATE-----\nfake cert\n-----END CERTIFICATE-----"
-
-        mock_path_instance = Mock()
-        mock_path_instance.exists.return_value = True
-        mock_path_instance.open = Mock(return_value=BytesIO(ca_content))
-        mock_path.return_value = mock_path_instance
-
-        # Mock Path.open to work as a context manager
-        mock_path_instance.__enter__ = Mock(return_value=BytesIO(ca_content))
-        mock_path_instance.__exit__ = Mock(return_value=False)
+        path_instance = mock_path(exists=True, file_content=ca_content)
+        mock_path_class.return_value = path_instance
 
         response = client.get(reverse("caddy_ca_download"))
         assert response.status_code == http.HTTPStatus.OK
