@@ -494,6 +494,10 @@ strong {
     margin-top: var(--wms-space-lg);
 }
 
+.mt-sm {
+    margin-top: var(--wms-space-sm);
+}
+
 .my-xl {
     margin-top: var(--wms-space-xl);
     margin-bottom: var(--wms-space-xl);
