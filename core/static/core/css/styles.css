@@ -1224,8 +1224,9 @@ legend {
 .empty-state svg,
 .empty-state img {
     max-width: 200px;
-    opacity: 0.5;
-    margin-bottom: var(--wms-space-md);
+    opacity: 0.3;
+    margin: 0 auto var(--wms-space-lg);
+    display: block;
 }
 
 /* Loading States */
@@ -2168,6 +2169,14 @@ input.search-input::placeholder,
     flex: 1;
 }
 
+.m3-card__meta {
+    margin-top: 0.5rem;
+}
+
+.m3-card__meta-spacing {
+    margin-top: 0.75rem;
+}
+
 /* Overflow Menu (Three-dot dropdown) */
 .m3-overflow-menu {
     position: relative;
@@ -2648,6 +2657,10 @@ input.search-input::placeholder,
 
 .m3-help-link svg {
     flex-shrink: 0;
+}
+
+.hero-upload-button-wrapper .m3-help-link {
+    margin-top: 0.75rem;
 }
 
 /* ==========================================
