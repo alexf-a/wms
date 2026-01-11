@@ -46,6 +46,9 @@ if DEBUG and not _hosts:
 _trusted = os.getenv("CSRF_TRUSTED_ORIGINS", "")
 CSRF_TRUSTED_ORIGINS = [u.strip() for u in _trusted.split(",") if u.strip()]
 
+# Health check path for middleware (bypasses ALLOWED_HOSTS)
+HEALTH_CHECK_PATH = os.getenv("HEALTH_CHECK_PATH", "/healthz/")
+
 # Logging configuration
 # Log level can be set via LOG_LEVEL env var (DEBUG, INFO, WARNING, ERROR, CRITICAL)
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -105,8 +108,9 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    "django.middleware.security.SecurityMiddleware",
+    # HealthCheckMiddleware MUST be first to bypass ALLOWED_HOSTS for health checks
     "core.middleware.HealthCheckMiddleware",
+    "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
