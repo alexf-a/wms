@@ -5,7 +5,75 @@
  * Dependencies: ui_utils.js (revealSection, showErrorSnackbar)
  */
 
+// Image compression settings - reduces server memory usage
+const MAX_IMAGE_DIMENSION = 1024;  // Max width or height in pixels
+const JPEG_QUALITY = 0.85;         // 0.0 to 1.0 - balance between size and quality
+
+/**
+ * Resize and compress an image file using canvas.
+ * This dramatically reduces memory usage on the server (4032x3024 -> 1024x768).
+ * 
+ * @param {File} file - The original image file
+ * @returns {Promise<Blob>} - Compressed JPEG blob
+ */
+async function compressImage(file) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        const objectUrl = URL.createObjectURL(file);
+        
+        img.onload = () => {
+            URL.revokeObjectURL(objectUrl);
+            
+            // Calculate new dimensions maintaining aspect ratio
+            let { width, height } = img;
+            const originalSize = `${width}x${height}`;
+            
+            if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION) {
+                if (width > height) {
+                    height = Math.round(height * (MAX_IMAGE_DIMENSION / width));
+                    width = MAX_IMAGE_DIMENSION;
+                } else {
+                    width = Math.round(width * (MAX_IMAGE_DIMENSION / height));
+                    height = MAX_IMAGE_DIMENSION;
+                }
+            }
+            
+            // Create canvas and draw resized image
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            // Convert to JPEG blob
+            canvas.toBlob(
+                (blob) => {
+                    if (blob) {
+                        console.log(`[AddItems] Image compressed: ${originalSize} -> ${width}x${height}, ${(file.size/1024).toFixed(0)}KB -> ${(blob.size/1024).toFixed(0)}KB`);
+                        resolve(blob);
+                    } else {
+                        reject(new Error('Canvas toBlob failed'));
+                    }
+                },
+                'image/jpeg',
+                JPEG_QUALITY
+            );
+        };
+        
+        img.onerror = () => {
+            URL.revokeObjectURL(objectUrl);
+            reject(new Error('Failed to load image for compression'));
+        };
+        
+        img.src = objectUrl;
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+    // Always log initialization regardless of debug mode
+    console.log('[AddItems] Initializing add_items_flow.js');
+    console.log('[AddItems] Referrer:', document.referrer);
     
     const heroInput = document.getElementById('hero-image-input');
     const skipBtn = document.getElementById('skip-to-manual');
@@ -17,6 +85,14 @@ document.addEventListener('DOMContentLoaded', function() {
     const itemForm = document.getElementById('item-form');
     const nameField = document.getElementById('id_name');
     const descField = document.getElementById('id_description');
+
+    // Log element availability
+    console.log('[AddItems] Elements found:', {
+        heroInput: !!heroInput,
+        skipBtn: !!skipBtn,
+        formSection: !!formSection,
+        nameField: !!nameField
+    });
 
     let currentObjectUrl = null;
     let isProcessing = false;
@@ -61,23 +137,18 @@ document.addEventListener('DOMContentLoaded', function() {
             previewImage.src = currentObjectUrl;
             imagePreviewContainer.style.display = 'block';
 
-            debugLog('[AddItems] Reading file as ArrayBuffer...');
+            debugLog('[AddItems] Compressing image before upload...');
             
-            // Read the file as blob to ensure it's fully loaded before sending
-            // This helps with iOS Safari/Chrome which may have async file access
-            const fileBlob = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => {
-                    debugLog('[AddItems] FileReader loaded, size:', reader.result.byteLength);
-                    const blob = new Blob([reader.result], { type: file.type || 'image/jpeg' });
-                    resolve(blob);
-                };
-                reader.onerror = (err) => {
-                    debugError('[AddItems] FileReader error:', err);
-                    reject(err);
-                };
-                reader.readAsArrayBuffer(file);
-            });
+            // Compress image client-side to reduce server memory usage
+            // This resizes large photos (e.g., 4032x3024) to max 1024px dimension
+            let fileBlob;
+            try {
+                fileBlob = await compressImage(file);
+            } catch (compressError) {
+                console.warn('[AddItems] Compression failed, using original:', compressError);
+                // Fallback to original file if compression fails
+                fileBlob = file;
+            }
 
             // Create FormData with the blob
             const formData = new FormData();
@@ -91,9 +162,10 @@ document.addEventListener('DOMContentLoaded', function() {
             // Get CSRF token
             const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
             if (!csrfToken) {
-                errorLog('CSRF token not found');
+                console.error('[AddItems] CSRF token not found');
                 throw new Error('CSRF token not found');
             }
+            console.log('[AddItems] CSRF token found, making API call...');
 
             const response = await fetch('/api/extract-item-features/', {
                 method: 'POST',
@@ -104,20 +176,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
 
+            console.log('[AddItems] API response status:', response.status);
+
             if (response.ok) {
                 const data = await response.json();
+                console.log('[AddItems] API success:', data);
                 nameField.value = data.name || '';
                 descField.value = data.description || '';
             } else {
                 const errorData = await response.json().catch(() => ({}));
-                errorLog('API error:', response.status, errorData);
+                console.error('[AddItems] API error:', response.status, errorData);
                 // Show error in snackbar if available
                 if (errorData.error && typeof showErrorSnackbar === 'function') {
                     showErrorSnackbar(errorData.error);
                 }
             }
         } catch (error) {
-            errorLog('Error extracting features:', error);
+            console.error('[AddItems] Exception during fetch:', error);
         } finally {
             // Hide loading, show form
             loadingIndicator.style.display = 'none';
