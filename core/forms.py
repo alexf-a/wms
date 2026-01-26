@@ -553,3 +553,66 @@ class AccountForm(forms.ModelForm):
             "first_name": forms.TextInput(attrs={"placeholder": "First name"}),
             "last_name": forms.TextInput(attrs={"placeholder": "Last name"}),
         }
+
+
+class PasswordChangeForm(forms.Form):
+    """Form for changing user password with current password verification."""
+    
+    current_password = forms.CharField(
+        label="Current Password",
+        widget=forms.PasswordInput(attrs={
+            'placeholder': 'Enter your current password',
+            'autocomplete': 'current-password'
+        })
+    )
+    new_password1 = forms.CharField(
+        label="New Password",
+        widget=forms.PasswordInput(attrs={
+            'placeholder': 'Enter new password',
+            'autocomplete': 'new-password'
+        })
+    )
+    new_password2 = forms.CharField(
+        label="Confirm New Password",
+        widget=forms.PasswordInput(attrs={
+            'placeholder': 'Confirm new password',
+            'autocomplete': 'new-password'
+        })
+    )
+    
+    def __init__(self, user, *args, **kwargs):
+        """Initialize form with user object for password verification."""
+        self.user = user
+        super().__init__(*args, **kwargs)
+    
+    def clean_current_password(self):
+        """Verify the current password is correct."""
+        current_password = self.cleaned_data.get('current_password')
+        if not self.user.check_password(current_password):
+            raise ValidationError("Your current password is incorrect.")
+        return current_password
+    
+    def clean_new_password2(self):
+        """Verify new passwords match."""
+        password1 = self.cleaned_data.get('new_password1')
+        password2 = self.cleaned_data.get('new_password2')
+        if password1 and password2 and password1 != password2:
+            raise ValidationError("The two password fields didn't match.")
+        return password2
+    
+    def clean_new_password1(self):
+        """Validate new password using Django's password validators."""
+        password = self.cleaned_data.get('new_password1')
+        if password:
+            # Use Django's password validators
+            from django.contrib.auth.password_validation import validate_password
+            validate_password(password, self.user)
+        return password
+    
+    def save(self, commit=True):
+        """Save the new password for the user."""
+        password = self.cleaned_data["new_password1"]
+        self.user.set_password(password)
+        if commit:
+            self.user.save()
+        return self.user

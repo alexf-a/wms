@@ -20,7 +20,10 @@
       "AWS_S3_REGION": "us-west-2",
       "AWS_BEDROCK_REGION": "us-west-2",
       "DJANGO_SUPERUSER_EMAIL": "YOUR_EMAIL_HERE",
-      "DJANGO_SUPERUSER_PASSWORD": "YOUR_SECURE_PASSWORD_HERE"
+      "DJANGO_SUPERUSER_PASSWORD": "YOUR_SECURE_PASSWORD_HERE",
+      "BETA_USER_EMAILS": "beta1@example.com,beta2@example.com",
+      "BETA_USER_DEFAULT_PASSWORD": "ChangeMe123!",
+      "REGISTRATION_ENABLED": "False"
     }
   }
 }

@@ -65,6 +65,12 @@ class WMSUser(AbstractUser):
         help_text="Required. Used for authentication."
     )
     
+    # Force password change on first login (for beta users)
+    must_change_password = models.BooleanField(
+        default=False,
+        help_text="If True, user will be required to change password on next login."
+    )
+    
     # Use email as the username field for authentication
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []  # Email is already the USERNAME_FIELD, so don't include it here

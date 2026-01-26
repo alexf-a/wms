@@ -24,6 +24,7 @@ from lib.llm.llm_search import find_item_location
 
 from .forms import (
     AccountForm,
+    PasswordChangeForm,
     WMSUserAuthForm,
     ItemForm,
     ItemSearchForm,
@@ -109,6 +110,11 @@ def register_view(request: HttpRequest) -> HttpResponse:
     Returns:
         The rendered registration page or a redirect to the home page.
     """
+    # Check if registration is enabled
+    if not settings.REGISTRATION_ENABLED:
+        messages.error(request, "Registration is currently disabled. Please contact support for access.")
+        return redirect("login")
+    
     if request.method == "POST":
         form = WMSUserCreationForm(request.POST)
         if form.is_valid():
@@ -167,6 +173,46 @@ def account_view(request: HttpRequest) -> HttpResponse:
     else:
         form = AccountForm(instance=request.user)
     return render(request, "core/account.html", {"form": form, "active_nav": "account"})
+
+
+@login_required
+def change_password_view(request: HttpRequest) -> HttpResponse:
+    """Handle password change for users.
+    
+    Beta users with must_change_password=True will be forced to this view.
+    All users can voluntarily change their password.
+
+    Args:
+        request: The HTTP request object.
+
+    Returns:
+        The rendered password change page or redirect to home on success.
+    """
+    # Check if this is a forced password change
+    is_forced = getattr(request.user, 'must_change_password', False)
+    
+    if request.method == "POST":
+        form = PasswordChangeForm(request.user, request.POST)
+        if form.is_valid():
+            user = form.save(commit=False)
+            # Clear the must_change_password flag
+            user.must_change_password = False
+            user.save()
+            
+            # Re-login user with new password (update session hash)
+            from django.contrib.auth import update_session_auth_hash
+            update_session_auth_hash(request, user)
+            
+            messages.success(request, "Your password has been changed successfully.")
+            return redirect("home_view")
+    else:
+        form = PasswordChangeForm(request.user)
+    
+    return render(request, "core/auth/change_password.html", {
+        "form": form,
+        "is_forced": is_forced,
+    })
+
 
 def home_view(request: HttpRequest) -> HttpResponse:
     """Render the home page.

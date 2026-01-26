@@ -13,6 +13,9 @@ python manage.py migrate --noinput || true
 # Ensure superuser exists if credentials provided via environment
 python manage.py ensure_superuser || true
 
+# Create beta users if credentials provided via environment
+python manage.py create_beta_users || true
+
 # Start Gunicorn (worker count/config comes from gunicorn.conf.py)
 exec gunicorn wms.wsgi:application \
   --config /app/gunicorn.conf.py \
