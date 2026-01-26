@@ -498,36 +498,41 @@ def extract_item_features_api(request: HttpRequest) -> JsonResponse:
     Returns:
         JsonResponse with extracted 'name' and 'description' fields.
     """
+    logger.info("[ExtractAPI] Request received - method=%s, user=%s", request.method, request.user)
+    
     if request.method != "POST":
+        logger.warning("[ExtractAPI] Invalid method: %s", request.method)
         return JsonResponse({"error": "POST method required"}, status=405)
 
     # Debug logging for file upload issues
-    logger.debug("Extract API - FILES keys: %s, POST keys: %s, Content-Type: %s",
+    logger.info("[ExtractAPI] FILES keys: %s, POST keys: %s, Content-Type: %s",
                  list(request.FILES.keys()),
                  list(request.POST.keys()),
                  request.content_type)
 
     if "image" not in request.FILES:
-        logger.debug("No 'image' in FILES. Full FILES: %s", request.FILES)
+        logger.warning("[ExtractAPI] No 'image' in FILES. Full FILES: %s", request.FILES)
         return JsonResponse({"error": "No image provided"}, status=400)
 
     image_file = request.FILES["image"]
-    logger.debug("Got image file: %s, size: %s", image_file.name, image_file.size)
+    logger.info("[ExtractAPI] Got image file: name=%s, size=%s, content_type=%s", 
+                image_file.name, image_file.size, getattr(image_file, 'content_type', 'unknown'))
 
     try:
         _validate_image_upload(image_file)
-        logger.debug("Calling extract_item_features_from_image...")
+        logger.info("[ExtractAPI] Image validation passed, calling LLM...")
         result = extract_item_features_from_image(image_file.file)
-        logger.debug("Extraction successful: name=%s", result.name)
+        logger.info("[ExtractAPI] LLM extraction successful: name=%s", result.name)
         return JsonResponse({
             "name": result.name,
             "description": result.description
         })
     except ImageValidationError as validation_error:
-        logger.debug("Image validation error: %s", validation_error)
+        logger.warning("[ExtractAPI] Image validation error: %s", validation_error)
         return JsonResponse({"error": str(validation_error)}, status=400)
-    except Exception:
-        logger.exception("Error extracting item features")
+    except Exception as e:
+        logger.error("[ExtractAPI] Exception during extraction: %s: %s", type(e).__name__, str(e))
+        logger.error("[ExtractAPI] Full traceback:\n%s", traceback.format_exc())
         return JsonResponse({"error": "Failed to process image"}, status=500)
 
 
