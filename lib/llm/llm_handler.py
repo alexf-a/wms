@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+import traceback
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any
 
@@ -12,6 +14,8 @@ from langchain.prompts import (
 from langchain_aws.chat_models.bedrock import ChatBedrock
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.output_parsers import StrOutputParser
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from langchain.schema.runnable import Runnable
@@ -177,10 +181,13 @@ class StructuredLangChainHandler(LangChainHandler):
 
     def _configure_langchain_client(self) -> None:
         # Always use structured_output for all models (disable Claude 4 XML fallback)
+        logger.info("[LLMHandler] Configuring structured output for schema: %s", self.output_schema.__name__)
         try:
             self.langchain_client = self.langchain_client.with_structured_output(self.output_schema)
-        except (AttributeError, NotImplementedError, Exception):
+            logger.info("[LLMHandler] Structured output configured successfully")
+        except (AttributeError, NotImplementedError, Exception) as e:
             # Fall back to tool binding if structured_output isn't supported
+            logger.warning("[LLMHandler] Falling back to bind_tools: %s", str(e))
             self.langchain_client = self.langchain_client.bind_tools([self.output_schema])
 
         super()._configure_langchain_client()
@@ -219,7 +226,15 @@ class StructuredLangChainHandler(LangChainHandler):
         Returns:
             BaseModel: The response from the LLM as a structured Pydantic object.
         """
+        logger.info("[LLMHandler] query_with_image called, image_data length=%d, mime=%s", len(image_data), mime_type)
         # Create temporary image message for this query only
         image_message = HumanMessage(content=[{"type": "image", "source_type": "base64", "data": image_data, "mime_type": mime_type}])
 
-        return self.query(additional_messages=[image_message], **kwargs)
+        try:
+            result = self.query(additional_messages=[image_message], **kwargs)
+            logger.info("[LLMHandler] query_with_image succeeded, result type=%s", type(result).__name__)
+            return result
+        except Exception as e:
+            logger.error("[LLMHandler] query_with_image FAILED: %s: %s", type(e).__name__, str(e))
+            logger.error("[LLMHandler] Full traceback:\n%s", traceback.format_exc())
+            raise
