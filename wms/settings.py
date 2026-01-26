@@ -74,10 +74,20 @@ LOGGING = {
             "level": "WARNING",
             "propagate": False,
         },
+        "django.request": {
+            "handlers": ["console"],
+            "level": "WARNING",  # Reduces health check noise
+            "propagate": False,
+        },
         "core": {
             "handlers": ["console"],
             "level": LOG_LEVEL,
-            "propagate": True,
+            "propagate": False,
+        },
+        "lib": {
+            "handlers": ["console"],
+            "level": LOG_LEVEL,
+            "propagate": False,
         },
     },
     "root": {
