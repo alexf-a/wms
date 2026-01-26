@@ -34,6 +34,9 @@ SECRET_KEY = os.getenv("SECRET_KEY", "dev-insecure-change-me")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "True").lower() in {"1", "true", "yes"}
 
+# Registration toggle for closed beta (disable public registration)
+REGISTRATION_ENABLED = os.getenv("REGISTRATION_ENABLED", "True").lower() in {"1", "true", "yes"}
+
 # Comma-separated hostnames, e.g. "example.com,.example.com,localhost"
 _hosts = os.getenv("ALLOWED_HOSTS", "")
 ALLOWED_HOSTS: list[str] = [h.strip() for h in _hosts.split(",") if h.strip()]
@@ -126,6 +129,8 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # ForcePasswordChangeMiddleware MUST come after AuthenticationMiddleware
+    "core.middleware.ForcePasswordChangeMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -143,6 +148,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "core.context_processors.registration_settings",
             ],
         },
     },
