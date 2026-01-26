@@ -160,13 +160,20 @@ WSGI_APPLICATION = "wms.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
+# Neon Postgres branch endpoints (not secrets - just addresses)
+# The branch is selected based on DEBUG mode
+NEON_ENDPOINTS = {
+    "main": "ep-calm-union-af52070o-pooler.c-2.us-west-2.aws.neon.tech",
+    "dev": "ep-nameless-sky-afafe5se-pooler.c-2.us-west-2.aws.neon.tech",
+}
+
 DB_NAME = os.getenv("DB_NAME")
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_HOST = os.getenv("DB_HOST")
+DB_HOST = NEON_ENDPOINTS["dev"] if DEBUG else NEON_ENDPOINTS["main"]
 DB_PORT = os.getenv("DB_PORT")
 
-if all([DB_NAME, DB_USER, DB_PASSWORD, DB_HOST]):
+if all([DB_NAME, DB_USER, DB_PASSWORD]):
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
