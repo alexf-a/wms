@@ -314,9 +314,11 @@
                 Create your free account and start organizing your belongings today.
             </p>
             <div class="m3-card__actions" style="justify-content: center;">
+                {% if REGISTRATION_ENABLED %}
                 <a href="{% url 'register' %}" class="m3-button m3-button-filled">
                     <span class="m3-button-label">Sign Up Free</span>
                 </a>
+                {% endif %}
                 <a href="{% url 'login' %}" class="m3-button m3-button-outlined">
                     <span class="m3-button-label">Login</span>
                 </a>

@@ -34,6 +34,9 @@ SECRET_KEY = os.getenv("SECRET_KEY", "dev-insecure-change-me")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "True").lower() in {"1", "true", "yes"}
 
+# Registration toggle for closed beta (disable public registration)
+REGISTRATION_ENABLED = os.getenv("REGISTRATION_ENABLED", "True").lower() in {"1", "true", "yes"}
+
 # Comma-separated hostnames, e.g. "example.com,.example.com,localhost"
 _hosts = os.getenv("ALLOWED_HOSTS", "")
 ALLOWED_HOSTS: list[str] = [h.strip() for h in _hosts.split(",") if h.strip()]
@@ -45,6 +48,9 @@ if DEBUG and not _hosts:
 # CSRF trusted origins
 _trusted = os.getenv("CSRF_TRUSTED_ORIGINS", "")
 CSRF_TRUSTED_ORIGINS = [u.strip() for u in _trusted.split(",") if u.strip()]
+
+# Health check path for middleware (bypasses ALLOWED_HOSTS)
+HEALTH_CHECK_PATH = os.getenv("HEALTH_CHECK_PATH", "/healthz/")
 
 # Logging configuration
 # Log level can be set via LOG_LEVEL env var (DEBUG, INFO, WARNING, ERROR, CRITICAL)
@@ -71,10 +77,20 @@ LOGGING = {
             "level": "WARNING",
             "propagate": False,
         },
+        "django.request": {
+            "handlers": ["console"],
+            "level": "WARNING",  # Reduces health check noise
+            "propagate": False,
+        },
         "core": {
             "handlers": ["console"],
             "level": LOG_LEVEL,
-            "propagate": True,
+            "propagate": False,
+        },
+        "lib": {
+            "handlers": ["console"],
+            "level": LOG_LEVEL,
+            "propagate": False,
         },
     },
     "root": {
@@ -105,13 +121,16 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    "django.middleware.security.SecurityMiddleware",
+    # HealthCheckMiddleware MUST be first to bypass ALLOWED_HOSTS for health checks
     "core.middleware.HealthCheckMiddleware",
+    "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # ForcePasswordChangeMiddleware MUST come after AuthenticationMiddleware
+    "core.middleware.ForcePasswordChangeMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -129,6 +148,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "core.context_processors.registration_settings",
             ],
         },
     },
@@ -140,13 +160,20 @@ WSGI_APPLICATION = "wms.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
+# Neon Postgres branch endpoints (not secrets - just addresses)
+# The branch is selected based on DEBUG mode
+NEON_ENDPOINTS = {
+    "main": "ep-calm-union-af52070o-pooler.c-2.us-west-2.aws.neon.tech",
+    "dev": "ep-nameless-sky-afafe5se-pooler.c-2.us-west-2.aws.neon.tech",
+}
+
 DB_NAME = os.getenv("DB_NAME")
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_HOST = os.getenv("DB_HOST")
+DB_HOST = NEON_ENDPOINTS["dev"] if DEBUG else NEON_ENDPOINTS["main"]
 DB_PORT = os.getenv("DB_PORT")
 
-if all([DB_NAME, DB_USER, DB_PASSWORD, DB_HOST]):
+if all([DB_NAME, DB_USER, DB_PASSWORD]):
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",

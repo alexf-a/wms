@@ -29,6 +29,18 @@ def other_user(db) -> WMSUser:
 
 
 @pytest.fixture
+def user_must_change_password(db) -> WMSUser:
+    """Create a test user with must_change_password flag set."""
+    user = WMSUser.objects.create_user(
+        email="newuser@example.com",
+        password="testpass123"
+    )
+    user.must_change_password = True
+    user.save()
+    return user
+
+
+@pytest.fixture
 def location(user: WMSUser) -> Location:
     """Create a test location for the primary user."""
     return Location.objects.create(

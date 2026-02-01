@@ -41,10 +41,12 @@
                         </svg>
                         <span class="m3-button-label">Getting Started</span>
                     </a>
+                    {% if REGISTRATION_ENABLED %}
                     <!-- Get Started Button (Filled) -->
                     <a href="{% url 'register' %}" class="m3-button m3-button-filled">
                         <span class="m3-button-label">Sign Up</span>
                     </a>
+                    {% endif %}
                     <!-- Login Button (Tonal) -->
                     <a href="{% url 'login' %}" class="m3-button m3-button-tonal">
                         <span class="m3-button-label">Login</span>

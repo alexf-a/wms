@@ -17,6 +17,15 @@
             <form method="post" enctype="multipart/form-data" class="m3-form-vertical" id="create-storage-form" data-m3-dynamic-form data-total-steps="6" data-initial-step="1">
                 {% csrf_token %}
                 
+                <!-- Form-level validation errors -->
+                {% if form.non_field_errors %}
+                <div class="m3-error-banner" role="alert" style="margin-bottom: 1rem; padding: 1rem; background-color: var(--md-sys-color-error-container); color: var(--md-sys-color-on-error-container); border-radius: 12px;">
+                    {% for error in form.non_field_errors %}
+                        <p style="margin: 0;">{{ error }}</p>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
                 <!-- Step 1: Name -->
                 <div class="m3-field-group m3-dynamic-field" data-step="1">
                     <label for="{{ form.name.id_for_label }}" class="m3-field-label">Name <span class="text-error">*</span></label>
