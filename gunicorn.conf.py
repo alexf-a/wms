@@ -1,4 +1,3 @@
-import multiprocessing  # For CPU core count to size workers dynamically
 import os  # For reading optional WEB_CONCURRENCY override
 
 # For Nano containers (512MB), use 1 worker to maximize available memory per request.

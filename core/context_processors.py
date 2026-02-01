@@ -15,5 +15,5 @@ def registration_settings(request):
         Dictionary with REGISTRATION_ENABLED setting.
     """
     return {
-        'REGISTRATION_ENABLED': settings.REGISTRATION_ENABLED,
+        "REGISTRATION_ENABLED": settings.REGISTRATION_ENABLED,
     }

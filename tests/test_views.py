@@ -269,7 +269,7 @@ class TestChangePasswordView:
     def test_change_password_maintains_session(self, client: Client, user: User):
         """Test password change maintains user session (doesn't log out)."""
         client.force_login(user)
-        
+
         response = client.post(
             reverse("change_password"),
             {
@@ -278,7 +278,7 @@ class TestChangePasswordView:
                 "new_password2": "NewSecurePass123!",
             },
         )
-        
+
         # User should still be authenticated after password change
         assert response.wsgi_request.user.is_authenticated
         assert response.wsgi_request.user == user

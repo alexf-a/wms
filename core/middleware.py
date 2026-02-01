@@ -62,21 +62,21 @@ class ForcePasswordChangeMiddleware:
         # Skip if user is not authenticated
         if not request.user.is_authenticated:
             return self.get_response(request)
-        
+
         # Skip if user doesn't need to change password
-        if not getattr(request.user, 'must_change_password', False):
+        if not getattr(request.user, "must_change_password", False):
             return self.get_response(request)
-        
+
         # Whitelist URLs that don't require password change
-        change_password_url = reverse('change_password')
-        logout_url = reverse('logout')
-        
+        change_password_url = reverse("change_password")
+        logout_url = reverse("logout")
+
         # Allow access to change_password, logout, and static/media files
-        if (request.path == change_password_url or 
+        if (request.path == change_password_url or
             request.path == logout_url or
-            request.path.startswith('/static/') or
-            request.path.startswith('/media/')):
+            request.path.startswith("/static/") or
+            request.path.startswith("/media/")):
             return self.get_response(request)
-        
+
         # Redirect to password change page
-        return redirect('change_password')
+        return redirect("change_password")

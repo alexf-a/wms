@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import base64
 from typing import ClassVar
 from urllib.parse import urljoin
@@ -18,7 +19,7 @@ from .utils import generate_unit_access_token, get_qr_code_file
 
 class WMSUserManager(BaseUserManager):
     """Custom manager for WMSUser that uses email as the username field."""
-    
+
     def create_user(self, email, password=None, **extra_fields):
         """Create and save a regular user with the given email and password."""
         if not email:
@@ -28,17 +29,17 @@ class WMSUserManager(BaseUserManager):
         user.set_password(password)
         user.save(using=self._db)
         return user
-    
+
     def create_superuser(self, email, password=None, **extra_fields):
         """Create and save a superuser with the given email and password."""
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
-        
+
         if extra_fields.get("is_staff") is not True:
             raise ValueError("Superuser must have is_staff=True.")
         if extra_fields.get("is_superuser") is not True:
             raise ValueError("Superuser must have is_superuser=True.")
-        
+
         return self.create_user(email, password, **extra_fields)
 
 
@@ -48,7 +49,7 @@ class WMSUser(AbstractUser):
     Username is optional and not required for authentication.
     Email is required, unique, and used for login.
     """
-    
+
     # Make username optional
     username = models.CharField(
         max_length=150,
@@ -56,7 +57,7 @@ class WMSUser(AbstractUser):
         null=True,
         help_text="Optional display name"
     )
-    
+
     # Make email required and unique
     email = models.EmailField(
         unique=True,
@@ -64,17 +65,17 @@ class WMSUser(AbstractUser):
         null=False,
         help_text="Required. Used for authentication."
     )
-    
+
     # Force password change on first login (for beta users)
     must_change_password = models.BooleanField(
         default=False,
         help_text="If True, user will be required to change password on next login."
     )
-    
+
     # Use email as the username field for authentication
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []  # Email is already the USERNAME_FIELD, so don't include it here
-    
+
     objects = WMSUserManager()
 
     class Meta:
@@ -97,12 +98,12 @@ class StorageSpace(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
-    
+
     class Meta:
         """Mark this as an abstract base class."""
-        
+
         abstract = True
-    
+
     def __str__(self) -> str:
         return self.name
 
@@ -119,12 +120,12 @@ class Location(StorageSpace):
         address (str): Physical address (optional).
     """
     address = models.TextField(blank=True, null=True)
-    
+
     class Meta:
         """Model constraints for Location."""
-        
+
         unique_together: ClassVar = ("user", "name")
-    
+
     def can_promote_to_unit(self) -> bool:
         """Check if this Location can be safely promoted to a Unit.
         
@@ -135,8 +136,8 @@ class Location(StorageSpace):
             bool: Always True.
         """
         return True
-    
-    def promote_to_unit(self) -> "Unit":
+
+    def promote_to_unit(self) -> Unit:
         """Convert this Location into a Unit.
         
         This is useful when a user realizes they want to store items directly
@@ -158,14 +159,14 @@ class Location(StorageSpace):
             location=None,
             parent_unit=None
         )
-        
+
         # Reassign all child Units from this Location to the new Unit
         # Change their location FK to None and set parent_unit to the new Unit
         self.unit_set.all().update(location=None, parent_unit=unit)
-        
+
         # Delete the Location
         self.delete()
-        
+
         return unit
 
 
@@ -194,10 +195,10 @@ class LocationSharedAccess(models.Model):
 
 # Dimension unit choices
 DIMENSION_UNIT_CHOICES = [
-    ('in', 'Inches'),
-    ('cm', 'Centimeters'),
-    ('ft', 'Feet'),
-    ('m', 'Meters'),
+    ("in", "Inches"),
+    ("cm", "Centimeters"),
+    ("ft", "Feet"),
+    ("m", "Meters"),
 ]
 
 
@@ -224,7 +225,7 @@ class Unit(StorageSpace):
         blank=True,
         related_name="shared_units"
     )
-    
+
     # Parent can be either a Location OR another Unit (but not both)
     location = models.ForeignKey(
         Location,
@@ -234,7 +235,7 @@ class Unit(StorageSpace):
         null=True,
         help_text="Location containing this unit (if top-level)"
     )
-    
+
     parent_unit = models.ForeignKey(
         "self",
         related_name="child_units",
@@ -243,7 +244,7 @@ class Unit(StorageSpace):
         null=True,
         help_text="Parent unit containing this unit (if nested)"
     )
-    
+
     # Physical properties
     length = models.FloatField(blank=True, null=True, help_text="Length dimension")
     width = models.FloatField(blank=True, null=True, help_text="Width dimension")
@@ -255,17 +256,17 @@ class Unit(StorageSpace):
         null=True,
         help_text="Unit of measurement for dimensions"
     )
-    
+
     # QR code support
     access_token = models.CharField(
-        max_length=48, 
-        unique=True, 
+        max_length=48,
+        unique=True,
         default=generate_unit_access_token
     )
-    
+
     class Meta:
         """Model constraints for Unit."""
-        
+
         unique_together: ClassVar = ("user", "name")
         constraints: ClassVar = [
             models.CheckConstraint(
@@ -296,7 +297,7 @@ class Unit(StorageSpace):
                 name="unit_dimensions_all_or_nothing"
             )
         ]
-    
+
     def get_container(self) -> Location | Unit | None:
         """Return the parent container (either Location or parent Unit).
         
@@ -305,7 +306,7 @@ class Unit(StorageSpace):
                 or None if standalone.
         """
         return self.location or self.parent_unit
-    
+
     @property
     def parent(self) -> Location | Unit | None:
         """Return the parent container (either Location or parent Unit).
@@ -318,7 +319,7 @@ class Unit(StorageSpace):
                 or None if standalone.
         """
         return self.location or self.parent_unit
-    
+
     def get_full_path(self) -> str:
         """Return hierarchical path from root to this unit.
         
@@ -334,15 +335,15 @@ class Unit(StorageSpace):
         """
         parts = []
         current: Location | Unit | None = self
-        
+
         # Walk up the entire hierarchy (Units and Location)
         while current:
             parts.insert(0, current.name)
             current = current.parent if isinstance(current, Unit) else None
-        
+
         return " > ".join(parts)
-    
-    def get_root_unit(self) -> "Unit":
+
+    def get_root_unit(self) -> Unit:
         """Return the top-level Unit in this hierarchy.
         
         Returns:
@@ -352,7 +353,7 @@ class Unit(StorageSpace):
         while isinstance(current.parent, Unit):
             current = current.parent
         return current
-    
+
     def get_ancestors(self) -> list[Location | Unit]:
         """Return list of all ancestors from root to self.
         
@@ -365,15 +366,15 @@ class Unit(StorageSpace):
         """
         ancestors = []
         current: Location | Unit | None = self
-        
+
         # Walk up the entire hierarchy including Location
         while current:
             ancestors.insert(0, current)
             current = current.parent if isinstance(current, Unit) else None
-        
+
         return ancestors
-    
-    def get_descendants(self) -> list["Unit"]:
+
+    def get_descendants(self) -> list[Unit]:
         """Return all descendant Units (children, grandchildren, etc.).
         
         Used to prevent circular references when editing Unit hierarchy.
@@ -386,7 +387,7 @@ class Unit(StorageSpace):
             descendants.append(child)
             descendants.extend(child.get_descendants())
         return descendants
-    
+
     def has_children(self) -> bool:
         """Check if this Unit has any child Units.
         
@@ -394,7 +395,7 @@ class Unit(StorageSpace):
             bool: True if this Unit contains other Units, False otherwise.
         """
         return self.child_units.exists()
-    
+
     def user_has_access(self, user: WMSUser) -> bool:
         """Check if a user has access to this Unit.
         
@@ -413,11 +414,11 @@ class Unit(StorageSpace):
         # Owner always has access
         if self.user_id == user.id:
             return True
-        
+
         # Check direct unit access
         if UnitSharedAccess.objects.filter(user=user, unit=self).exists():
             return True
-        
+
         # Check transitive access through parent hierarchy
         current = self.parent
         while current:
@@ -428,20 +429,20 @@ class Unit(StorageSpace):
                 if LocationSharedAccess.objects.filter(user=user, location=current).exists():
                     return True
             current = current.parent if isinstance(current, Unit) else None
-        
+
         return False
-    
+
     def get_qr_filename(self) -> str:
         """Return a deterministic filename for the unit's QR code image."""
         return f"{slugify(self.name) or 'unit'}_unit_qr.png"
-    
+
     def get_detail_path(self) -> str:
         """Return the relative URL path to this unit's detail view."""
         return reverse(
             "unit_detail",
             kwargs={"user_id": self.user_id, "access_token": self.access_token},
         )
-    
+
     def get_qr_code(self, *, base_url: str) -> ContentFile:
         """Generate a QR code file pointing to this unit's detail view.
         
