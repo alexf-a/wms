@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from enum import Enum
 
 from django import forms
@@ -7,41 +8,42 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.forms import UserCreationForm
 from django.core.exceptions import ValidationError
 
-from .models import Location, Unit, Item, WMSUser, DIMENSION_UNIT_CHOICES
+from .models import DIMENSION_UNIT_CHOICES, Item, Location, Unit, WMSUser
 
+logger = logging.getLogger(__name__)
 
 class WMSUserAuthForm(forms.Form):
     """Authentication form that uses email instead of username."""
-    
+
     email = forms.EmailField(
         widget=forms.EmailInput(attrs={
-            'placeholder': 'Enter your email',
-            'autofocus': True,
-            'autocomplete': 'email'
+            "placeholder": "Enter your email",
+            "autofocus": True,
+            "autocomplete": "email"
         })
     )
     password = forms.CharField(
         widget=forms.PasswordInput(attrs={
-            'placeholder': 'Enter your password'
+            "placeholder": "Enter your password"
         })
     )
-    
+
     error_messages = {
-        'invalid_login': "Please enter a correct email and password.",
-        'inactive': "This account is inactive.",
+        "invalid_login": "Please enter a correct email and password.",
+        "inactive": "This account is inactive.",
     }
-    
+
     def __init__(self, request=None, *args, **kwargs):
         """Initialize form with request object for authentication."""
         self.request = request
         self.user_cache = None
         super().__init__(*args, **kwargs)
-    
+
     def clean(self):
         """Validate email and password."""
-        email = self.cleaned_data.get('email')
-        password = self.cleaned_data.get('password')
-        
+        email = self.cleaned_data.get("email")
+        password = self.cleaned_data.get("password")
+
         if email is not None and password:
             self.user_cache = authenticate(
                 self.request,
@@ -50,34 +52,34 @@ class WMSUserAuthForm(forms.Form):
             )
             if self.user_cache is None:
                 raise forms.ValidationError(
-                    self.error_messages['invalid_login'],
-                    code='invalid_login',
+                    self.error_messages["invalid_login"],
+                    code="invalid_login",
                 )
-            elif not self.user_cache.is_active:
+            if not self.user_cache.is_active:
                 raise forms.ValidationError(
-                    self.error_messages['inactive'],
-                    code='inactive',
+                    self.error_messages["inactive"],
+                    code="inactive",
                 )
         return self.cleaned_data
-    
+
     def get_user(self):
         """Return authenticated user."""
         return self.user_cache
 
 
 # Storage type constants
-STORAGE_TYPE_LOCATION = 'location'
-STORAGE_TYPE_UNIT = 'unit'
+STORAGE_TYPE_LOCATION = "location"
+STORAGE_TYPE_UNIT = "unit"
 STORAGE_TYPE_CHOICES = [
-    (STORAGE_TYPE_LOCATION, 'No - this is a location for storage units (eg. A house, a facility)'),
-    (STORAGE_TYPE_UNIT, 'Yes - this is a storage unit (eg. a bin, a locker, etc.)'),
+    (STORAGE_TYPE_LOCATION, "No - this is a location for storage units (eg. A house, a facility)"),
+    (STORAGE_TYPE_UNIT, "Yes - this is a storage unit (eg. a bin, a locker, etc.)"),
 ]
 
 
 class ContainerType(Enum):
     """Enum for container types based on prefixed ID format."""
-    LOCATION = 'location'
-    UNIT = 'unit'
+    LOCATION = "location"
+    UNIT = "unit"
 
 
 def parse_container_string(container_string: str) -> tuple[ContainerType, int]:
@@ -125,38 +127,38 @@ def build_container_choices(user: WMSUser, exclude_unit: Unit | None = None) -> 
     Returns:
         List of (value, label) tuples for the dropdown choices.
     """
-    container_choices = [('', '--- None (standalone) ---')]
-    
+    container_choices = [("", "--- None (standalone) ---")]
+
     # Add locations with 📍 prefix
-    locations = Location.objects.filter(user=user).order_by('name')
+    locations = Location.objects.filter(user=user).order_by("name")
     for loc in locations:
-        container_choices.append((f'{ContainerType.LOCATION.value}_{loc.id}', f'📍 {loc.name}'))
-    
+        container_choices.append((f"{ContainerType.LOCATION.value}_{loc.id}", f"📍 {loc.name}"))
+
     # Add units with 📦 prefix
-    units = Unit.objects.filter(user=user).order_by('name')
-    
+    units = Unit.objects.filter(user=user).order_by("name")
+
     # Build exclusion set if editing a unit
     excluded_ids = set()
     if exclude_unit:
         excluded_ids.add(exclude_unit.id)
         # Exclude all descendants to prevent circular references
         excluded_ids.update(unit.id for unit in exclude_unit.get_descendants())
-    
+
     for unit in units:
         if unit.id not in excluded_ids:
-            container_choices.append((f'{ContainerType.UNIT.value}_{unit.id}', f'📦 {unit.name}'))
-    
+            container_choices.append((f"{ContainerType.UNIT.value}_{unit.id}", f"📦 {unit.name}"))
+
     return container_choices
 
 
 class WMSUserCreationForm(UserCreationForm):
     """Form for creating a new WMSUser with email-based authentication."""
-    
+
     email = forms.EmailField(
         required=True,
         widget=forms.EmailInput(attrs={
-            'placeholder': 'Email address',
-            'autocomplete': 'email'
+            "placeholder": "Email address",
+            "autocomplete": "email"
         })
     )
 
@@ -173,87 +175,87 @@ class StorageSpaceForm(forms.Form):
     Uses a radio button to determine if the space stores items directly (Unit)
     or is purely organizational (Location).
     """
-    
+
     name = forms.CharField(
         max_length=255,
         widget=forms.TextInput(attrs={
-            'placeholder': 'e.g., Garage, Red Toolbox',
-            'class': 'search-input',
-            'autocomplete': 'off'
+            "placeholder": "e.g., Garage, Red Toolbox",
+            "class": "search-input",
+            "autocomplete": "off"
         })
     )
-    
+
     stores_items = forms.ChoiceField(
         choices=STORAGE_TYPE_CHOICES,
         widget=forms.RadioSelect,
         initial=STORAGE_TYPE_LOCATION,
-        label='Will you store items directly in this space?'
+        label="Will you store items directly in this space?"
     )
-    
+
     description = forms.CharField(
         required=False,
         widget=forms.Textarea(attrs={
-            'placeholder': 'Optional description',
-            'rows': 3,
-            'class': 'search-input'
+            "placeholder": "Optional description",
+            "rows": 3,
+            "class": "search-input"
         })
     )
-    
+
     address = forms.CharField(
         required=False,
         widget=forms.Textarea(attrs={
-            'placeholder': 'e.g., 123 Main St, Apt 4B',
-            'rows': 2,
-            'class': 'search-input'
+            "placeholder": "e.g., 123 Main St, Apt 4B",
+            "rows": 2,
+            "class": "search-input"
         }),
-        help_text='Only applicable for storage locations.'
+        help_text="Only applicable for storage locations."
     )
-    
+
     # Unit-specific fields (shown conditionally via JavaScript)
     container = forms.ChoiceField(
         required=False,
-        label='Container (optional)',
-        help_text='Select a location or parent unit',
-        widget=forms.Select(attrs={'class': 'm3-select'})
+        label="Container (optional)",
+        help_text="Select a location or parent unit",
+        widget=forms.Select(attrs={"class": "m3-select"})
     )
-    
+
     length = forms.FloatField(
         required=False,
         widget=forms.NumberInput(attrs={
-            'placeholder': '0.00',
-            'step': '0.01',
-            'class': 'search-input'
+            "placeholder": "0.00",
+            "step": "0.01",
+            "class": "search-input"
         }),
-        label='Length'
+        label="Length"
     )
-    
+
     width = forms.FloatField(
         required=False,
         widget=forms.NumberInput(attrs={
-            'placeholder': '0.00',
-            'step': '0.01',
-            'class': 'search-input'
+            "placeholder": "0.00",
+            "step": "0.01",
+            "class": "search-input"
         }),
-        label='Width'
+        label="Width"
     )
-    
+
     height = forms.FloatField(
         required=False,
         widget=forms.NumberInput(attrs={
-            'placeholder': '0.00',
-            'step': '0.01',
-            'class': 'search-input'
+            "placeholder": "0.00",
+            "step": "0.01",
+            "class": "search-input"
         }),
-        label='Height'
+        label="Height"
     )
-    
+
     dimensions_unit = forms.ChoiceField(
         required=False,
         choices=DIMENSION_UNIT_CHOICES,
-        widget=forms.Select(attrs={'class': 'm3-select'}),
-        label='Unit of Measurement'
+        widget=forms.Select(attrs={"class": "m3-select"}),
+        label="Unit of Measurement"
     )
-    
+
     def __init__(self, *args: object, user: WMSUser | None = None, **kwargs: object) -> None:
         """Initialize form with user-specific container choices.
         
@@ -261,69 +263,75 @@ class StorageSpaceForm(forms.Form):
             user: The user to filter containers for.
         """
         super().__init__(*args, **kwargs)
-        
+
         if user:
-            self.fields['container'].choices = build_container_choices(user)
+            self.fields["container"].choices = build_container_choices(user)
             self.user = user
         else:
             self.user = None
-    
+
     def clean_name(self) -> str:
         """Validate that name doesn't collide with existing Location or Unit names."""
-        name = self.cleaned_data.get('name')
-        
+        name = self.cleaned_data.get("name")
+
         if self.user and name:
             # Check for collisions with existing Locations
             if Location.objects.filter(user=self.user, name=name).exists():
                 raise ValidationError(
                     f'A location named "{name}" already exists. Please choose a different name.'
                 )
-            
+
             # Check for collisions with existing Units
             if Unit.objects.filter(user=self.user, name=name).exists():
                 raise ValidationError(
                     f'A unit named "{name}" already exists. Please choose a different name.'
                 )
-        
+
         return name
-    
+
     def clean(self) -> dict:
         """Validate container selection and dimensions."""
         cleaned_data = super().clean()
-        stores_items = cleaned_data.get('stores_items')
-        
+        stores_items = cleaned_data.get("stores_items")
+
         # If storing items (Unit), validate container reference
         if stores_items == STORAGE_TYPE_UNIT:
-            container = cleaned_data.get('container')
+            container = cleaned_data.get("container")
             if container:
                 # Validate container format (will raise ValidationError if invalid)
                 try:
                     parse_container_string(container)
                 except ValidationError:
                     raise
-            
+
             # Validate dimensions: all-or-nothing with required unit
-            length = cleaned_data.get('length')
-            width = cleaned_data.get('width')
-            height = cleaned_data.get('height')
-            dimensions_unit = cleaned_data.get('dimensions_unit')
-            
+            length = cleaned_data.get("length")
+            width = cleaned_data.get("width")
+            height = cleaned_data.get("height")
+            dimensions_unit = cleaned_data.get("dimensions_unit")
+
             dimensions_provided = [length, width, height]
             any_dimension = any(d is not None for d in dimensions_provided)
             all_dimensions = all(d is not None for d in dimensions_provided)
-            
+
+            logger.debug("Attempting Storage Space creation with data: %s", cleaned_data)
             if any_dimension:
                 if not all_dimensions:
+                    msg = "If you provide any dimension, all three dimensions (length, width, height) are required."
                     raise ValidationError(
-                        'If you provide any dimension, all three dimensions (length, width, height) are required.'
+                        msg
                     )
                 if not dimensions_unit:
+                    msg = "Unit of measurement is required when dimensions are provided."
                     raise ValidationError(
-                        'Unit of measurement is required when dimensions are provided.'
+                        msg
                     )
-        
+            # Remove any default value from drop-down for unit
+            if not all([width, length, height]):
+                cleaned_data["dimensions_unit"] = None
+
         return cleaned_data
-    
+
     def save(self) -> Location | Unit:
         """Create and return either a Location or Unit based on stores_items choice.
         
@@ -335,75 +343,74 @@ class StorageSpaceForm(forms.Form):
         """
         if not self.is_valid():
             raise ValueError("Form must be validated before saving")
-        
+
         if not self.user:
             raise ValueError("User is required to save the form")
-        
-        stores_items = self.cleaned_data['stores_items']
-        name = self.cleaned_data['name']
-        description = self.cleaned_data.get('description')
-        
+
+        stores_items = self.cleaned_data["stores_items"]
+        name = self.cleaned_data["name"]
+        description = self.cleaned_data.get("description")
+
         if stores_items == STORAGE_TYPE_LOCATION:
             # Create Location
             location = Location.objects.create(
                 user=self.user,
                 name=name,
                 description=description,
-                address=self.cleaned_data.get('address')
+                address=self.cleaned_data.get("address")
             )
             return location
-        else:
-            # Create Unit
-            container = self.cleaned_data.get('container')
-            
-            # Convert empty string to None for dimensions_unit
-            dimensions_unit = self.cleaned_data.get('dimensions_unit') or None
-            
-            unit = Unit(
-                user=self.user,
-                name=name,
-                description=description,
-                length=self.cleaned_data.get('length'),
-                width=self.cleaned_data.get('width'),
-                height=self.cleaned_data.get('height'),
-                dimensions_unit=dimensions_unit
-            )
-            
-            # Set container relationship
-            if container:
-                container_type, container_id = parse_container_string(container)
-                
-                if container_type == ContainerType.LOCATION:
-                    unit.location_id = container_id
-                elif container_type == ContainerType.UNIT:
-                    unit.parent_unit_id = container_id
-            
-            unit.save()
-            return unit
+        # Create Unit
+        container = self.cleaned_data.get("container")
+
+        # Convert empty string to None for dimensions_unit
+        dimensions_unit = self.cleaned_data.get("dimensions_unit") or None
+
+        unit = Unit(
+            user=self.user,
+            name=name,
+            description=description,
+            length=self.cleaned_data.get("length"),
+            width=self.cleaned_data.get("width"),
+            height=self.cleaned_data.get("height"),
+            dimensions_unit=dimensions_unit
+        )
+
+        # Set container relationship
+        if container:
+            container_type, container_id = parse_container_string(container)
+
+            if container_type == ContainerType.LOCATION:
+                unit.location_id = container_id
+            elif container_type == ContainerType.UNIT:
+                unit.parent_unit_id = container_id
+
+        unit.save()
+        return unit
 
 
 class UnitForm(forms.ModelForm):
     """Form for creating or updating a Unit with container selection."""
-    
+
     container = forms.ChoiceField(
         required=False,
-        label='Container',
-        help_text='Select a location or parent unit (optional)'
+        label="Container",
+        help_text="Select a location or parent unit (optional)"
     )
-    
+
     class Meta:
         """Metadata options for UnitForm."""
-        
+
         model = Unit
-        fields = ('name', 'description', 'length', 'width', 'height', 'dimensions_unit')
+        fields = ("name", "description", "length", "width", "height", "dimensions_unit")
         widgets = {
-            'description': forms.Textarea(attrs={'rows': 3}),
-            'length': forms.NumberInput(attrs={'placeholder': '0.00', 'step': '0.01'}),
-            'width': forms.NumberInput(attrs={'placeholder': '0.00', 'step': '0.01'}),
-            'height': forms.NumberInput(attrs={'placeholder': '0.00', 'step': '0.01'}),
-            'dimensions_unit': forms.Select(attrs={'class': 'm3-select'}),
+            "description": forms.Textarea(attrs={"rows": 3}),
+            "length": forms.NumberInput(attrs={"placeholder": "0.00", "step": "0.01"}),
+            "width": forms.NumberInput(attrs={"placeholder": "0.00", "step": "0.01"}),
+            "height": forms.NumberInput(attrs={"placeholder": "0.00", "step": "0.01"}),
+            "dimensions_unit": forms.Select(attrs={"class": "m3-select"}),
         }
-    
+
     def __init__(self, *args: object, user: WMSUser | None = None, instance: Unit | None = None, **kwargs: object) -> None:
         """Initialize form with user-specific container choices.
         
@@ -412,78 +419,78 @@ class UnitForm(forms.ModelForm):
             instance: The Unit instance being edited (if any).
         """
         super().__init__(*args, instance=instance, **kwargs)
-        
+
         self.user = user
         self.instance = instance
-        
+
         if user:
-            self.fields['container'].choices = build_container_choices(user, exclude_unit=instance)
-            
+            self.fields["container"].choices = build_container_choices(user, exclude_unit=instance)
+
             # Set initial container value if editing
             if instance:
                 if instance.location:
-                    self.initial['container'] = f'{ContainerType.LOCATION.value}_{instance.location.id}'
+                    self.initial["container"] = f"{ContainerType.LOCATION.value}_{instance.location.id}"
                 elif instance.parent_unit:
-                    self.initial['container'] = f'{ContainerType.UNIT.value}_{instance.parent_unit.id}'
-    
+                    self.initial["container"] = f"{ContainerType.UNIT.value}_{instance.parent_unit.id}"
+
     def clean_name(self) -> str:
         """Validate name doesn't collide with other units or locations."""
-        name = self.cleaned_data.get('name')
-        
+        name = self.cleaned_data.get("name")
+
         if self.user and name:
             # Check Location collisions
             if Location.objects.filter(user=self.user, name=name).exists():
                 raise ValidationError(
                     f'A location named "{name}" already exists. Please choose a different name.'
                 )
-            
+
             # Check Unit collisions (excluding self if editing)
             unit_query = Unit.objects.filter(user=self.user, name=name)
             if self.instance and self.instance.id:
                 unit_query = unit_query.exclude(id=self.instance.id)
-            
+
             if unit_query.exists():
                 raise ValidationError(
                     f'A unit named "{name}" already exists. Please choose a different name.'
                 )
-        
+
         return name
-    
+
     def clean(self) -> dict:
         """Validate dimensions: all-or-nothing with required unit."""
         cleaned_data = super().clean()
-        
-        length = cleaned_data.get('length')
-        width = cleaned_data.get('width')
-        height = cleaned_data.get('height')
-        dimensions_unit = cleaned_data.get('dimensions_unit')
-        
+
+        length = cleaned_data.get("length")
+        width = cleaned_data.get("width")
+        height = cleaned_data.get("height")
+        dimensions_unit = cleaned_data.get("dimensions_unit")
+
         dimensions_provided = [length, width, height]
         any_dimension = any(d is not None for d in dimensions_provided)
         all_dimensions = all(d is not None for d in dimensions_provided)
-        
+
         if any_dimension:
             if not all_dimensions:
                 raise ValidationError(
-                    'If you provide any dimension, all three dimensions (length, width, height) are required.'
+                    "If you provide any dimension, all three dimensions (length, width, height) are required."
                 )
             if not dimensions_unit:
                 raise ValidationError(
-                    'Unit of measurement is required when dimensions are provided.'
+                    "Unit of measurement is required when dimensions are provided."
                 )
-        
+
         return cleaned_data
-    
+
     def save(self, commit: bool = True) -> Unit:
         """Save the unit with the selected container."""
         unit = super().save(commit=False)
-        
+
         # Parse container selection (convert empty string to None)
-        container = self.cleaned_data.get('container') or None
-        
+        container = self.cleaned_data.get("container") or None
+
         if container:
             container_type, container_id = parse_container_string(container)
-            
+
             if container_type == ContainerType.LOCATION:
                 # Set location FK
                 unit.location_id = container_id
@@ -496,10 +503,10 @@ class UnitForm(forms.ModelForm):
             # Standalone unit
             unit.location = None
             unit.parent_unit = None
-        
+
         if commit:
             unit.save()
-        
+
         return unit
 
 
@@ -557,58 +564,58 @@ class AccountForm(forms.ModelForm):
 
 class PasswordChangeForm(forms.Form):
     """Form for changing user password with current password verification."""
-    
+
     current_password = forms.CharField(
         label="Current Password",
         widget=forms.PasswordInput(attrs={
-            'placeholder': 'Enter your current password',
-            'autocomplete': 'current-password'
+            "placeholder": "Enter your current password",
+            "autocomplete": "current-password"
         })
     )
     new_password1 = forms.CharField(
         label="New Password",
         widget=forms.PasswordInput(attrs={
-            'placeholder': 'Enter new password',
-            'autocomplete': 'new-password'
+            "placeholder": "Enter new password",
+            "autocomplete": "new-password"
         })
     )
     new_password2 = forms.CharField(
         label="Confirm New Password",
         widget=forms.PasswordInput(attrs={
-            'placeholder': 'Confirm new password',
-            'autocomplete': 'new-password'
+            "placeholder": "Confirm new password",
+            "autocomplete": "new-password"
         })
     )
-    
+
     def __init__(self, user, *args, **kwargs):
         """Initialize form with user object for password verification."""
         self.user = user
         super().__init__(*args, **kwargs)
-    
+
     def clean_current_password(self):
         """Verify the current password is correct."""
-        current_password = self.cleaned_data.get('current_password')
+        current_password = self.cleaned_data.get("current_password")
         if not self.user.check_password(current_password):
             raise ValidationError("Your current password is incorrect.")
         return current_password
-    
+
     def clean_new_password2(self):
         """Verify new passwords match."""
-        password1 = self.cleaned_data.get('new_password1')
-        password2 = self.cleaned_data.get('new_password2')
+        password1 = self.cleaned_data.get("new_password1")
+        password2 = self.cleaned_data.get("new_password2")
         if password1 and password2 and password1 != password2:
             raise ValidationError("The two password fields didn't match.")
         return password2
-    
+
     def clean_new_password1(self):
         """Validate new password using Django's password validators."""
-        password = self.cleaned_data.get('new_password1')
+        password = self.cleaned_data.get("new_password1")
         if password:
             # Use Django's password validators
             from django.contrib.auth.password_validation import validate_password
             validate_password(password, self.user)
         return password
-    
+
     def save(self, commit=True):
         """Save the new password for the user."""
         password = self.cleaned_data["new_password1"]
