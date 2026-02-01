@@ -50,12 +50,15 @@ class ForcePasswordChangeMiddleware:
     Whitelisted URLs (allowed without password change):
     - change_password: The password change form itself
     - logout: Allow users to logout
+    - health_check: The health check endpoint
     - Static/media files: Allow loading CSS/JS/images
     """
 
     def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
         """Initialize the middleware with the next middleware in the chain."""
         self.get_response = get_response
+        # Get the health check path from settings
+        self.health_check_path = getattr(settings, "HEALTH_CHECK_PATH", "/healthz/")
 
     def __call__(self, request: HttpRequest) -> HttpResponse:
         """Process the request and redirect to password change if required."""
@@ -71,9 +74,10 @@ class ForcePasswordChangeMiddleware:
         change_password_url = reverse("change_password")
         logout_url = reverse("logout")
 
-        # Allow access to change_password, logout, and static/media files
+        # Allow access to change_password, logout, health_check, and static/media files
         if (request.path == change_password_url or
             request.path == logout_url or
+            request.path == self.health_check_path or
             request.path.startswith("/static/") or
             request.path.startswith("/media/")):
             return self.get_response(request)
