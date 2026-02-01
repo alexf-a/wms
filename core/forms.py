@@ -599,14 +599,6 @@ class PasswordChangeForm(forms.Form):
             raise ValidationError("Your current password is incorrect.")
         return current_password
 
-    def clean_new_password2(self):
-        """Verify new passwords match."""
-        password1 = self.cleaned_data.get("new_password1")
-        password2 = self.cleaned_data.get("new_password2")
-        if password1 and password2 and password1 != password2:
-            raise ValidationError("The two password fields didn't match.")
-        return password2
-
     def clean_new_password1(self):
         """Validate new password using Django's password validators."""
         password = self.cleaned_data.get("new_password1")
@@ -615,6 +607,17 @@ class PasswordChangeForm(forms.Form):
             from django.contrib.auth.password_validation import validate_password
             validate_password(password, self.user)
         return password
+
+    def clean(self):
+        """Verify new passwords match (cross-field validation)."""
+        cleaned_data = super().clean()
+        password1 = cleaned_data.get("new_password1")
+        password2 = cleaned_data.get("new_password2")
+        
+        if password1 and password2 and password1 != password2:
+            raise ValidationError("The two password fields didn't match.")
+        
+        return cleaned_data
 
     def save(self, commit=True):
         """Save the new password for the user."""
