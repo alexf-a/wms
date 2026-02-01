@@ -12,7 +12,6 @@
       "DB_USER": "__DB_USER__",
       "DB_PASSWORD": "__DB_PASSWORD__",
       "DB_PORT": "5432",
-      "PGSSLMODE": "require",
       "USE_S3": "True",
       "AWS_ACCESS_KEY_ID": "__PROD_AWS_ACCESS_KEY_ID__",
       "AWS_SECRET_ACCESS_KEY": "__PROD_AWS_SECRET_ACCESS_KEY__",
