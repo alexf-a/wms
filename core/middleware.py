@@ -75,11 +75,12 @@ class ForcePasswordChangeMiddleware:
         logout_url = reverse("logout")
 
         # Allow access to change_password, logout, health_check, and static/media files
-        if (request.path == change_password_url or
-            request.path == logout_url or
-            request.path == self.health_check_path or
-            request.path.startswith("/static/") or
-            request.path.startswith("/media/")):
+        if (
+            request.path
+            in (change_password_url, logout_url, self.health_check_path)
+            or request.path.startswith("/static/")
+            or request.path.startswith("/media/")
+        ):
             return self.get_response(request)
 
         # Redirect to password change page
