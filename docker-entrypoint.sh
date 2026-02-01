@@ -7,14 +7,20 @@ if [ -z "${PORT:-}" ]; then
   exit 1
 fi
 
-# Run migrations (ok to fail if DB not reachable; container will restart)
-python manage.py migrate --noinput || true
+python manage.py migrate --noinput || {
+  echo "[startup] migrate failed (exit $?)" >&2
+  true
+}
 
-# Ensure superuser exists if credentials provided via environment
-python manage.py ensure_superuser || true
+python manage.py ensure_superuser || {
+  echo "[startup] ensure_superuser failed (exit $?)" >&2
+  true
+}
 
-# Create beta users if credentials provided via environment
-python manage.py create_beta_users || true
+python manage.py create_beta_users || {
+  echo "[startup] create_beta_users failed (exit $?)" >&2
+  true
+}
 
 # Start Gunicorn (worker count/config comes from gunicorn.conf.py)
 exec gunicorn wms.wsgi:application \
