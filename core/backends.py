@@ -7,7 +7,7 @@ from django.db.models import Q
 
 class EmailBackend(ModelBackend):
     """Authentication backend that allows users to log in with their email address."""
-    
+
     def authenticate(self, request, username=None, password=None, **kwargs):
         """Authenticate user by email.
         
@@ -22,14 +22,14 @@ class EmailBackend(ModelBackend):
             User object if authentication succeeds, None otherwise.
         """
         UserModel = get_user_model()
-        
+
         # Get email from either 'username' param (Django's default form field name)
         # or 'email' param if called directly
-        email = username or kwargs.get('email')
-        
+        email = username or kwargs.get("email")
+
         if email is None or password is None:
             return None
-        
+
         try:
             # Look up user by email (case-insensitive)
             user = UserModel.objects.get(Q(email__iexact=email))
@@ -38,8 +38,8 @@ class EmailBackend(ModelBackend):
             # difference between an existing and a nonexistent user.
             UserModel().set_password(password)
             return None
-        
+
         if user.check_password(password) and self.user_can_authenticate(user):
             return user
-        
+
         return None

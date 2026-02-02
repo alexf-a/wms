@@ -26,7 +26,7 @@ def test_get_qr_code_file_wraps_image_bytes(monkeypatch: pytest.MonkeyPatch) -> 
     """The QR code helper should serialize the generated image to a ContentFile."""
 
     class DummyQR:
-        def save(self, buffer, format):  # noqa: D401, ANN001 - qrcode interface
+        def save(self, buffer, format):  # noqa: ANN001 - qrcode interface
             buffer.write(b"fake-qr")
 
     mocked_qr = DummyQR()

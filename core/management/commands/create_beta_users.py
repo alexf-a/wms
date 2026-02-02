@@ -44,7 +44,7 @@ class Command(BaseCommand):
 
         # Parse email list (comma-separated)
         emails = [email.strip() for email in emails_str.split(",") if email.strip()]
-        
+
         if not emails:
             self.stdout.write(
                 self.style.NOTICE("No valid email addresses found in BETA_USER_EMAILS")
@@ -54,7 +54,7 @@ class Command(BaseCommand):
         # Create users
         created_count = 0
         skipped_count = 0
-        
+
         for email in emails:
             if User.objects.filter(email=email).exists():
                 self.stdout.write(
@@ -67,7 +67,7 @@ class Command(BaseCommand):
             user = User.objects.create_user(email=email, password=password)
             user.must_change_password = True
             user.save()
-            
+
             self.stdout.write(
                 self.style.SUCCESS(f"Created beta user: {email}")
             )

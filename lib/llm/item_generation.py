@@ -6,18 +6,15 @@ import base64
 import logging
 from functools import lru_cache
 from io import BytesIO
-from pathlib import Path
 from typing import BinaryIO
 
 # Third-party imports
 import pillow_heif
 from django.conf import settings
-from django.core.files.base import ContentFile
 from PIL import Image as PILImage
 
 # Local application imports
 from aws_utils.region import AWSRegion
-from core.models import Unit, Item
 from lib.llm.llm_handler import StructuredLangChainHandler
 from lib.llm.utils import get_llm_call
 from schemas.item_generation import GeneratedItem

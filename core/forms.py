@@ -613,10 +613,10 @@ class PasswordChangeForm(forms.Form):
         cleaned_data = super().clean()
         password1 = cleaned_data.get("new_password1")
         password2 = cleaned_data.get("new_password2")
-        
+
         if password1 and password2 and password1 != password2:
             raise ValidationError("The two password fields didn't match.")
-        
+
         return cleaned_data
 
     def save(self, commit=True):
