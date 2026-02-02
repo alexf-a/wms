@@ -24,14 +24,15 @@ from lib.llm.llm_search import find_item_location
 
 from .forms import (
     AccountForm,
-    WMSUserAuthForm,
     ItemForm,
     ItemSearchForm,
+    PasswordChangeForm,
     StorageSpaceForm,
     UnitForm,
+    WMSUserAuthForm,
     WMSUserCreationForm,
 )
-from .models import Unit, Item
+from .models import Item, Unit
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +110,11 @@ def register_view(request: HttpRequest) -> HttpResponse:
     Returns:
         The rendered registration page or a redirect to the home page.
     """
+    # Check if registration is enabled
+    if not settings.REGISTRATION_ENABLED:
+        messages.error(request, "Registration is currently disabled. Please contact support for access.")
+        return redirect("login")
+
     if request.method == "POST":
         form = WMSUserCreationForm(request.POST)
         if form.is_valid():
@@ -133,18 +139,18 @@ def login_view(request: HttpRequest) -> HttpResponse:
     # Redirect if already authenticated
     if request.user.is_authenticated:
         return redirect("home_view")
-    
+
     if request.method == "POST":
         form = WMSUserAuthForm(request, data=request.POST)
         if form.is_valid():
             user = form.get_user()
             login(request, user)
             # Redirect to 'next' parameter or home
-            next_page = request.GET.get('next', 'home_view')
+            next_page = request.GET.get("next", "home_view")
             return redirect(next_page)
     else:
         form = WMSUserAuthForm(request)
-    
+
     return render(request, "core/auth/login.html", {"form": form})
 
 
@@ -167,6 +173,46 @@ def account_view(request: HttpRequest) -> HttpResponse:
     else:
         form = AccountForm(instance=request.user)
     return render(request, "core/account.html", {"form": form, "active_nav": "account"})
+
+
+@login_required
+def change_password_view(request: HttpRequest) -> HttpResponse:
+    """Handle password change for users.
+    
+    Beta users with must_change_password=True will be forced to this view.
+    All users can voluntarily change their password.
+
+    Args:
+        request: The HTTP request object.
+
+    Returns:
+        The rendered password change page or redirect to home on success.
+    """
+    # Check if this is a forced password change
+    is_forced = getattr(request.user, "must_change_password", False)
+
+    if request.method == "POST":
+        form = PasswordChangeForm(request.user, request.POST)
+        if form.is_valid():
+            user = form.save(commit=False)
+            # Clear the must_change_password flag
+            user.must_change_password = False
+            user.save()
+
+            # Re-login user with new password (update session hash)
+            from django.contrib.auth import update_session_auth_hash
+            update_session_auth_hash(request, user)
+
+            messages.success(request, "Your password has been changed successfully.")
+            return redirect("home_view")
+    else:
+        form = PasswordChangeForm(request.user)
+
+    return render(request, "core/auth/change_password.html", {
+        "form": form,
+        "is_forced": is_forced,
+    })
+
 
 def home_view(request: HttpRequest) -> HttpResponse:
     """Render the home page.
@@ -217,16 +263,16 @@ def create_storage_view(request: HttpRequest) -> HttpResponse:
         form = StorageSpaceForm(request.POST, user=request.user)
         if form.is_valid():
             created_object = form.save()
-            
+
             # Redirect to the appropriate detail page
-            if hasattr(created_object, 'access_token'):  # It's a Unit
-                return redirect('unit_detail', user_id=request.user.id, access_token=created_object.access_token)
-            else:  # It's a Location - redirect to list_units for now (no location detail view exists)
-                messages.success(request, f"Location '{created_object.name}' created successfully!")
-                return redirect('expand_inventory')
+            if hasattr(created_object, "access_token"):  # It's a Unit
+                return redirect("unit_detail", user_id=request.user.id, access_token=created_object.access_token)
+            # It's a Location - redirect to list_units for now (no location detail view exists)
+            messages.success(request, f"Location '{created_object.name}' created successfully!")
+            return redirect("expand_inventory")
     else:
         form = StorageSpaceForm(user=request.user)
-    
+
     return render(request, "core/create_storage.html", {"form": form})
 
 @login_required
@@ -393,7 +439,7 @@ def unit_edit_view(request: HttpRequest, user_id: int, access_token: str) -> Htt
         The rendered unit edit page or a redirect to the unit detail page.
     """
     unit = get_object_or_404(Unit, user_id=user_id, access_token=access_token)
-    
+
     # Check user permissions
     if unit.user != request.user:
         raise Http404("Unit not found")
@@ -429,7 +475,7 @@ def unit_delete_view(request: HttpRequest, user_id: int, access_token: str) -> H
         Redirect to the units list page.
     """
     unit = get_object_or_404(Unit, user_id=user_id, access_token=access_token)
-    
+
     # Check user permissions
     if unit.user != request.user:
         raise Http404("Unit not found")
@@ -498,36 +544,41 @@ def extract_item_features_api(request: HttpRequest) -> JsonResponse:
     Returns:
         JsonResponse with extracted 'name' and 'description' fields.
     """
+    logger.info("[ExtractAPI] Request received - method=%s, user=%s", request.method, request.user)
+
     if request.method != "POST":
+        logger.warning("[ExtractAPI] Invalid method: %s", request.method)
         return JsonResponse({"error": "POST method required"}, status=405)
 
     # Debug logging for file upload issues
-    logger.debug("Extract API - FILES keys: %s, POST keys: %s, Content-Type: %s",
+    logger.info("[ExtractAPI] FILES keys: %s, POST keys: %s, Content-Type: %s",
                  list(request.FILES.keys()),
                  list(request.POST.keys()),
                  request.content_type)
 
     if "image" not in request.FILES:
-        logger.debug("No 'image' in FILES. Full FILES: %s", request.FILES)
+        logger.warning("[ExtractAPI] No 'image' in FILES. Full FILES: %s", request.FILES)
         return JsonResponse({"error": "No image provided"}, status=400)
 
     image_file = request.FILES["image"]
-    logger.debug("Got image file: %s, size: %s", image_file.name, image_file.size)
+    logger.info("[ExtractAPI] Got image file: name=%s, size=%s, content_type=%s",
+                image_file.name, image_file.size, getattr(image_file, "content_type", "unknown"))
 
     try:
         _validate_image_upload(image_file)
-        logger.debug("Calling extract_item_features_from_image...")
+        logger.info("[ExtractAPI] Image validation passed, calling LLM...")
         result = extract_item_features_from_image(image_file.file)
-        logger.debug("Extraction successful: name=%s", result.name)
+        logger.info("[ExtractAPI] LLM extraction successful: name=%s", result.name)
         return JsonResponse({
             "name": result.name,
             "description": result.description
         })
     except ImageValidationError as validation_error:
-        logger.debug("Image validation error: %s", validation_error)
+        logger.warning("[ExtractAPI] Image validation error: %s", validation_error)
         return JsonResponse({"error": str(validation_error)}, status=400)
-    except Exception:
-        logger.exception("Error extracting item features")
+    except Exception as e:
+        logger.error("[ExtractAPI] Exception during extraction: %s: %s", type(e).__name__, str(e))
+        logger.error("[ExtractAPI] Full traceback:\n%s", traceback.format_exc())
         return JsonResponse({"error": "Failed to process image"}, status=500)
 
 

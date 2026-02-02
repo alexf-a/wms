@@ -23,6 +23,7 @@ poetry.lock
 
 .debugging
 deploy/containers.json
+containers.json.bak
 
 .cache
 

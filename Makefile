@@ -17,7 +17,7 @@ ARCH_TAG?=amd64
 # Install with: cd /tmp && git clone https://github.com/paxan/lightsailctl.git -b paxan/image-push-bug-fixes && cd lightsailctl && go install ./...
 export PATH := $(PATH):$(HOME)/go/bin
 
-.PHONY: docker-build deploy up down create push install-lightsailctl-fix sync-env local-up update-hosts update-image local-https caddy-trust caddy-export-ca local-https-down
+.PHONY: docker-build deploy up down create push install-lightsailctl-fix sync-env local-up update-image local-https caddy-trust caddy-export-ca local-https-down
 
 # =============================================================================
 # Helper Functions for Local HTTPS Setup
@@ -80,7 +80,7 @@ docker-build:
 	docker build --platform $(PLATFORM) -t $(SVC):$(ARCH_TAG) .
 
 create:
-	aws lightsail create-container-service --region $(REGION) --service-name $(SVC) --power $(POWER) --scale $(SCALE)
+	aws lightsail create-container-service --region $(REGION) --service-name $(SVC) --power $(POWER) --scale $(SCALE) --no-cli-pager
 
 # Install the patched lightsailctl to fix the "image push response does not contain the image digest" error
 install-lightsailctl-fix:
@@ -100,7 +100,7 @@ install-lightsailctl-fix:
 
 push:
 	# Use the patched lightsailctl with specified platform image to avoid digest extraction issues
-	aws lightsail push-container-image --region $(REGION) --service-name $(SVC) --label web --image $(SVC):$(ARCH_TAG)
+	aws lightsail push-container-image --region $(REGION) --service-name $(SVC) --label web --image $(SVC):$(ARCH_TAG) --no-cli-pager
 
 deploy:
 	@if [ ! -f $(CONTAINERS) ]; then echo "$(CONTAINERS) missing"; exit 1; fi
@@ -111,23 +111,17 @@ deploy:
 		--public-endpoint file://deploy/public-endpoint.json \
 		--no-cli-pager
 
-update-hosts:
-	@echo "Updating ALLOWED_HOSTS to $(SVC).$(HOST_SUFFIX)"
-	@sed -i.bak -E 's/"ALLOWED_HOSTS": "[^"]*"/"ALLOWED_HOSTS": "$(SVC).$(HOST_SUFFIX)"/' $(CONTAINERS)
-	@echo "Updating CSRF_TRUSTED_ORIGINS to https://$(SVC).$(HOST_SUFFIX)"
-	@sed -i.bak -E 's|"CSRF_TRUSTED_ORIGINS": "[^"]*"|"CSRF_TRUSTED_ORIGINS": "https://$(SVC).$(HOST_SUFFIX)"|' $(CONTAINERS)
-
 update-image:
 	@echo "Updating containers.json with pushed image..."
-	$(eval IMAGE_NAME := $(shell aws lightsail get-container-images --region $(REGION) --service-name $(SVC) --query 'containerImages[0].image' --output text))
+	$(eval IMAGE_NAME := $(shell aws lightsail get-container-images --region $(REGION) --service-name $(SVC) --query 'containerImages[0].image' --output text --no-cli-pager))
 	@sed -i.bak 's|"image": ":.*"|"image": "$(IMAGE_NAME)"|' deploy/containers.json
 	@echo "Updated image reference to: $(IMAGE_NAME)"
 
 # Pushes container to AWS lightsail
-up: docker-build push update-image update-hosts deploy
+up: docker-build push update-image deploy
 
 down:
-	aws lightsail delete-container-service --region $(REGION) --service-name $(SVC)
+	aws lightsail delete-container-service --region $(REGION) --service-name $(SVC) --no-cli-pager
  
 sync-env:
 	@mkdir -p .cache

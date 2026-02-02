@@ -23,10 +23,10 @@ def user_item_image_upload_path(instance: "Item", filename: str) -> str:
     """
     # Generate a unique prefix to prevent collisions
     unique_id = uuid.uuid4().hex[:8]
-    
+
     # Preserve the original file extension
     ext = Path(filename).suffix
     safe_name = Path(filename).stem[:MAX_FILENAME_LENGTH]
     unique_filename = f"{unique_id}_{safe_name}{ext}"
-    
+
     return f"users/{instance.unit.user.id}/item_images/{unique_filename}"

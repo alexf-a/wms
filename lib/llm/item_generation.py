@@ -3,26 +3,26 @@ from __future__ import annotations
 
 # Standard library imports
 import base64
+import logging
 from functools import lru_cache
 from io import BytesIO
-from pathlib import Path
 from typing import BinaryIO
 
 # Third-party imports
 import pillow_heif
 from django.conf import settings
-from django.core.files.base import ContentFile
 from PIL import Image as PILImage
 
 # Local application imports
 from aws_utils.region import AWSRegion
-from core.models import Unit, Item
 from lib.llm.llm_handler import StructuredLangChainHandler
 from lib.llm.utils import get_llm_call
 from schemas.item_generation import GeneratedItem
 
 # Register HEIF/HEIC opener for Pillow
 pillow_heif.register_heif_opener()
+
+logger = logging.getLogger(__name__)
 
 
 @lru_cache(maxsize=1)
@@ -32,11 +32,16 @@ def _get_cached_handler() -> StructuredLangChainHandler:
     Returns:
         StructuredLangChainHandler: Cached handler instance.
     """
+    logger.info("[ItemGen] Creating cached handler...")
     llm_call = get_llm_call("item_generation/item_image_generation")
+    logger.info("[ItemGen] LLM call loaded: model_id=%s", llm_call.model_id)
     # Get the region from Django settings, defaulting to US_WEST_2
     region_name = settings.AWS_BEDROCK_REGION_NAME
+    logger.info("[ItemGen] Using AWS region: %s", region_name)
     region = AWSRegion(region_name)
-    return StructuredLangChainHandler(llm_call=llm_call, output_schema=GeneratedItem, region=region)
+    handler = StructuredLangChainHandler(llm_call=llm_call, output_schema=GeneratedItem, region=region)
+    logger.info("[ItemGen] Handler created successfully")
+    return handler
 
 def get_img_str(img_file: BinaryIO) -> str:
     """Create a JPEG thumbnail from an image file and return it as a base64 string.
@@ -74,8 +79,12 @@ def extract_item_features_from_image(img_file: BinaryIO) -> GeneratedItem:
     Returns:
         GeneratedItem: Parsed/generated item features inferred from the image.
     """
+    logger.info("[ItemGen] extract_item_features_from_image called")
     img_str = get_img_str(img_file)
+    logger.info("[ItemGen] Image converted to base64, length=%d chars", len(img_str))
     # Get cached handler and extract features
     handler = _get_cached_handler()
+    logger.info("[ItemGen] Calling LLM with image...")
     result: GeneratedItem = handler.query_with_image(img_str)
+    logger.info("[ItemGen] LLM returned: name=%s", result.name)
     return result
