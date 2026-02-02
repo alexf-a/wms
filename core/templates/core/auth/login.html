@@ -14,10 +14,12 @@
             </div>
             <h1 class="md-typescale-headline-small m3-card__title">Welcome Back</h1>
             
-            {% if error %}
-            <article class="message message-error">
-                {{ error }}
-            </article>
+            {% if form.non_field_errors %}
+            <div class="m3-error-banner" role="alert" style="margin-bottom: 1rem; padding: 1rem; background-color: var(--md-sys-color-error-container); color: var(--md-sys-color-on-error-container); border-radius: 12px;">
+                {% for error in form.non_field_errors %}
+                    <p style="margin: 0;">{{ error }}</p>
+                {% endfor %}
+            </div>
             {% endif %}
             
             <form method="post" class="m3-form-vertical">
