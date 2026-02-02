@@ -155,6 +155,135 @@ class TestAccountView:
         assert any("updated successfully" in str(m) for m in messages)
 
 
+@pytest.mark.django_db
+class TestChangePasswordView:
+    """Tests for password change view."""
+
+    def test_change_password_requires_authentication(self, client: Client):
+        """Test password change view requires login."""
+        response = client.get(reverse("change_password"))
+        assert response.status_code == http.HTTPStatus.FOUND
+        assert "login" in response.url
+
+    def test_change_password_get_renders_form(self, client: Client, user: User):
+        """Test GET request renders password change form."""
+        client.force_login(user)
+        response = client.get(reverse("change_password"))
+        assert response.status_code == http.HTTPStatus.OK
+        assert "form" in response.context
+        assert response.context["is_forced"] is False
+
+    def test_change_password_get_shows_forced_flag(self, client: Client, user_must_change_password: User):
+        """Test GET request shows is_forced=True when must_change_password is set."""
+        client.force_login(user_must_change_password)
+        response = client.get(reverse("change_password"))
+        assert response.status_code == http.HTTPStatus.OK
+        assert response.context["is_forced"] is True
+
+    def test_change_password_post_success(self, client: Client, user: User):
+        """Test POST request with valid data changes password."""
+        client.force_login(user)
+        response = client.post(
+            reverse("change_password"),
+            {
+                "current_password": "testpass123",
+                "new_password1": "NewSecurePass123!",
+                "new_password2": "NewSecurePass123!",
+            },
+        )
+        assert response.status_code == http.HTTPStatus.FOUND
+        assert response.url == reverse("home_view")
+
+        # Verify password was changed
+        user.refresh_from_db()
+        assert user.check_password("NewSecurePass123!")
+
+        # Verify success message
+        messages = list(get_messages(response.wsgi_request))
+        assert any("changed successfully" in str(m) for m in messages)
+
+    def test_change_password_clears_must_change_flag(self, client: Client, user_must_change_password: User):
+        """Test POST request clears must_change_password flag on success."""
+        client.force_login(user_must_change_password)
+        assert user_must_change_password.must_change_password is True
+
+        response = client.post(
+            reverse("change_password"),
+            {
+                "current_password": "testpass123",
+                "new_password1": "NewSecurePass123!",
+                "new_password2": "NewSecurePass123!",
+            },
+        )
+        assert response.status_code == http.HTTPStatus.FOUND
+
+        # Verify flag was cleared
+        user_must_change_password.refresh_from_db()
+        assert user_must_change_password.must_change_password is False
+
+    def test_change_password_post_invalid_current_password(self, client: Client, user: User):
+        """Test POST request with invalid current password shows errors."""
+        client.force_login(user)
+        response = client.post(
+            reverse("change_password"),
+            {
+                "current_password": "wrongpassword",
+                "new_password1": "NewSecurePass123!",
+                "new_password2": "NewSecurePass123!",
+            },
+        )
+        assert response.status_code == http.HTTPStatus.OK
+        assert "form" in response.context
+        assert response.context["form"].errors
+
+    def test_change_password_post_weak_password(self, client: Client, user: User):
+        """Test POST request with weak password shows errors."""
+        client.force_login(user)
+        response = client.post(
+            reverse("change_password"),
+            {
+                "current_password": "testpass123",
+                "new_password1": "weak",  # Too short
+                "new_password2": "weak",
+            },
+        )
+        assert response.status_code == http.HTTPStatus.OK
+        assert "form" in response.context
+        assert response.context["form"].errors
+
+    def test_change_password_post_mismatched_passwords(self, client: Client, user: User):
+        """Test POST request with mismatched passwords shows errors."""
+        client.force_login(user)
+        response = client.post(
+            reverse("change_password"),
+            {
+                "current_password": "testpass123",
+                "new_password1": "NewSecurePass123!",
+                "new_password2": "DifferentPassword123!",
+            },
+        )
+        assert response.status_code == http.HTTPStatus.OK
+        assert "form" in response.context
+        assert response.context["form"].errors
+
+    def test_change_password_maintains_session(self, client: Client, user: User):
+        """Test password change maintains user session (doesn't log out)."""
+        client.force_login(user)
+        
+        response = client.post(
+            reverse("change_password"),
+            {
+                "current_password": "testpass123",
+                "new_password1": "NewSecurePass123!",
+                "new_password2": "NewSecurePass123!",
+            },
+        )
+        
+        # User should still be authenticated after password change
+        assert response.wsgi_request.user.is_authenticated
+        assert response.wsgi_request.user == user
+
+
 # =============================================================================
 # Public Views
 # =============================================================================
