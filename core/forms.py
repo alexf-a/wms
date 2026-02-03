@@ -13,7 +13,6 @@ from .models import (
     DIMENSION_UNIT_CHOICES,
     QUANTITY_CATEGORY_CHOICES,
     QUANTITY_UNIT_CHOICES,
-    CATEGORY_2_UNITS,
     Item,
     Location,
     Unit,
