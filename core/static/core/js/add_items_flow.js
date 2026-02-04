@@ -20,14 +20,16 @@ async function compressImage(file) {
     return new Promise((resolve, reject) => {
         const img = new Image();
         const objectUrl = URL.createObjectURL(file);
-        
+
         img.onload = () => {
+            // Revoke the temporary object URL used to load the image into the
+            // Image element; we keep the preview URL management separate.
             URL.revokeObjectURL(objectUrl);
-            
+
             // Calculate new dimensions maintaining aspect ratio
             let { width, height } = img;
             const originalSize = `${width}x${height}`;
-            
+
             if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION) {
                 if (width > height) {
                     height = Math.round(height * (MAX_IMAGE_DIMENSION / width));
@@ -37,15 +39,15 @@ async function compressImage(file) {
                     height = MAX_IMAGE_DIMENSION;
                 }
             }
-            
+
             // Create canvas and draw resized image
             const canvas = document.createElement('canvas');
             canvas.width = width;
             canvas.height = height;
-            
+
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, width, height);
-            
+
             // Convert to JPEG blob
             canvas.toBlob(
                 (blob) => {
@@ -60,12 +62,12 @@ async function compressImage(file) {
                 JPEG_QUALITY
             );
         };
-        
+
         img.onerror = () => {
             URL.revokeObjectURL(objectUrl);
             reject(new Error('Failed to load image for compression'));
         };
-        
+
         img.src = objectUrl;
     });
 }
@@ -98,6 +100,12 @@ document.addEventListener('DOMContentLoaded', function() {
     let isProcessing = false;
     let lastFileTimestamp = 0;
     
+    /**
+     * Revoke and clear the in-memory object URL used for the preview image.
+     * Ensures browser memory is released when previews are changed or removed.
+     *
+     * @returns {void}
+     */
     const cleanupObjectUrl = () => {
         if (currentObjectUrl) {
             URL.revokeObjectURL(currentObjectUrl);
@@ -105,7 +113,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
-    // Process the selected image file
+    /**
+     * Process the selected image file: compress, preview, upload to AI API,
+     * and populate the form with returned values.
+     *
+     * @param {File} file - The selected image file from the input element.
+     * @returns {Promise<void>} Resolves when processing and UI updates complete.
+     */
     async function processImageFile(file) {
         debugLog('[AddItems] processImageFile called', file ? file.name : 'no file');
         
@@ -201,7 +215,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Handle image selection - works for both camera and file upload
+    /**
+     * Handle a file input `change` event and begin processing the selected file.
+     *
+     * @param {Event} e - The input `change` event containing the FileList.
+     * @returns {void}
+     */
     function handleImageSelect(e) {
         const files = e.target.files;
         if (files && files.length > 0 && files[0]) {
@@ -227,4 +246,74 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.addEventListener('pagehide', cleanupObjectUrl);
     window.addEventListener('beforeunload', cleanupObjectUrl);
+
+    // ============================================
+    // Quantity Category Filtering
+    // ============================================
+    initQuantityCategoryFilter();
 });
+
+/**
+ * Initialize quantity category filter functionality.
+ * Filters the quantity_unit dropdown based on selected quantity_category.
+ * Can be called from other scripts (e.g., item_edit page).
+ *
+ * @returns {void}
+ */
+function initQuantityCategoryFilter() {
+    const categoryRadios = document.querySelectorAll('input[name="quantity_category"]');
+    const quantityUnitSelect = document.getElementById('id_quantity_unit');
+    
+    if (!categoryRadios.length || !quantityUnitSelect) {
+        console.log('[AddItems] Quantity fields not found, skipping filter init');
+        return;
+    }
+    
+    console.log('[AddItems] Initializing quantity category filter');
+    
+    /**
+     * Filter quantity unit options based on selected category.
+     *
+     * Hides and disables options that don't match the provided category so the
+     * user can only select units relevant to the chosen measurement type.
+     *
+     * @param {string} category - The selected category (e.g., "count", "mass").
+     * @returns {void}
+     */
+    function filterQuantityUnits(category) {
+        const options = quantityUnitSelect.querySelectorAll('option[data-category]');
+        const currentValue = quantityUnitSelect.value;
+        let currentValueVisible = false;
+        
+        options.forEach(option => {
+            const optionCategory = option.getAttribute('data-category');
+            const isVisible = optionCategory === category;
+            option.style.display = isVisible ? '' : 'none';
+            option.disabled = !isVisible;
+            
+            if (isVisible && option.value === currentValue) {
+                currentValueVisible = true;
+            }
+        });
+        
+        // If current selection is no longer visible, reset to empty
+        if (!currentValueVisible && currentValue) {
+            quantityUnitSelect.value = '';
+        }
+        
+        console.log('[AddItems] Filtered quantity units for category:', category);
+    }
+    
+    // Add change listeners to category radios
+    categoryRadios.forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            filterQuantityUnits(e.target.value);
+        });
+    });
+    
+    // Apply initial filter based on checked radio
+    const checkedRadio = document.querySelector('input[name="quantity_category"]:checked');
+    if (checkedRadio) {
+        filterQuantityUnits(checkedRadio.value);
+    }
+}
