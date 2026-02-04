@@ -596,7 +596,9 @@ class Item(models.Model):
         if self.quantity is not None and self.quantity_unit:
             # Get the display name for the unit
             unit_display = UNIT_2_NAME.get(self.quantity_unit, self.quantity_unit)
-            return f"{self.quantity} {unit_display.lower()}"
+            # Format as integer for count, one decimal for others
+            formatted_value = int(self.quantity) if self.quantity_unit == "count" else round(self.quantity, 1)
+            return f"{formatted_value} {unit_display.lower()}"
         return None
 
     def to_search_input(self) -> ItemSearchInput:
