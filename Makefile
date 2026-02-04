@@ -316,3 +316,7 @@ local-https-down:
 	@echo ""
 	@echo "Note: Docker volumes (wms_caddy_data, wms_caddy_config) are preserved."
 	@echo "To remove volumes completely, run: docker volume rm wms_caddy_data wms_caddy_config"
+
+refresh-local:
+	@docker-compose exec web python manage.py collectstatic --noinput
+	@docker-compose restart web
