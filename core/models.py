@@ -201,6 +201,52 @@ DIMENSION_UNIT_CHOICES = [
     ("m", "Meters"),
 ]
 
+# Quantity units - single source of truth
+# Map unit symbol to display name
+UNIT_2_NAME = {
+    "count": "Count",
+    "mg": "Milligrams",
+    "g": "Grams",
+    "kg": "Kilograms",
+    "oz": "Ounces",
+    "lb": "Pounds",
+    "mL": "Milliliters",
+    "L": "Liters",
+    "fl_oz": "Fluid Ounces",
+    "gal": "Gallons",
+    "mm": "Millimeters",
+    "cm": "Centimeters",
+    "m": "Meters",
+    "in": "Inches",
+    "ft": "Feet",
+}
+
+# Map category to set of unit symbols
+CATEGORY_2_UNITS = {
+    "count": {"count"},
+    "mass": {"mg", "g", "kg", "oz", "lb"},
+    "volume": {"mL", "L", "fl_oz", "gal"},
+    "length": {"mm", "cm", "m", "in", "ft"},
+}
+
+# Derive quantity category choices for radio buttons
+QUANTITY_CATEGORY_CHOICES = [
+    (category, category.capitalize())
+    for category in CATEGORY_2_UNITS
+]
+
+# Derive quantity unit choices for Django model field (grouped format)
+QUANTITY_UNIT_CHOICES = [
+    (category.capitalize(), [(unit, UNIT_2_NAME[unit]) for unit in units])
+    for category, units in CATEGORY_2_UNITS.items()
+]
+
+# Reverse mapping: unit -> category (for edit pre-selection)
+CATEGORY_BY_UNIT = {}
+for category, units in CATEGORY_2_UNITS.items():
+    for unit in units:
+        CATEGORY_BY_UNIT[unit] = category
+
 
 class Unit(StorageSpace):
     """Generic storage unit (bin, locker, garage, van, shelf, workbench, etc.).
@@ -496,10 +542,33 @@ class Item(models.Model):
     image = models.ImageField(upload_to=user_item_image_upload_path, blank=True, null=True)
     unit = models.ForeignKey(Unit, related_name="items", on_delete=models.CASCADE)
 
+    # Quantity tracking (optional)
+    quantity = models.FloatField(blank=True, null=True, help_text="Amount of this item")
+    quantity_unit = models.CharField(
+        max_length=10,
+        choices=QUANTITY_UNIT_CHOICES,
+        blank=True,
+        default="",
+        help_text="Unit of measurement for quantity"
+    )
+
     class Meta:
         """Model constraints for Item."""
 
         unique_together: ClassVar = ("user", "name")
+        constraints: ClassVar = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(quantity__isnull=True, quantity_unit="") |
+                    models.Q(quantity__isnull=False) & ~models.Q(quantity_unit="")
+                ),
+                name="item_quantity_all_or_nothing"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(quantity__isnull=True) | models.Q(quantity__gte=0),
+                name="item_quantity_non_negative"
+            ),
+        ]
 
     def __str__(self) -> str:
         return self.name
@@ -516,6 +585,19 @@ class Item(models.Model):
             raise ValueError(msg)
 
         super().save(*args, **kwargs)
+
+    @property
+    def formatted_quantity(self) -> str | None:
+        """Return formatted quantity string or None.
+
+        Returns:
+            str | None: Formatted quantity like "5 kg" or "100 count", or None if no quantity set.
+        """
+        if self.quantity is not None and self.quantity_unit:
+            # Get the display name for the unit
+            unit_display = UNIT_2_NAME.get(self.quantity_unit, self.quantity_unit)
+            return f"{self.quantity} {unit_display.lower()}"
+        return None
 
     def to_search_input(self) -> ItemSearchInput:
         """Convert this Item instance to an ItemSearchInput for LLM search.
