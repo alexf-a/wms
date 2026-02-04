@@ -35,7 +35,9 @@ ignore = [
     "D105", # Docstring for magic methods
     "D413", # Blank line at end of docstring
     "D204", # Blank line after docstring
-    "COM812" # Trailing comma in function def
+    "COM812", # Trailing comma in function def
+    "FBT001", # Boolean-typed positional argument in function definition
+    "FBT002", # Boolean default positional argument in function definition
 ]
 
 
