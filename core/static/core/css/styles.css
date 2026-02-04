@@ -1763,6 +1763,122 @@ input.search-input::placeholder,
 }
 
 /* ===================================
+   Quantity Controls
+   =================================== */
+
+.m3-item-card-wrapper {
+    display: flex;
+    flex-direction: column;
+    margin: 8px 0;
+}
+
+.m3-item-card-wrapper + .m3-item-card-wrapper {
+    margin-top: 8px;
+}
+
+.m3-item-card-wrapper .m3-list-item {
+    margin: 0;
+}
+
+.m3-quantity-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 8px 16px 12px;
+    background-color: var(--md-sys-color-surface);
+    border-radius: 0 0 var(--md-sys-shape-corner-large) var(--md-sys-shape-corner-large);
+}
+
+.qty-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--md-sys-shape-corner-full);
+    border: none;
+    background-color: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+    font-size: 20px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.qty-btn:hover {
+    background-color: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+    box-shadow: var(--md-sys-elevation-1);
+}
+
+.qty-btn:active {
+    transform: scale(0.95);
+    box-shadow: none;
+}
+
+.qty-value {
+    min-width: 80px;
+    text-align: center;
+    font-family: var(--md-sys-typescale-body-large-font-family);
+    font-size: var(--md-sys-typescale-body-large-font-size);
+    font-weight: 500;
+    color: var(--md-sys-color-on-surface);
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: var(--md-sys-shape-corner-small);
+    transition: background-color 0.2s ease;
+    user-select: none;
+}
+
+.qty-value:hover {
+    background-color: var(--md-sys-color-surface-container-highest);
+}
+
+.qty-value:focus {
+    outline: 2px solid var(--md-sys-color-primary);
+    outline-offset: 2px;
+}
+
+/* Zero quantity state - red styling */
+.qty-zero .qty-btn {
+    background-color: var(--md-sys-color-error);
+    color: var(--md-sys-color-on-error);
+}
+
+.qty-zero .qty-btn:hover {
+    background-color: var(--md-sys-color-error-container);
+    color: var(--md-sys-color-on-error-container);
+}
+
+.qty-zero .qty-value {
+    color: var(--md-sys-color-error);
+}
+
+/* Inline input for click-to-edit */
+.qty-input {
+    min-width: 80px;
+    max-width: 100px;
+    text-align: center;
+    font-family: var(--md-sys-typescale-body-large-font-family);
+    font-size: var(--md-sys-typescale-body-large-font-size);
+    font-weight: 500;
+    color: var(--md-sys-color-on-surface);
+    background-color: var(--md-sys-color-surface-container);
+    border: 2px solid var(--md-sys-color-primary);
+    border-radius: var(--md-sys-shape-corner-small);
+    padding: 4px 8px;
+    outline: none;
+}
+
+.qty-input:focus {
+    border-color: var(--md-sys-color-primary);
+    box-shadow: 0 0 0 2px var(--md-sys-color-primary-container);
+}
+
+/* ===================================
    Material 3 Home Page Components
    =================================== */
 

@@ -46,5 +46,6 @@ urlpatterns = [
     path("item/<int:item_id>/delete/", views.item_delete_view, name="item_delete"),
     path("find-item/", views.item_search_view, name="item_search"),
     path("api/extract-item-features/", views.extract_item_features_api, name="extract_item_features_api"),
+    path("api/item/<int:item_id>/quantity/", views.update_item_quantity_api, name="update_item_quantity_api"),
     path("caddy-ca/download/", views.caddy_ca_download_view, name="caddy_ca_download"),
 ]
