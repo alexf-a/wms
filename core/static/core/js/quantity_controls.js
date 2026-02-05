@@ -212,7 +212,9 @@ function handleQuantityButton(e) {
     // Update UI immediately
     // Use globally available UNIT_2_NAME passed from Python
     const unitDisplay = (window.WMS_UNIT_2_NAME && window.WMS_UNIT_2_NAME[quantityUnit]) || quantityUnit;
-    const formatted = `${newQuantity} ${unitDisplay.toLowerCase()}`;
+    // Format: integer for count, decimal for others
+    const formattedValue = quantityUnit === 'count' ? Math.round(newQuantity) : newQuantity;
+    const formatted = `${formattedValue} ${unitDisplay.toLowerCase()}`;
     updateUI(wrapper, newQuantity, formatted);
     
     // Queue the actual API request
@@ -224,7 +226,8 @@ function handleQuantityButton(e) {
         } catch (error) {
             console.error('[QuantityControls] Update failed:', error);
             // Revert to previous value
-            const prevFormatted = `${currentQuantity} ${unitDisplay.toLowerCase()}`;
+            const prevFormattedValue = quantityUnit === 'count' ? Math.round(currentQuantity) : currentQuantity;
+            const prevFormatted = `${prevFormattedValue} ${unitDisplay.toLowerCase()}`;
             updateUI(wrapper, currentQuantity, prevFormatted);
             // Show error snackbar
             if (typeof showErrorSnackbar === 'function') {
@@ -358,13 +361,16 @@ function setupLongPress(button) {
     let longPressTimer = null;
     let repeatTimer = null;
     let repeatCount = 0;
+    let didRepeat = false;
     
     const startLongPress = (e) => {
         e.preventDefault();
+        didRepeat = false;
         
         // Initial delay before repeat starts
         longPressTimer = setTimeout(() => {
             repeatCount = 0;
+            didRepeat = true;
             
             const repeat = () => {
                 repeatCount++;
@@ -384,7 +390,9 @@ function setupLongPress(button) {
         }, 500); // Start repeating after 500ms hold
     };
     
-    const stopLongPress = () => {
+    const stopLongPress = (e) => {
+        const wasQuickTap = !didRepeat;
+        
         if (longPressTimer) {
             clearTimeout(longPressTimer);
             longPressTimer = null;
@@ -394,6 +402,17 @@ function setupLongPress(button) {
             repeatTimer = null;
         }
         repeatCount = 0;
+        didRepeat = false;
+        
+        // If this was a quick tap on touch (not a long-press), manually trigger the click handler
+        // since preventDefault() in touchstart blocked the synthetic click event
+        if (e && e.type === 'touchend' && wasQuickTap) {
+            handleQuantityButton({ 
+                currentTarget: button, 
+                preventDefault: () => {}, 
+                stopPropagation: () => {} 
+            });
+        }
     };
     
     // Mouse events
