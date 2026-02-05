@@ -3044,16 +3044,22 @@ input.search-input::placeholder,
    Quantity Section Styles
    ========================================== */
 
-/* Extends base fieldset with M3 surface styling */
+/* Title sits above a bordered body (like other form labels). */
 .quantity-section {
-    border-color: var(--md-sys-color-outline-variant);
     margin-top: var(--wms-space-md);
     margin-bottom: 0;
-    background-color: var(--md-sys-color-surface-container-lowest);
 }
 
-.quantity-section legend {
+.quantity-section__title {
+    margin: 0 0 var(--wms-space-sm) 0;
     color: var(--md-sys-color-on-surface-variant);
+}
+
+.quantity-section__body {
+    border: 1px solid var(--md-sys-color-outline);
+    border-radius: var(--wms-radius-md);
+    padding: var(--wms-space-md);
+    background-color: var(--md-sys-color-surface-container-lowest);
 }
 
 .m3-form-optional-text {
