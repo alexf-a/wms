@@ -58,6 +58,11 @@
                 <p class="md-typescale-body-medium m3-card__description" style="color: var(--md-sys-color-on-surface-variant);"><em>No description available</em></p>
             {% endif %}
             
+            {% if item.formatted_quantity %}
+                <h3 class="md-typescale-title-medium" style="margin-top: var(--wms-space-md); margin-bottom: var(--wms-space-xs);">Quantity</h3>
+                <p class="md-typescale-body-medium">{{ item.formatted_quantity }}</p>
+            {% endif %}
+            
             {% if item.unit %}
                 <div class="m3-card m3-card--tonal" style="margin-top: var(--wms-space-md); padding: var(--wms-space-md);">
                     <p class="md-typescale-body-medium">
