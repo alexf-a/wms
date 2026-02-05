@@ -115,6 +115,41 @@
                         </select>
                     </div>
                     
+                    <!-- Quantity Section (Optional) -->
+                    <fieldset class="m3-form-section quantity-section">
+                        <legend class="md-typescale-title-small m3-form-section-title">Quantity <span class="m3-form-optional-text">(optional)</span></legend>
+                        
+                        <!-- Quantity Category Radio Buttons -->
+                        <div class="m3-form-field">
+                            <label class="m3-form-label">Measurement Type</label>
+                            <div class="m3-radio-group" role="radiogroup" aria-label="Measurement type">
+                                {% for category in QUANTITY_CATEGORIES %}
+                                <label class="m3-radio-button">
+                                    <input type="radio" name="quantity_category" value="{{ category }}" class="m3-radio-input"{% if form.quantity_category.value == category or not form.quantity_category.value and forloop.first %} checked{% endif %}>
+                                    <span class="m3-radio-label">{{ category|capfirst }}</span>
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <!-- Quantity Amount and Unit (inline) -->
+                        <div class="m3-form-row quantity-row">
+                            <div class="m3-form-field m3-form-field--flex">
+                                <label for="id_quantity" class="m3-form-label">Amount</label>
+                                <input type="number" name="quantity" id="id_quantity" class="m3-text-field" step="0.01" min="0" value="{{ form.quantity.value|default:'' }}" placeholder="e.g., 12">
+                            </div>
+                            <div class="m3-form-field m3-form-field--flex">
+                                <label for="id_quantity_unit" class="m3-form-label">Unit</label>
+                                <select name="quantity_unit" id="id_quantity_unit" class="m3-text-field">
+                                    <option value="">Select...</option>
+                                    {% for opt in QUANTITY_UNIT_OPTIONS %}
+                                    <option value="{{ opt.value }}" data-category="{{ opt.category }}"{% if form.quantity_unit.value == opt.value %} selected{% endif %}>{{ opt.label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </fieldset>
+                    
                     <div class="m3-card__actions form-actions-spacing">
                         <button type="submit" class="m3-button m3-button-filled m3-button-standard">
                             <svg class="m3-button-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
