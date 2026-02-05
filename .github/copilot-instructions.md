@@ -21,6 +21,7 @@ WMS seeks to address both pain-points:
 - `schemas/*`: Data-schemas (represented as Pydantic Models) for different kinds of data, including synthetic data generating. 
 
 ## Development Guidelines
+- **Python Best Practices**: Follow Python coding best practices including annotations for all parameters types and function return types, and Ruff compatibility.
 - **Django Core**: Follow Django best practices for models, views, and forms.
 - **LLM Functionality**: Use the LLMHandler for all LLM queries, and ensure that LLMCall objects are used to encapsulate query parameters.
 - **Poetry**: Use Poetry for environment management, project configuration and to run scripts and tests. Ensure that the `pyproject.toml` file is updated with any new dependencies. Run all commands and scripts with `poetry run`
