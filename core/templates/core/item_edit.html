@@ -162,16 +162,6 @@
 
 {% block extra_js %}
 <script src="{% static 'core/js/ui_utils.js' %}"></script>
-<script src="{% static 'core/js/add_items_flow.js' %}"></script>
-{% if form.errors %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    {% for field, errors in form.errors.items %}
-    {% for error in errors %}
-    showErrorSnackbar("{{ error|escapejs }}");
-    {% endfor %}
-    {% endfor %}
-});
-</script>
-{% endif %}
+<script src="{% static 'core/js/quantity_category_filter.js' %}"></script>
+{% include "core/includes/form_error_snackbar_script.html" with form=form %}
 {% endblock %}
