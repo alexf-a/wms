@@ -537,7 +537,7 @@ class Item(models.Model):
     """
     user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="items", on_delete=models.CASCADE, editable=False)
     name = models.CharField(max_length=255)
-    description = models.TextField()
+    description = models.TextField(blank=True, default="")
     created_on = models.DateTimeField(auto_now_add=True)
     image = models.ImageField(upload_to=user_item_image_upload_path, blank=True, null=True)
     unit = models.ForeignKey(Unit, related_name="items", on_delete=models.CASCADE)
