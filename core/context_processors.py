@@ -7,7 +7,12 @@ from typing import Any
 from django.conf import settings
 from django.http import HttpRequest
 
-from .models import CATEGORY_2_UNITS, UNIT_2_NAME
+from .models import (
+    CATEGORY_2_UNITS,
+    ITEM_QUANTITY_DECIMAL_PLACES,
+    ITEM_QUANTITY_NON_COUNT_STEP,
+    UNIT_2_NAME,
+)
 
 
 def registration_settings(request: HttpRequest) -> dict[str, Any]:
@@ -38,6 +43,8 @@ def quantity_unit_options(request: HttpRequest) -> dict[str, Any]:
         Dictionary with:
             - QUANTITY_UNIT_OPTIONS: List of dicts with value, label, category keys
             - QUANTITY_CATEGORIES: List of category names for radio buttons
+            - QUANTITY_DECIMAL_PLACES: Number of decimal places for non-count quantities
+            - QUANTITY_NON_COUNT_STEP: Increment/decrement step for non-count quantities
     """
     # Build flat list of units with category info
     options: list[dict[str, str]] = [
@@ -56,4 +63,6 @@ def quantity_unit_options(request: HttpRequest) -> dict[str, Any]:
     return {
         "QUANTITY_UNIT_OPTIONS": options,
         "QUANTITY_CATEGORIES": categories,
+        "QUANTITY_DECIMAL_PLACES": ITEM_QUANTITY_DECIMAL_PLACES,
+        "QUANTITY_NON_COUNT_STEP": float(ITEM_QUANTITY_NON_COUNT_STEP),
     }
