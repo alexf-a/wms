@@ -34,7 +34,7 @@ function initQuantityCategoryFilter() {
         options.forEach(option => {
             const optionCategory = option.getAttribute('data-category');
             const isVisible = optionCategory === category;
-            option.style.display = isVisible ? '' : 'none';
+            option.hidden = !isVisible;
             option.disabled = !isVisible;
 
             if (isVisible && option.value === currentValue) {
