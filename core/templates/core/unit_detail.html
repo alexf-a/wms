@@ -202,6 +202,7 @@
 // Pass UNIT_2_NAME from Python to JavaScript
 window.WMS_UNIT_2_NAME = {{ unit_2_name_json|safe }};
 </script>
+<script src="{% static 'core/js/quantity_logic.js' %}"></script>
 <script src="{% static 'core/js/quantity_controls.js' %}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', initUnitDetailPage);

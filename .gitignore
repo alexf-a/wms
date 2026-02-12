@@ -27,6 +27,8 @@ containers.json.bak
 
 .env.local*
 
+node_modules
+
 # Local HTTPS testing artifacts
 .caddy-trusted
 deploy/caddy-root-ca.crt

@@ -5,68 +5,26 @@
  * Dependencies: ui_utils.js (showErrorSnackbar)
  */
 
-// Request queue to prevent race conditions
-let requestQueue = [];
-let isProcessingRequest = false;
+// Sequence tracking for parallel requests (prevents UI resets from stale responses)
+// Map: itemId -> {nextSeq, lastAppliedSeq, pendingCount}
+const itemPendingState = new Map();
+const quantityLogic = window.WMSQuantityLogic;
 
-/**
- * Process the next request in the queue.
- * 
- * Triggered by: enqueueRequest() when a new request is added
- * 
- * Results:
- * - Executes the oldest queued request function
- * - Sets isProcessingRequest flag to prevent concurrent execution
- * - Recursively processes remaining queue after completion
- * - Logs errors but continues processing queue
- * 
- * Side effects:
- * - Modifies isProcessingRequest global flag
- * - Modifies requestQueue array (via shift())
- * 
- * @returns {Promise<void>} Resolves when current request completes
- */
-async function processRequestQueue() {
-    if (isProcessingRequest || requestQueue.length === 0) {
-        return;
-    }
-
-    isProcessingRequest = true;
-    const request = requestQueue.shift();
-
-    try {
-        await request();
-    } catch (error) {
-        console.error('[QuantityControls] Request failed:', error);
-    } finally {
-        isProcessingRequest = false;
-        // Process next request if any
-        if (requestQueue.length > 0) {
-            processRequestQueue();
-        }
-    }
+if (!quantityLogic) {
+    throw new Error('WMSQuantityLogic is required. Ensure quantity_logic.js is loaded first.');
 }
 
 /**
- * Add a request to the queue and start processing.
+ * Get or initialize pending state for an item.
  * 
- * Triggered by: handleQuantityButton() and handleQuantityValueClick() when user modifies quantity
- * 
- * Results:
- * - Adds async function to requestQueue
- * - Initiates queue processing if not already running
- * - Ensures requests execute sequentially to prevent race conditions
- * 
- * Side effects:
- * - Modifies requestQueue array
- * - May trigger processRequestQueue()
- * 
- * @param {Function} requestFn - Async function to execute (should be self-contained)
- * @returns {void}
+ * @param {number} itemId - The database ID of the item
+ * @returns {Object} State object with {nextSeq, lastAppliedSeq, pendingCount}
  */
-function enqueueRequest(requestFn) {
-    requestQueue.push(requestFn);
-    processRequestQueue();
+function getPendingState(itemId) {
+    if (!itemPendingState.has(itemId)) {
+        itemPendingState.set(itemId, quantityLogic.createPendingState());
+    }
+    return itemPendingState.get(itemId);
 }
 
 /**
@@ -200,41 +158,51 @@ function handleQuantityButton(e) {
     const currentQuantity = parseFloat(wrapper.getAttribute('data-quantity'));
     const action = button.classList.contains('qty-increment') ? 'increment' : 'decrement';
     
+    // Get or initialize sequence state for this item
+    const state = getPendingState(itemId);
+    const requestSeq = quantityLogic.recordRequest(state);
+    
     // Optimistic UI update
     const quantityUnit = wrapper.getAttribute('data-quantity-unit');
-    const step = quantityUnit === 'count' ? 1 : 0.1;
-    let newQuantity = action === 'increment' ? currentQuantity + step : currentQuantity - step;
-    newQuantity = Math.max(0, newQuantity);
-    if (quantityUnit !== 'count') {
-        newQuantity = Math.round(newQuantity * 10) / 10;
-    }
+    const newQuantity = quantityLogic.calculateOptimisticQuantity(currentQuantity, action, quantityUnit);
     
-    // Update UI immediately
-    // Use globally available UNIT_2_NAME passed from Python
-    const unitDisplay = (window.WMS_UNIT_2_NAME && window.WMS_UNIT_2_NAME[quantityUnit]) || quantityUnit;
-    // Format: integer for count, decimal for others
-    const formattedValue = quantityUnit === 'count' ? Math.round(newQuantity) : newQuantity;
-    const formatted = `${formattedValue} ${unitDisplay.toLowerCase()}`;
+    // Update UI immediately (optimistic)
+    const formatted = quantityLogic.formatQuantity(newQuantity, quantityUnit, window.WMS_UNIT_2_NAME);
     updateUI(wrapper, newQuantity, formatted);
     
-    // Queue the actual API request
-    enqueueRequest(async () => {
+    // Fire parallel request immediately (no queue)
+    (async () => {
         try {
             const data = await updateQuantity(itemId, action, null, wrapper, currentQuantity);
-            // Update UI with server response (in case of rounding differences)
-            updateUI(wrapper, data.quantity, data.formatted);
+            
+            // Only apply response if this is the final pending request
+            const { shouldApply } = quantityLogic.resolveRequest(state, requestSeq);
+            if (shouldApply) {
+                // Final response - update UI with server value
+                updateUI(wrapper, data.quantity, data.formatted);
+            }
         } catch (error) {
             console.error('[QuantityControls] Update failed:', error);
-            // Revert to previous value
-            const prevFormattedValue = quantityUnit === 'count' ? Math.round(currentQuantity) : currentQuantity;
-            const prevFormatted = `${prevFormattedValue} ${unitDisplay.toLowerCase()}`;
-            updateUI(wrapper, currentQuantity, prevFormatted);
-            // Show error snackbar
-            if (typeof showErrorSnackbar === 'function') {
-                showErrorSnackbar(error.message || 'Failed to update quantity');
+            quantityLogic.resolveRequest(state, requestSeq);
+            
+            // Only show error/revert if no more pending requests
+            if (quantityLogic.shouldApplyServerResponse(state)) {
+                // Revert to last known server value
+                const prevFormatted = quantityLogic.formatQuantity(
+                    currentQuantity,
+                    quantityUnit,
+                    window.WMS_UNIT_2_NAME,
+                );
+                updateUI(wrapper, currentQuantity, prevFormatted);
+                
+                // Show error snackbar
+                if (typeof showErrorSnackbar === 'function') {
+                    showErrorSnackbar(error.message || 'Failed to update quantity');
+                }
             }
+            // Otherwise, let subsequent requests resolve the state
         }
-    });
+    })();
 }
 
 /**
@@ -270,7 +238,7 @@ function handleQuantityValueClick(e) {
     const itemId = parseInt(wrapper.getAttribute('data-item-id'));
     const currentQuantity = parseFloat(wrapper.getAttribute('data-quantity'));
     const quantityUnit = wrapper.getAttribute('data-quantity-unit');
-    const step = quantityUnit === 'count' ? 1 : 0.1;
+    const step = quantityLogic.getStepSize(quantityUnit);
     
     // Create input element
     const input = document.createElement('input');
@@ -306,19 +274,25 @@ function handleQuantityValueClick(e) {
             return;
         }
         
-        // Queue the update request
-        enqueueRequest(async () => {
+        // Reset sequence state - 'set' establishes new baseline
+        const state = getPendingState(itemId);
+        quantityLogic.resetStateForSet(state);
+        
+        // Fire the update request
+        (async () => {
             try {
                 const data = await updateQuantity(itemId, 'set', newValue, wrapper, currentQuantity);
+                state.pendingCount = Math.max(0, state.pendingCount - 1);
                 updateUI(wrapper, data.quantity, data.formatted);
             } catch (error) {
                 console.error('[QuantityControls] Set value failed:', error);
+                state.pendingCount = Math.max(0, state.pendingCount - 1);
                 // Show error snackbar
                 if (typeof showErrorSnackbar === 'function') {
                     showErrorSnackbar(error.message || 'Failed to update quantity');
                 }
             }
-        });
+        })();
     };
     
     input.addEventListener('blur', saveValue);
