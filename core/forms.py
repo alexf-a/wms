@@ -529,7 +529,6 @@ class ItemForm(forms.ModelForm):
         required=False,
         choices=QUANTITY_CATEGORY_CHOICES,
         widget=forms.RadioSelect,
-        initial="count",
         label="What are you measuring?"
     )
 
@@ -548,8 +547,7 @@ class ItemForm(forms.ModelForm):
         required=False,
         choices=QUANTITY_UNIT_CHOICES,
         widget=forms.Select(attrs={"class": "m3-select"}),
-        label="Unit",
-        initial="count"
+        label="Unit"
     )
 
     class Meta:
