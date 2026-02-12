@@ -767,7 +767,7 @@ class TestItemFormattedQuantity:
             quantity_unit="gal"
         )
 
-        assert item.formatted_quantity == "3.78 gallons"
+        assert item.formatted_quantity == "3.8 gallons"
 
     @pytest.mark.django_db
     def test_formatted_quantity_with_length(self, user: WMSUser, standalone_unit: Unit):

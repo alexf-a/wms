@@ -10,6 +10,8 @@ from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError
+from django.db.models import F
+from django.db.models.functions import Greatest
 from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from PIL import Image, UnidentifiedImageError
@@ -633,21 +635,26 @@ def update_item_quantity_api(request: HttpRequest, item_id: int) -> JsonResponse
             if value_str is None:
                 return JsonResponse({"error": "Missing 'value' parameter for 'set' action"}, status=400)
             new_quantity = float(value_str)
+            # Clamp to 0 minimum
+            new_quantity = max(0, new_quantity)
+            # Round to 1 decimal place for non-count units
+            if item.quantity_unit != "count":
+                new_quantity = round(new_quantity, 1)
+
+            # Update with direct assignment
+            item.quantity = new_quantity
+            item.save(update_fields=["quantity"])
         elif action == "increment":
-            new_quantity = item.quantity + step
+            # Atomic increment with F() expression
+            Item.objects.filter(id=item_id).update(quantity=F("quantity") + step)
+            item.refresh_from_db()
         else:  # decrement
-            new_quantity = item.quantity - step
-
-        # Clamp to 0 minimum
-        new_quantity = max(0, new_quantity)
-
-        # Round to 1 decimal place for non-count units
-        if item.quantity_unit != "count":
-            new_quantity = round(new_quantity, 1)
-
-        # Update and save
-        item.quantity = new_quantity
-        item.save(update_fields=["quantity"])
+            # Atomic decrement with Greatest() to ensure non-negative
+            clamp = 0 if item.quantity_unit == "count" else 0.0
+            Item.objects.filter(id=item_id).update(
+                quantity=Greatest(F("quantity") - step, clamp)
+            )
+            item.refresh_from_db()
 
         return JsonResponse({
             "quantity": item.quantity,
