@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+from decimal import Decimal
 from typing import ClassVar
 from urllib.parse import urljoin
 
@@ -202,6 +203,9 @@ DIMENSION_UNIT_CHOICES = [
 ]
 
 # Quantity units - single source of truth
+ITEM_QUANTITY_MAX_DIGITS = 10
+ITEM_QUANTITY_DECIMAL_PLACES = 2
+
 # Map unit symbol to display name
 UNIT_2_NAME = {
     "count": "Count",
@@ -543,7 +547,13 @@ class Item(models.Model):
     unit = models.ForeignKey(Unit, related_name="items", on_delete=models.CASCADE)
 
     # Quantity tracking (optional)
-    quantity = models.FloatField(blank=True, null=True, help_text="Amount of this item")
+    quantity = models.DecimalField(
+        max_digits=ITEM_QUANTITY_MAX_DIGITS,
+        decimal_places=ITEM_QUANTITY_DECIMAL_PLACES,
+        blank=True,
+        null=True,
+        help_text="Amount of this item",
+    )
     quantity_unit = models.CharField(
         max_length=10,
         choices=QUANTITY_UNIT_CHOICES,
@@ -596,8 +606,12 @@ class Item(models.Model):
         if self.quantity is not None and self.quantity_unit:
             # Get the display name for the unit
             unit_display = UNIT_2_NAME.get(self.quantity_unit, self.quantity_unit)
-            # Format as integer for count, one decimal for others
-            formatted_value = int(self.quantity) if self.quantity_unit == "count" else round(self.quantity, 1)
+            # Format as integer for count, two decimals for others
+            formatted_value = (
+                int(self.quantity)
+                if self.quantity_unit == "count"
+                else self.quantity.quantize(Decimal("0.01"))
+            )
             return f"{formatted_value} {unit_display.lower()}"
         return None
 

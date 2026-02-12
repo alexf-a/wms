@@ -1,6 +1,7 @@
 """Tests for core/models.py custom logic."""
 
 import base64
+from decimal import Decimal
 
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -635,7 +636,7 @@ class TestItemQuantityConstraints:
                 name="Invalid Item",
                 description="Test",
                 unit=standalone_unit,
-                quantity=5.0,
+                quantity=Decimal("5.0"),
                 quantity_unit=""  # Empty string = no unit
             )
 
@@ -660,11 +661,11 @@ class TestItemQuantityConstraints:
             name="Valid Item",
             description="Test",
             unit=standalone_unit,
-            quantity=5.0,
+            quantity=Decimal("5.0"),
             quantity_unit="kg"
         )
 
-        assert item.quantity == 5.0
+        assert item.quantity == Decimal("5.0")
         assert item.quantity_unit == "kg"
 
     @pytest.mark.django_db(transaction=True)
@@ -691,7 +692,7 @@ class TestItemQuantityConstraints:
                 name="Negative Item",
                 description="Test",
                 unit=standalone_unit,
-                quantity=-5.0,
+                quantity=Decimal("-5.0"),
                 quantity_unit="kg"
             )
 
@@ -703,11 +704,11 @@ class TestItemQuantityConstraints:
             name="Zero Item",
             description="Test",
             unit=standalone_unit,
-            quantity=0.0,
+            quantity=Decimal("0.0"),
             quantity_unit="count"
         )
 
-        assert item.quantity == 0.0
+        assert item.quantity == Decimal("0.0")
 
     @pytest.mark.django_db(transaction=True)
     def test_quantity_non_negative_accepts_positive(self, user: WMSUser, standalone_unit: Unit):
@@ -717,11 +718,11 @@ class TestItemQuantityConstraints:
             name="Positive Item",
             description="Test",
             unit=standalone_unit,
-            quantity=100.5,
+            quantity=Decimal("100.5"),
             quantity_unit="mL"
         )
 
-        assert item.quantity == 100.5
+        assert item.quantity == Decimal("100.5")
 
 
 class TestItemFormattedQuantity:
@@ -735,7 +736,7 @@ class TestItemFormattedQuantity:
             name="Screws",
             description="Box of screws",
             unit=standalone_unit,
-            quantity=100,
+            quantity=Decimal("100"),
             quantity_unit="count"
         )
 
@@ -749,11 +750,11 @@ class TestItemFormattedQuantity:
             name="Flour",
             description="Bag of flour",
             unit=standalone_unit,
-            quantity=2.5,
+            quantity=Decimal("2.5"),
             quantity_unit="kg"
         )
 
-        assert item.formatted_quantity == "2.5 kilograms"
+        assert item.formatted_quantity == "2.50 kilograms"
 
     @pytest.mark.django_db
     def test_formatted_quantity_with_volume(self, user: WMSUser, standalone_unit: Unit):
@@ -763,11 +764,11 @@ class TestItemFormattedQuantity:
             name="Paint",
             description="Can of paint",
             unit=standalone_unit,
-            quantity=3.78,
+            quantity=Decimal("3.78"),
             quantity_unit="gal"
         )
 
-        assert item.formatted_quantity == "3.8 gallons"
+        assert item.formatted_quantity == "3.78 gallons"
 
     @pytest.mark.django_db
     def test_formatted_quantity_with_length(self, user: WMSUser, standalone_unit: Unit):
@@ -777,11 +778,11 @@ class TestItemFormattedQuantity:
             name="Rope",
             description="Nylon rope",
             unit=standalone_unit,
-            quantity=50,
+            quantity=Decimal("50"),
             quantity_unit="ft"
         )
 
-        assert item.formatted_quantity == "50 feet"
+        assert item.formatted_quantity == "50.00 feet"
 
     @pytest.mark.django_db
     def test_formatted_quantity_returns_none_when_no_quantity(self, user: WMSUser, standalone_unit: Unit):
@@ -805,7 +806,7 @@ class TestItemFormattedQuantity:
             name="Empty Unit",
             description="Item with empty unit",
             unit=standalone_unit,
-            quantity=5.0,
+            quantity=Decimal("5.0"),
             quantity_unit=""
         )
         # Don't save - just test the property logic
@@ -820,12 +821,12 @@ class TestItemFormattedQuantity:
             name="Unknown Unit",
             description="Item with unknown unit",
             unit=standalone_unit,
-            quantity=5.0,
+            quantity=Decimal("5.0"),
             quantity_unit="xyz"  # Not a valid unit
         )
         # Don't save - just test the property logic
 
-        assert item.formatted_quantity == "5.0 xyz"
+        assert item.formatted_quantity == "5.00 xyz"
 
 
 class TestQuantityUnitMappings:

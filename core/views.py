@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
@@ -627,19 +628,19 @@ def update_item_quantity_api(request: HttpRequest, item_id: int) -> JsonResponse
         return JsonResponse({"error": f"Invalid action. Must be {valid_actions}"}, status=400)
 
     # Determine step size: 1 for count, 0.1 for all others
-    step = 1 if item.quantity_unit == "count" else 0.1
+    step = Decimal("1") if item.quantity_unit == "count" else Decimal("0.1")
 
     try:
         if action == "set":
             value_str = request.POST.get("value")
             if value_str is None:
                 return JsonResponse({"error": "Missing 'value' parameter for 'set' action"}, status=400)
-            new_quantity = float(value_str)
+            new_quantity = Decimal(value_str)
             # Clamp to 0 minimum
-            new_quantity = max(0, new_quantity)
+            new_quantity = max(Decimal("0"), new_quantity)
             # Round to 1 decimal place for non-count units
             if item.quantity_unit != "count":
-                new_quantity = round(new_quantity, 1)
+                new_quantity = new_quantity.quantize(Decimal("0.1"))
 
             # Update with direct assignment
             item.quantity = new_quantity
@@ -650,18 +651,18 @@ def update_item_quantity_api(request: HttpRequest, item_id: int) -> JsonResponse
             item.refresh_from_db()
         else:  # decrement
             # Atomic decrement with Greatest() to ensure non-negative
-            clamp = 0 if item.quantity_unit == "count" else 0.0
+            clamp = Decimal("0")
             Item.objects.filter(id=item_id).update(
                 quantity=Greatest(F("quantity") - step, clamp)
             )
             item.refresh_from_db()
 
         return JsonResponse({
-            "quantity": item.quantity,
+            "quantity": float(item.quantity),
             "formatted": item.formatted_quantity or ""
         })
 
-    except (ValueError, TypeError) as e:
+    except (InvalidOperation, ValueError, TypeError) as e:
         return JsonResponse({"error": f"Invalid value: {e}"}, status=400)
     except Exception:
         logger.exception("[UpdateQuantityAPI] Unexpected error")

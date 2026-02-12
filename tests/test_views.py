@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import http
 import json
+from decimal import Decimal
 from io import BytesIO
 from typing import TYPE_CHECKING
 from unittest.mock import Mock, patch
@@ -1180,7 +1181,7 @@ def item_with_quantity(user: User, standalone_unit: Unit) -> Item:
         name="Nails",
         description="Box of nails",
         unit=standalone_unit,
-        quantity=10,
+        quantity=Decimal("10"),
         quantity_unit="count",
     )
 
@@ -1193,7 +1194,7 @@ def item_with_decimal_quantity(user: User, standalone_unit: Unit) -> Item:
         name="Rice",
         description="Bag of rice",
         unit=standalone_unit,
-        quantity=2.5,
+        quantity=Decimal("2.5"),
         quantity_unit="kg",
     )
 
@@ -1228,7 +1229,7 @@ class TestUpdateItemQuantityAPI:
         """Test that increment uses atomic F() expression (value in DB changes correctly)."""
         client.force_login(user)
         # Manually change DB value to simulate concurrent modification
-        Item.objects.filter(id=item_with_quantity.id).update(quantity=20)
+        Item.objects.filter(id=item_with_quantity.id).update(quantity=Decimal("20"))
         response = client.post(self._url(item_with_quantity.id), {"action": "increment"})
         assert response.status_code == http.HTTPStatus.OK
         # Should be 21 (DB value 20 + 1), not 11 (stale in-memory 10 + 1)
@@ -1256,7 +1257,7 @@ class TestUpdateItemQuantityAPI:
         """Test decrementing at zero does not go negative."""
         zero_item = Item.objects.create(
             user=user, name="Empty", description="empty", unit=standalone_unit,
-            quantity=0, quantity_unit="count",
+            quantity=Decimal("0"), quantity_unit="count",
         )
         client.force_login(user)
         response = client.post(self._url(zero_item.id), {"action": "decrement"})
@@ -1266,7 +1267,7 @@ class TestUpdateItemQuantityAPI:
     def test_decrement_is_atomic(self, client: Client, user: User, item_with_quantity: Item):
         """Test that decrement uses atomic F() expression."""
         client.force_login(user)
-        Item.objects.filter(id=item_with_quantity.id).update(quantity=20)
+        Item.objects.filter(id=item_with_quantity.id).update(quantity=Decimal("20"))
         response = client.post(self._url(item_with_quantity.id), {"action": "decrement"})
         assert response.status_code == http.HTTPStatus.OK
         assert response.json()["quantity"] == 19
