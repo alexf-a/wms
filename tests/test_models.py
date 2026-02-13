@@ -8,11 +8,16 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError
 
 from core.models import (
+    CATEGORY_2_UNITS,
+    CATEGORY_BY_UNIT,
     Item,
     Location,
     LocationSharedAccess,
+    QUANTITY_CATEGORY_CHOICES,
+    QUANTITY_UNIT_CHOICES,
     Unit,
     UnitSharedAccess,
+    UNIT_2_NAME,
     WMSUser,
 )
 
@@ -834,8 +839,6 @@ class TestQuantityUnitMappings:
 
     def test_category_by_unit_contains_all_units(self):
         """Test that CATEGORY_BY_UNIT includes all units from CATEGORY_2_UNITS."""
-        from core.models import CATEGORY_2_UNITS, CATEGORY_BY_UNIT
-
         for units in CATEGORY_2_UNITS.values():
             for unit in units:
                 assert unit in CATEGORY_BY_UNIT
@@ -843,19 +846,23 @@ class TestQuantityUnitMappings:
 
     def test_quantity_unit_choices_derived_correctly(self):
         """Test that QUANTITY_UNIT_CHOICES is correctly derived."""
-        from core.models import CATEGORY_2_UNITS, QUANTITY_UNIT_CHOICES, UNIT_2_NAME
+        quantity_unit_choices_by_category = {
+            category_label.lower(): choice_units
+            for category_label, choice_units in QUANTITY_UNIT_CHOICES
+        }
 
-        for i, (category, units) in enumerate(CATEGORY_2_UNITS.items()):
-            choice_category, choice_units = QUANTITY_UNIT_CHOICES[i]
-            assert choice_category == category.capitalize()
-            for unit, expected_name in choice_units:
-                assert unit in units
-                assert expected_name == UNIT_2_NAME[unit]
+        assert set(quantity_unit_choices_by_category) == set(CATEGORY_2_UNITS)
+
+        for category, units in CATEGORY_2_UNITS.items():
+            choice_units = quantity_unit_choices_by_category[category]
+            choice_units_by_code = dict(choice_units)
+
+            assert set(choice_units_by_code) == set(units)
+            for unit in units:
+                assert choice_units_by_code[unit] == UNIT_2_NAME[unit]
 
     def test_quantity_category_choices_derived_correctly(self):
         """Test that QUANTITY_CATEGORY_CHOICES is correctly derived."""
-        from core.models import CATEGORY_2_UNITS, QUANTITY_CATEGORY_CHOICES
-
         for i, category in enumerate(CATEGORY_2_UNITS.keys()):
             choice_value, choice_label = QUANTITY_CATEGORY_CHOICES[i]
             assert choice_value == category
@@ -863,8 +870,6 @@ class TestQuantityUnitMappings:
 
     def test_unit_2_name_contains_all_category_units(self):
         """Test that UNIT_2_NAME contains entries for all units in categories."""
-        from core.models import CATEGORY_2_UNITS, UNIT_2_NAME
-
         for units in CATEGORY_2_UNITS.values():
             for unit in units:
                 assert unit in UNIT_2_NAME

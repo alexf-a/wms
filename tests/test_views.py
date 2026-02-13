@@ -16,7 +16,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from PIL import Image
 
-from core.models import Item, Location, Unit
+from core.models import ITEM_QUANTITY_DECIMAL_PLACES, Item, Location, Unit
 from core.views import MAX_IMAGE_DIMENSION, MAX_IMAGE_UPLOAD_SIZE, ImageValidationError
 
 if TYPE_CHECKING:
@@ -1289,11 +1289,12 @@ class TestUpdateItemQuantityAPI:
         assert response.json()["quantity"] == 0
 
     def test_set_rounds_decimal_for_non_count(self, client: Client, user: User, item_with_decimal_quantity: Item):
-        """Test setting a decimal value rounds to 1 decimal place for non-count units."""
+        """Test setting a decimal value rounds to configured decimal places for non-count units."""
         client.force_login(user)
         response = client.post(self._url(item_with_decimal_quantity.id), {"action": "set", "value": "3.456"})
         assert response.status_code == http.HTTPStatus.OK
-        assert response.json()["quantity"] == 3.5
+        expected_quantity = float(Decimal("3.456").quantize(Decimal(10) ** -ITEM_QUANTITY_DECIMAL_PLACES))
+        assert response.json()["quantity"] == expected_quantity
 
     def test_set_missing_value(self, client: Client, user: User, item_with_quantity: Item):
         """Test set action without value parameter returns 400."""
