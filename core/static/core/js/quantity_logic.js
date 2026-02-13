@@ -1,3 +1,9 @@
+/**
+ * Attach quantity logic helpers to the active global scope.
+ *
+ * @param {Window|typeof globalThis} globalScope - Browser window or Node-like global object.
+ * @returns {void}
+ */
 (function attachQuantityLogic(globalScope) {
     /**
      * Global property name used to expose the quantity logic API.
@@ -148,7 +154,7 @@
      *  formatQuantity: (quantity: number, quantityUnit: string, unitNameMap?: Object<string, string>) => string,
      *  createPendingState: () => {nextSeq: number, lastAppliedSeq: number, pendingCount: number},
      *  recordRequest: (state: {nextSeq: number, lastAppliedSeq: number, pendingCount: number}) => number,
-     *  resolveRequest: (state: {nextSeq: number, lastAppliedSeq: number, requestSeq: number) => {shouldApply: boolean},
+    *  resolveRequest: (state: {nextSeq: number, lastAppliedSeq: number, pendingCount: number}, requestSeq: number) => {shouldApply: boolean},
      *  shouldApplyServerResponse: (state: {nextSeq: number, lastAppliedSeq: number, pendingCount: number}) => boolean,
      *  resetStateForSet: (state: {nextSeq: number, lastAppliedSeq: number, pendingCount: number}) => void
      * }}

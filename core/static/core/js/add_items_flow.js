@@ -72,7 +72,12 @@ async function compressImage(file) {
     });
 }
 
-document.addEventListener('DOMContentLoaded', function() {
+/**
+ * Initialize add-items page interactions after DOM content is loaded.
+ *
+ * @returns {void}
+ */
+function initAddItemsFlow() {
     // Always log initialization regardless of debug mode
     console.log('[AddItems] Initializing add_items_flow.js');
     console.log('[AddItems] Referrer:', document.referrer);
@@ -232,11 +237,18 @@ document.addEventListener('DOMContentLoaded', function() {
     heroInput.addEventListener('change', handleImageSelect);
 
     // Handle skip button - uses shared revealSection utility
-    skipBtn.addEventListener('click', function() {
+    /**
+     * Reveal manual form entry and hide image preview when user skips AI flow.
+     *
+     * @returns {void}
+     */
+    function handleSkipToManual() {
         formCard.style.display = 'block';
         imagePreviewContainer.style.display = 'none';
         revealSection(formSection, null, null, { scrollBlock: 'start' });
-    });
+    }
+
+    skipBtn.addEventListener('click', handleSkipToManual);
 
     if (itemForm) {
         itemForm.addEventListener('submit', () => {
@@ -247,4 +259,6 @@ document.addEventListener('DOMContentLoaded', function() {
     window.addEventListener('pagehide', cleanupObjectUrl);
     window.addEventListener('beforeunload', cleanupObjectUrl);
 
-});
+}
+
+document.addEventListener('DOMContentLoaded', initAddItemsFlow);

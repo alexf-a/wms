@@ -17,51 +17,59 @@ function initQuantityCategoryFilter() {
         return;
     }
 
+    const placeholderOption = quantityUnitSelect.querySelector('option:not([data-category])');
+    const allCategoryOptions = Array.from(quantityUnitSelect.querySelectorAll('option[data-category]'));
+
     /**
      * Filter quantity unit options based on selected category.
      *
-     * Hides and disables options that don't match the provided category so the
-     * user can only select units relevant to the chosen measurement type.
+    * Rebuilds the dropdown options to include only units that match the
+    * selected category.
      *
      * @param {string} category - The selected category (e.g., "count", "mass").
      * @returns {void}
      */
     function filterQuantityUnits(category) {
-        const options = quantityUnitSelect.querySelectorAll('option[data-category]');
         const currentValue = quantityUnitSelect.value;
-        let currentValueVisible = false;
 
-        if (!category) {
-            options.forEach(option => {
-                option.hidden = true;
-                option.disabled = true;
-            });
-            if (currentValue) {
-                quantityUnitSelect.value = '';
-            }
-            return;
-        }
-
-        options.forEach(option => {
-            const optionCategory = option.getAttribute('data-category');
-            const isVisible = optionCategory === category;
-            option.hidden = !isVisible;
-            option.disabled = !isVisible;
-
-            if (isVisible && option.value === currentValue) {
-                currentValueVisible = true;
-            }
+        allCategoryOptions.forEach(option => {
+            option.remove();
         });
 
-        if (!currentValueVisible && currentValue) {
+        const matchingOptions = category
+            ? allCategoryOptions.filter((option) => option.getAttribute('data-category') === category)
+            : [];
+
+        matchingOptions.forEach((option) => {
+            quantityUnitSelect.appendChild(option);
+        });
+
+        if (placeholderOption) {
+            quantityUnitSelect.insertBefore(placeholderOption, quantityUnitSelect.firstChild);
+        }
+
+        const currentValueStillVisible = matchingOptions.some((option) => option.value === currentValue);
+        if (!currentValueStillVisible) {
             quantityUnitSelect.value = '';
         }
     }
 
+    /**
+     * Handle category radio changes and apply unit filtering.
+     *
+     * @param {Event} event - Change event from a quantity category radio input.
+     * @returns {void}
+     */
+    function handleCategoryChange(event) {
+        const target = event.target;
+        if (!(target instanceof HTMLInputElement)) {
+            return;
+        }
+        filterQuantityUnits(target.value);
+    }
+
     categoryRadios.forEach(radio => {
-        radio.addEventListener('change', (e) => {
-            filterQuantityUnits(e.target.value);
-        });
+        radio.addEventListener('change', handleCategoryChange);
     });
 
     const checkedRadio = document.querySelector('input[name="quantity_category"]:checked');
@@ -72,6 +80,20 @@ function initQuantityCategoryFilter() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', function() {
+/**
+ * Initialize quantity category filtering after the document is ready.
+ *
+ * @returns {void}
+ */
+function initQuantityCategoryFilterOnReady() {
     initQuantityCategoryFilter();
-});
+}
+
+document.addEventListener('DOMContentLoaded', initQuantityCategoryFilterOnReady);
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        initQuantityCategoryFilter,
+        initQuantityCategoryFilterOnReady,
+    };
+}
