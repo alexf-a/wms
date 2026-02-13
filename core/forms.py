@@ -11,6 +11,8 @@ from django.core.exceptions import ValidationError
 from .models import (
     CATEGORY_BY_UNIT,
     DIMENSION_UNIT_CHOICES,
+    ITEM_QUANTITY_DECIMAL_PLACES,
+    ITEM_QUANTITY_MAX_DIGITS,
     QUANTITY_CATEGORY_CHOICES,
     QUANTITY_UNIT_CHOICES,
     Item,
@@ -533,7 +535,9 @@ class ItemForm(forms.ModelForm):
     )
 
     # Quantity fields
-    quantity = forms.FloatField(
+    quantity = forms.DecimalField(
+        max_digits=ITEM_QUANTITY_MAX_DIGITS,
+        decimal_places=ITEM_QUANTITY_DECIMAL_PLACES,
         required=False,
         widget=forms.NumberInput(attrs={
             "placeholder": "0.00",
