@@ -638,10 +638,9 @@ def update_item_quantity_api(request: HttpRequest, item_id: int) -> JsonResponse
                 return JsonResponse({"error": "Missing 'value' parameter for 'set' action"}, status=400)
             new_quantity = Decimal(value_str)
             # Clamp to 0 minimum
-            new_quantity = max(Decimal("0"), new_quantity)
-            # Round to configured decimal places for non-count units
-            if item.quantity_unit != "count":
-                new_quantity = new_quantity.quantize(ITEM_QUANTITY_ROUNDING_QUANTUM)
+            new_quantity = max(Decimal(0), new_quantity)
+            # Truncate to integer for count units, round non-count units
+            new_quantity = Decimal(int(new_quantity)) if item.quantity_unit == "count" else new_quantity.quantize(ITEM_QUANTITY_ROUNDING_QUANTUM)
 
             # Update with direct assignment
             item.quantity = new_quantity
@@ -652,7 +651,7 @@ def update_item_quantity_api(request: HttpRequest, item_id: int) -> JsonResponse
             item.refresh_from_db()
         else:  # decrement
             # Atomic decrement with Greatest() to ensure non-negative
-            clamp = Decimal("0")
+            clamp = Decimal(0)
             Item.objects.filter(id=item_id).update(
                 quantity=Greatest(F("quantity") - step, clamp)
             )

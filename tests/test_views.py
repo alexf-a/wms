@@ -1257,7 +1257,7 @@ class TestUpdateItemQuantityAPI:
         """Test decrementing at zero does not go negative."""
         zero_item = Item.objects.create(
             user=user, name="Empty", description="empty", unit=standalone_unit,
-            quantity=Decimal("0"), quantity_unit="count",
+            quantity=Decimal(0), quantity_unit="count",
         )
         client.force_login(user)
         response = client.post(self._url(zero_item.id), {"action": "decrement"})
