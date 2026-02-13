@@ -37,6 +37,7 @@ from .forms import (
     WMSUserCreationForm,
 )
 from .models import UNIT_2_NAME, Item, Unit
+from .models import ITEM_QUANTITY_COUNT_STEP, ITEM_QUANTITY_NON_COUNT_STEP, ITEM_QUANTITY_ROUNDING_QUANTUM
 
 logger = logging.getLogger(__name__)
 
@@ -628,7 +629,7 @@ def update_item_quantity_api(request: HttpRequest, item_id: int) -> JsonResponse
         return JsonResponse({"error": f"Invalid action. Must be {valid_actions}"}, status=400)
 
     # Determine step size: 1 for count, 0.1 for all others
-    step = Decimal("1") if item.quantity_unit == "count" else Decimal("0.1")
+    step = ITEM_QUANTITY_COUNT_STEP if item.quantity_unit == "count" else ITEM_QUANTITY_NON_COUNT_STEP
 
     try:
         if action == "set":
@@ -638,9 +639,9 @@ def update_item_quantity_api(request: HttpRequest, item_id: int) -> JsonResponse
             new_quantity = Decimal(value_str)
             # Clamp to 0 minimum
             new_quantity = max(Decimal("0"), new_quantity)
-            # Round to 1 decimal place for non-count units
+            # Round to configured decimal places for non-count units
             if item.quantity_unit != "count":
-                new_quantity = new_quantity.quantize(Decimal("0.1"))
+                new_quantity = new_quantity.quantize(ITEM_QUANTITY_ROUNDING_QUANTUM)
 
             # Update with direct assignment
             item.quantity = new_quantity

@@ -201,6 +201,8 @@
 <script>
 // Pass UNIT_2_NAME from Python to JavaScript
 window.WMS_UNIT_2_NAME = {{ unit_2_name_json|safe }};
+window.WMS_QUANTITY_DECIMAL_PLACES = {{ QUANTITY_DECIMAL_PLACES }};
+window.WMS_QUANTITY_NON_COUNT_STEP = {{ QUANTITY_NON_COUNT_STEP }};
 </script>
 <script src="{% static 'core/js/quantity_logic.js' %}"></script>
 <script src="{% static 'core/js/quantity_controls.js' %}"></script>

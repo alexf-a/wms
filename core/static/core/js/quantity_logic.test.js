@@ -1,4 +1,13 @@
+globalThis.WMS_QUANTITY_NON_COUNT_STEP = 0.1;
+globalThis.WMS_QUANTITY_DECIMAL_PLACES = 2;
+
 const logic = require('./quantity_logic');
+
+describe('API exposure', () => {
+    test('decimalPlaces is accessible', () => {
+        expect(logic.decimalPlaces).toBe(2);
+    });
+});
 
 describe('getStepSize', () => {
     test('returns 1 for count unit', () => {
@@ -32,8 +41,8 @@ describe('calculateOptimisticQuantity', () => {
         expect(logic.calculateOptimisticQuantity(0, 'decrement', 'count')).toBe(0);
     });
 
-    test('rounds decimal quantity to one decimal place', () => {
-        expect(logic.calculateOptimisticQuantity(0.2, 'increment', 'kg')).toBe(0.3);
+    test('rounds decimal quantity to configured decimal places', () => {
+        expect(logic.calculateOptimisticQuantity(0.23, 'increment', 'kg')).toBe(0.33);
     });
 
     test('handles high decimal quantities without drift', () => {
@@ -52,11 +61,11 @@ describe('formatQuantity', () => {
     });
 
     test('formats decimal units with mapped display name', () => {
-        expect(logic.formatQuantity(2.5, 'kg', unitMap)).toBe('2.5 kilograms');
+        expect(logic.formatQuantity(2.5, 'kg', unitMap)).toBe('2.50 kilograms');
     });
 
     test('falls back to raw unit when not in mapping', () => {
-        expect(logic.formatQuantity(1.1, 'unknown', unitMap)).toBe('1.1 unknown');
+        expect(logic.formatQuantity(1.1, 'unknown', unitMap)).toBe('1.10 unknown');
     });
 
     test('formats zero correctly', () => {

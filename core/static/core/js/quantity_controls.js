@@ -244,7 +244,10 @@ function handleQuantityValueClick(e) {
     const input = document.createElement('input');
     input.type = 'number';
     input.className = 'qty-input';
-    input.value = currentQuantity;
+    // Format input value to show correct decimal places
+    input.value = quantityUnit === 'count'
+        ? Math.round(currentQuantity)
+        : currentQuantity.toFixed(quantityLogic.decimalPlaces);
     input.min = '0';
     input.step = step.toString();
     

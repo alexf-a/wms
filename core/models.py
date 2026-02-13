@@ -205,6 +205,10 @@ DIMENSION_UNIT_CHOICES = [
 # Quantity units - single source of truth
 ITEM_QUANTITY_MAX_DIGITS = 10
 ITEM_QUANTITY_DECIMAL_PLACES = 2
+ITEM_QUANTITY_COUNT_STEP = Decimal("1")
+ITEM_QUANTITY_NON_COUNT_STEP = Decimal("0.1")
+# Rounding quantum for non-count quantities (e.g., 0.01 for 2 decimal places)
+ITEM_QUANTITY_ROUNDING_QUANTUM = Decimal(10) ** -ITEM_QUANTITY_DECIMAL_PLACES
 
 # Map unit symbol to display name
 UNIT_2_NAME = {

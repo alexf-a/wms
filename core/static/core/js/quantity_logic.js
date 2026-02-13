@@ -5,24 +5,39 @@
      * @type {string}
      */
     const LOGIC_API_NAME = 'WMSQuantityLogic';
+    const nonCountStepRaw = Number(globalScope.WMS_QUANTITY_NON_COUNT_STEP);
+    const decimalPlacesRaw = Number(globalScope.WMS_QUANTITY_DECIMAL_PLACES);
+
+    if (!Number.isFinite(nonCountStepRaw) || nonCountStepRaw <= 0) {
+        throw new Error('WMS_QUANTITY_NON_COUNT_STEP must be provided as a positive number.');
+    }
+
+    if (!Number.isInteger(decimalPlacesRaw) || decimalPlacesRaw < 0) {
+        throw new Error('WMS_QUANTITY_DECIMAL_PLACES must be provided as a non-negative integer.');
+    }
+
+    const nonCountStep = nonCountStepRaw;
+    const decimalPlaces = decimalPlacesRaw;
+
+    const roundingFactor = 10 ** decimalPlaces;
 
     /**
      * Return the increment/decrement step size for a quantity unit.
      *
      * @param {string} quantityUnit - Unit symbol (for example: count, kg, mL).
-     * @returns {number} 1 for count units, otherwise 0.1.
+     * @returns {number} 1 for count units, otherwise the configured non-count step.
      */
     function getStepSize(quantityUnit) {
-        return quantityUnit === 'count' ? 1 : 0.1;
+        return quantityUnit === 'count' ? 1 : nonCountStep;
     }
 
     /**
      * Calculate the optimistic quantity shown immediately in the UI.
      *
      * Rules:
-     * - Uses a unit-based step size (1 for count, 0.1 otherwise)
+    * - Uses a unit-based step size (1 for count, configured non-count step otherwise)
      * - Clamps to a minimum of 0
-     * - Rounds non-count values to one decimal place
+    * - Rounds non-count values to configured decimal places
      *
      * @param {number} currentQuantity - Current numeric quantity.
      * @param {string} action - Quantity action (increment or decrement).
@@ -34,7 +49,7 @@
         let newQuantity = action === 'increment' ? currentQuantity + step : currentQuantity - step;
         newQuantity = Math.max(0, newQuantity);
         if (quantityUnit !== 'count') {
-            newQuantity = Math.round(newQuantity * 10) / 10;
+            newQuantity = Math.round(newQuantity * roundingFactor) / roundingFactor;
         }
         return newQuantity;
     }
@@ -49,7 +64,9 @@
      */
     function formatQuantity(quantity, quantityUnit, unitNameMap) {
         const unitDisplay = (unitNameMap && unitNameMap[quantityUnit]) || quantityUnit;
-        const formattedValue = quantityUnit === 'count' ? Math.round(quantity) : quantity;
+        const formattedValue = quantityUnit === 'count'
+            ? Math.round(quantity)
+            : quantity.toFixed(decimalPlaces);
         return `${formattedValue} ${unitDisplay.toLowerCase()}`;
     }
 
@@ -125,17 +142,19 @@
      * Public API for quantity and request-state logic.
      *
      * @type {{
+     *  decimalPlaces: number,
      *  getStepSize: (quantityUnit: string) => number,
      *  calculateOptimisticQuantity: (currentQuantity: number, action: string, quantityUnit: string) => number,
      *  formatQuantity: (quantity: number, quantityUnit: string, unitNameMap?: Object<string, string>) => string,
      *  createPendingState: () => {nextSeq: number, lastAppliedSeq: number, pendingCount: number},
      *  recordRequest: (state: {nextSeq: number, lastAppliedSeq: number, pendingCount: number}) => number,
-     *  resolveRequest: (state: {nextSeq: number, lastAppliedSeq: number, pendingCount: number}, requestSeq: number) => {shouldApply: boolean},
+     *  resolveRequest: (state: {nextSeq: number, lastAppliedSeq: number, requestSeq: number) => {shouldApply: boolean},
      *  shouldApplyServerResponse: (state: {nextSeq: number, lastAppliedSeq: number, pendingCount: number}) => boolean,
      *  resetStateForSet: (state: {nextSeq: number, lastAppliedSeq: number, pendingCount: number}) => void
      * }}
      */
     const api = {
+        decimalPlaces,
         getStepSize,
         calculateOptimisticQuantity,
         formatQuantity,
