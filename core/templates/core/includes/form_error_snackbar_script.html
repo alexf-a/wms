@@ -7,7 +7,12 @@ document.addEventListener('DOMContentLoaded', function() {
     {% endif %}
     {% for field, errors in form.errors.items %}
     {% for error in errors %}
+    // Check for non-field errors
+    {% if field == '__all__' %}
     showErrorSnackbar("{{ error|escapejs }}");
+    {% else %}
+    showErrorSnackbar("{{ field|title }}: {{ error|escapejs }}");
+    {% endif %}
     {% endfor %}
     {% endfor %}
 });

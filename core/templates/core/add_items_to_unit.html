@@ -126,7 +126,7 @@
                             <div class="m3-radio-group" role="radiogroup" aria-label="Measurement type">
                                 {% for category in QUANTITY_CATEGORIES %}
                                 <label class="m3-radio-button">
-                                    <input type="radio" name="quantity_category" value="{{ category }}" class="m3-radio-input"{% if form.quantity_category.value == category or not form.quantity_category.value and forloop.first %} checked{% endif %}>
+                                    <input type="radio" name="quantity_category" value="{{ category }}" class="m3-radio-input"{% if form.quantity_category.value == category %} checked{% endif %}>
                                     <span class="m3-radio-label">{{ category|capfirst }}</span>
                                 </label>
                                 {% endfor %}

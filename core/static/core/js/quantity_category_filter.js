@@ -31,6 +31,17 @@ function initQuantityCategoryFilter() {
         const currentValue = quantityUnitSelect.value;
         let currentValueVisible = false;
 
+        if (!category) {
+            options.forEach(option => {
+                option.hidden = true;
+                option.disabled = true;
+            });
+            if (currentValue) {
+                quantityUnitSelect.value = '';
+            }
+            return;
+        }
+
         options.forEach(option => {
             const optionCategory = option.getAttribute('data-category');
             const isVisible = optionCategory === category;
@@ -56,6 +67,8 @@ function initQuantityCategoryFilter() {
     const checkedRadio = document.querySelector('input[name="quantity_category"]:checked');
     if (checkedRadio) {
         filterQuantityUnits(checkedRadio.value);
+    } else {
+        filterQuantityUnits('');
     }
 }
 
