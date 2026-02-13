@@ -245,10 +245,12 @@ QUANTITY_CATEGORY_CHOICES = [
 
 # Derive quantity unit choices for Django model field (grouped format)
 QUANTITY_UNIT_CHOICES = [
-    (category.capitalize(), [(unit, UNIT_2_NAME[unit]) for unit in units])
-    for category, units in CATEGORY_2_UNITS.items()
+    (
+        category.capitalize(),
+        [(unit, UNIT_2_NAME[unit]) for unit in sorted(units)],
+    )
+    for category, units in sorted(CATEGORY_2_UNITS.items())
 ]
-
 # Reverse mapping: unit -> category (for edit pre-selection)
 CATEGORY_BY_UNIT = {}
 for category, units in CATEGORY_2_UNITS.items():
