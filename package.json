@@ -1,0 +1,12 @@
+{
+  "name": "wms-js-tests",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "test:js": "jest --verbose"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0"
+  }
+}
