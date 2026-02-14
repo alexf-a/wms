@@ -17,7 +17,7 @@ ARCH_TAG?=amd64
 # Install with: cd /tmp && git clone https://github.com/paxan/lightsailctl.git -b paxan/image-push-bug-fixes && cd lightsailctl && go install ./...
 export PATH := $(PATH):$(HOME)/go/bin
 
-.PHONY: docker-build deploy up down create push install-lightsailctl-fix sync-env local-up update-image local-https caddy-trust caddy-export-ca local-https-down
+.PHONY: docker-build deploy up down create push install-lightsailctl-fix sync-env local-up update-image local-https caddy-trust caddy-export-ca local-https-down test-js
 
 # =============================================================================
 # Helper Functions for Local HTTPS Setup
@@ -162,6 +162,9 @@ local-down:
 	@docker-compose down
 	@rm -f .env  # Clean up root .env file
 	@echo "Local development server stopped."
+
+test-js:
+	npm run test:js
 
 # Help target to document the bug fix
 help:
@@ -316,3 +319,7 @@ local-https-down:
 	@echo ""
 	@echo "Note: Docker volumes (wms_caddy_data, wms_caddy_config) are preserved."
 	@echo "To remove volumes completely, run: docker volume rm wms_caddy_data wms_caddy_config"
+
+refresh-local:
+	@docker-compose exec web python manage.py collectstatic --noinput
+	@docker-compose restart web

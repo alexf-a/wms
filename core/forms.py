@@ -8,7 +8,18 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.forms import UserCreationForm
 from django.core.exceptions import ValidationError
 
-from .models import DIMENSION_UNIT_CHOICES, Item, Location, Unit, WMSUser
+from .models import (
+    CATEGORY_BY_UNIT,
+    DIMENSION_UNIT_CHOICES,
+    ITEM_QUANTITY_DECIMAL_PLACES,
+    ITEM_QUANTITY_MAX_DIGITS,
+    QUANTITY_CATEGORY_CHOICES,
+    QUANTITY_UNIT_CHOICES,
+    Item,
+    Location,
+    Unit,
+    WMSUser,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -471,12 +482,14 @@ class UnitForm(forms.ModelForm):
 
         if any_dimension:
             if not all_dimensions:
+                msg = "If you provide any dimension, all three dimensions (length, width, height) are required."
                 raise ValidationError(
-                    "If you provide any dimension, all three dimensions (length, width, height) are required."
+                    msg
                 )
             if not dimensions_unit:
+                msg = "Unit of measurement is required when dimensions are provided."
                 raise ValidationError(
-                    "Unit of measurement is required when dimensions are provided."
+                    msg
                 )
 
         return cleaned_data
@@ -513,11 +526,39 @@ class UnitForm(forms.ModelForm):
 class ItemForm(forms.ModelForm):
     """Form for adding or updating an Item."""
 
+    # Non-model field for category selection
+    quantity_category = forms.ChoiceField(
+        required=False,
+        choices=QUANTITY_CATEGORY_CHOICES,
+        widget=forms.RadioSelect,
+        label="What are you measuring?"
+    )
+
+    # Quantity fields
+    quantity = forms.DecimalField(
+        max_digits=ITEM_QUANTITY_MAX_DIGITS,
+        decimal_places=ITEM_QUANTITY_DECIMAL_PLACES,
+        required=False,
+        widget=forms.NumberInput(attrs={
+            "placeholder": "0.00",
+            "step": "0.01",
+            "class": "search-input"
+        }),
+        label="Quantity"
+    )
+
+    quantity_unit = forms.ChoiceField(
+        required=False,
+        choices=QUANTITY_UNIT_CHOICES,
+        widget=forms.Select(attrs={"class": "m3-select"}),
+        label="Unit"
+    )
+
     class Meta:
         """Metadata options for ItemForm."""
 
         model = Item
-        fields = ("name", "description", "image", "unit")
+        fields = ("name", "description", "image", "unit", "quantity", "quantity_unit")
 
     def __init__(self, *args: object, user: WMSUser | None = None, **kwargs: object) -> None:
         """Initialize the form with a user-specific queryset for units.
@@ -530,6 +571,31 @@ class ItemForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if user:
             self.fields["unit"].queryset = Unit.objects.filter(user=user)
+
+        # Pre-populate quantity category when editing
+        if self.instance and self.instance.pk and self.instance.quantity_unit:
+            # Reverse-lookup category from unit
+            category = CATEGORY_BY_UNIT.get(self.instance.quantity_unit, "count")
+            self.initial["quantity_category"] = category
+
+    def clean(self) -> dict:
+        """Validate quantity: all-or-nothing with required unit."""
+        cleaned_data = super().clean()
+
+        quantity = cleaned_data.get("quantity")
+        quantity_unit = cleaned_data.get("quantity_unit")
+
+        # If quantity is provided, unit must be provided
+        if quantity is not None and not quantity_unit:
+            raise ValidationError(
+                "Unit of measurement is required when quantity is provided."
+            )
+
+        # If quantity is not provided, clear the unit (set to empty string)
+        if quantity is None:
+            cleaned_data["quantity_unit"] = ""
+
+        return cleaned_data
 
 class ItemSearchForm(forms.Form):
     """Form for searching items using LLM."""

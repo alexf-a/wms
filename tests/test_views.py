@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import http
 import json
+from decimal import Decimal
 from io import BytesIO
 from typing import TYPE_CHECKING
 from unittest.mock import Mock, patch
@@ -15,7 +16,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from PIL import Image
 
-from core.models import Item, Location, Unit
+from core.models import ITEM_QUANTITY_DECIMAL_PLACES, Item, Location, Unit
 from core.views import MAX_IMAGE_DIMENSION, MAX_IMAGE_UPLOAD_SIZE, ImageValidationError
 
 if TYPE_CHECKING:
@@ -1165,3 +1166,189 @@ class TestImageValidation:
 
         with pytest.raises(ImageValidationError, match="Unable to read"):
             _validate_image_upload(image_file)
+
+
+# =============================================================================
+# Quantity Update API
+# =============================================================================
+
+
+@pytest.fixture
+def item_with_quantity(user: User, standalone_unit: Unit) -> Item:
+    """Create a test item with count-based quantity tracking."""
+    return Item.objects.create(
+        user=user,
+        name="Nails",
+        description="Box of nails",
+        unit=standalone_unit,
+        quantity=Decimal("10"),
+        quantity_unit="count",
+    )
+
+
+@pytest.fixture
+def item_with_decimal_quantity(user: User, standalone_unit: Unit) -> Item:
+    """Create a test item with decimal (kg) quantity tracking."""
+    return Item.objects.create(
+        user=user,
+        name="Rice",
+        description="Bag of rice",
+        unit=standalone_unit,
+        quantity=Decimal("2.5"),
+        quantity_unit="kg",
+    )
+
+
+@pytest.mark.django_db
+class TestUpdateItemQuantityAPI:
+    """Tests for the update_item_quantity_api endpoint."""
+
+    def _url(self, item_id: int) -> str:
+        return reverse("update_item_quantity_api", args=[item_id])
+
+    # ----- increment -----
+
+    def test_increment_count_item(self, client: Client, user: User, item_with_quantity: Item):
+        """Test incrementing a count-based item increases by 1."""
+        client.force_login(user)
+        response = client.post(self._url(item_with_quantity.id), {"action": "increment"})
+        assert response.status_code == http.HTTPStatus.OK
+        data = response.json()
+        assert data["quantity"] == 11
+        assert "count" in data["formatted"]
+
+    def test_increment_decimal_item(self, client: Client, user: User, item_with_decimal_quantity: Item):
+        """Test incrementing a kg item increases by 0.1."""
+        client.force_login(user)
+        response = client.post(self._url(item_with_decimal_quantity.id), {"action": "increment"})
+        assert response.status_code == http.HTTPStatus.OK
+        data = response.json()
+        assert data["quantity"] == 2.6
+
+    def test_increment_is_atomic(self, client: Client, user: User, item_with_quantity: Item):
+        """Test that increment uses atomic F() expression (value in DB changes correctly)."""
+        client.force_login(user)
+        # Manually change DB value to simulate concurrent modification
+        Item.objects.filter(id=item_with_quantity.id).update(quantity=Decimal("20"))
+        response = client.post(self._url(item_with_quantity.id), {"action": "increment"})
+        assert response.status_code == http.HTTPStatus.OK
+        # Should be 21 (DB value 20 + 1), not 11 (stale in-memory 10 + 1)
+        assert response.json()["quantity"] == 21
+
+    # ----- decrement -----
+
+    def test_decrement_count_item(self, client: Client, user: User, item_with_quantity: Item):
+        """Test decrementing a count-based item decreases by 1."""
+        client.force_login(user)
+        response = client.post(self._url(item_with_quantity.id), {"action": "decrement"})
+        assert response.status_code == http.HTTPStatus.OK
+        data = response.json()
+        assert data["quantity"] == 9
+
+    def test_decrement_decimal_item(self, client: Client, user: User, item_with_decimal_quantity: Item):
+        """Test decrementing a kg item decreases by 0.1."""
+        client.force_login(user)
+        response = client.post(self._url(item_with_decimal_quantity.id), {"action": "decrement"})
+        assert response.status_code == http.HTTPStatus.OK
+        data = response.json()
+        assert data["quantity"] == 2.4
+
+    def test_decrement_clamps_at_zero(self, client: Client, user: User, standalone_unit: Unit):
+        """Test decrementing at zero does not go negative."""
+        zero_item = Item.objects.create(
+            user=user, name="Empty", description="empty", unit=standalone_unit,
+            quantity=Decimal(0), quantity_unit="count",
+        )
+        client.force_login(user)
+        response = client.post(self._url(zero_item.id), {"action": "decrement"})
+        assert response.status_code == http.HTTPStatus.OK
+        assert response.json()["quantity"] == 0
+
+    def test_decrement_is_atomic(self, client: Client, user: User, item_with_quantity: Item):
+        """Test that decrement uses atomic F() expression."""
+        client.force_login(user)
+        Item.objects.filter(id=item_with_quantity.id).update(quantity=Decimal("20"))
+        response = client.post(self._url(item_with_quantity.id), {"action": "decrement"})
+        assert response.status_code == http.HTTPStatus.OK
+        assert response.json()["quantity"] == 19
+
+    # ----- set -----
+
+    def test_set_quantity(self, client: Client, user: User, item_with_quantity: Item):
+        """Test setting an absolute quantity value."""
+        client.force_login(user)
+        response = client.post(self._url(item_with_quantity.id), {"action": "set", "value": "42"})
+        assert response.status_code == http.HTTPStatus.OK
+        assert response.json()["quantity"] == 42
+
+    def test_set_clamps_negative_to_zero(self, client: Client, user: User, item_with_quantity: Item):
+        """Test setting a negative value clamps to zero."""
+        client.force_login(user)
+        response = client.post(self._url(item_with_quantity.id), {"action": "set", "value": "-5"})
+        assert response.status_code == http.HTTPStatus.OK
+        assert response.json()["quantity"] == 0
+
+    def test_set_rounds_decimal_for_non_count(self, client: Client, user: User, item_with_decimal_quantity: Item):
+        """Test setting a decimal value rounds to configured decimal places for non-count units."""
+        client.force_login(user)
+        response = client.post(self._url(item_with_decimal_quantity.id), {"action": "set", "value": "3.456"})
+        assert response.status_code == http.HTTPStatus.OK
+        expected_quantity = float(Decimal("3.456").quantize(Decimal(10) ** -ITEM_QUANTITY_DECIMAL_PLACES))
+        assert response.json()["quantity"] == expected_quantity
+
+    def test_set_missing_value(self, client: Client, user: User, item_with_quantity: Item):
+        """Test set action without value parameter returns 400."""
+        client.force_login(user)
+        response = client.post(self._url(item_with_quantity.id), {"action": "set"})
+        assert response.status_code == http.HTTPStatus.BAD_REQUEST
+        assert "Missing" in response.json()["error"]
+
+    def test_set_invalid_value(self, client: Client, user: User, item_with_quantity: Item):
+        """Test set action with non-numeric value returns 400."""
+        client.force_login(user)
+        response = client.post(self._url(item_with_quantity.id), {"action": "set", "value": "abc"})
+        assert response.status_code == http.HTTPStatus.BAD_REQUEST
+
+    # ----- invalid action -----
+
+    def test_invalid_action(self, client: Client, user: User, item_with_quantity: Item):
+        """Test unknown action returns 400."""
+        client.force_login(user)
+        response = client.post(self._url(item_with_quantity.id), {"action": "multiply"})
+        assert response.status_code == http.HTTPStatus.BAD_REQUEST
+        assert "Invalid action" in response.json()["error"]
+
+    # ----- permissions -----
+
+    def test_requires_authentication(self, client: Client, item_with_quantity: Item):
+        """Test unauthenticated request redirects to login."""
+        response = client.post(self._url(item_with_quantity.id), {"action": "increment"})
+        assert response.status_code == http.HTTPStatus.FOUND
+        assert "login" in response.url
+
+    def test_other_user_denied(self, client: Client, other_user: User, item_with_quantity: Item):
+        """Test another user cannot modify the item quantity."""
+        client.force_login(other_user)
+        response = client.post(self._url(item_with_quantity.id), {"action": "increment"})
+        assert response.status_code == http.HTTPStatus.FORBIDDEN
+
+    # ----- edge cases -----
+
+    def test_nonexistent_item(self, client: Client, user: User):
+        """Test updating a nonexistent item returns 404."""
+        client.force_login(user)
+        response = client.post(self._url(99999), {"action": "increment"})
+        assert response.status_code == http.HTTPStatus.NOT_FOUND
+
+    def test_item_without_quantity(self, client: Client, user: User, item: Item):
+        """Test updating an item without quantity tracking returns 400."""
+        client.force_login(user)
+        response = client.post(self._url(item.id), {"action": "increment"})
+        assert response.status_code == http.HTTPStatus.BAD_REQUEST
+        assert "quantity tracking" in response.json()["error"]
+
+    def test_get_method_rejected(self, client: Client, user: User, item_with_quantity: Item):
+        """Test GET method returns 405."""
+        client.force_login(user)
+        response = client.get(self._url(item_with_quantity.id))
+        assert response.status_code == http.HTTPStatus.METHOD_NOT_ALLOWED

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 import logging
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
@@ -9,6 +11,8 @@ from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError
+from django.db.models import F
+from django.db.models.functions import Greatest
 from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from PIL import Image, UnidentifiedImageError
@@ -32,7 +36,8 @@ from .forms import (
     WMSUserAuthForm,
     WMSUserCreationForm,
 )
-from .models import Item, Unit
+from .models import UNIT_2_NAME, Item, Unit
+from .models import ITEM_QUANTITY_COUNT_STEP, ITEM_QUANTITY_NON_COUNT_STEP, ITEM_QUANTITY_ROUNDING_QUANTUM
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +53,7 @@ MAX_IMAGE_UPLOAD_SIZE_LABEL = (
     else f"{_max_upload_mb:.1f}MB"
 )
 ALLOWED_FORMATS_DISPLAY = ", ".join(sorted(ALLOWED_IMAGE_FORMATS))
+QUANTITY_UPDATE_ACTIONS = {"increment", "decrement", "set"}
 
 
 class ImageValidationError(ValueError):
@@ -333,7 +339,10 @@ def unit_detail(request: HttpRequest, user_id: int, access_token: str) -> HttpRe
         The rendered unit detail page.
     """
     _unit = get_object_or_404(Unit, user_id=user_id, access_token=access_token)
-    return render(request, "core/unit_detail.html", {"unit": _unit})
+    return render(request, "core/unit_detail.html", {
+        "unit": _unit,
+        "unit_2_name_json": json.dumps(UNIT_2_NAME),
+    })
 
 
 @login_required
@@ -576,10 +585,88 @@ def extract_item_features_api(request: HttpRequest) -> JsonResponse:
     except ImageValidationError as validation_error:
         logger.warning("[ExtractAPI] Image validation error: %s", validation_error)
         return JsonResponse({"error": str(validation_error)}, status=400)
-    except Exception as e:
-        logger.error("[ExtractAPI] Exception during extraction: %s: %s", type(e).__name__, str(e))
-        logger.error("[ExtractAPI] Full traceback:\n%s", traceback.format_exc())
+    except Exception:
+        logger.exception("[ExtractAPI] Exception during extraction")
         return JsonResponse({"error": "Failed to process image"}, status=500)
+
+
+@login_required
+def update_item_quantity_api(request: HttpRequest, item_id: int) -> JsonResponse:  # noqa: C901, PLR0911
+    """Update an item's quantity via AJAX API.
+
+    Supports three actions:
+    - increment: Increase quantity by step (1 for count, 0.1 for others)
+    - decrement: Decrease quantity by step (clamped to 0 minimum)
+    - set: Set quantity to specific value
+
+    Args:
+        request: The HTTP request object with action and optional value in POST data.
+        item_id: The ID of the item to update.
+
+    Returns:
+        JsonResponse with updated 'quantity' and 'formatted' fields, or error.
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "POST method required"}, status=405)
+
+    try:
+        item = Item.objects.select_related("unit").get(id=item_id)
+    except Item.DoesNotExist:
+        return JsonResponse({"error": "Item not found"}, status=404)
+
+    # Verify ownership
+    if item.unit.user != request.user:
+        return JsonResponse({"error": "Permission denied"}, status=403)
+
+    # Item must have quantity/unit set to be updatable
+    if item.quantity is None or not item.quantity_unit:
+        return JsonResponse({"error": "Item does not have quantity tracking enabled"}, status=400)
+
+    # Parse action
+    action = request.POST.get("action")
+    if action not in QUANTITY_UPDATE_ACTIONS:
+        valid_actions = ", ".join(f"'{a}'" for a in QUANTITY_UPDATE_ACTIONS)
+        return JsonResponse({"error": f"Invalid action. Must be {valid_actions}"}, status=400)
+
+    # Determine step size: 1 for count, 0.1 for all others
+    step = ITEM_QUANTITY_COUNT_STEP if item.quantity_unit == "count" else ITEM_QUANTITY_NON_COUNT_STEP
+
+    try:
+        if action == "set":
+            value_str = request.POST.get("value")
+            if value_str is None:
+                return JsonResponse({"error": "Missing 'value' parameter for 'set' action"}, status=400)
+            new_quantity = Decimal(value_str)
+            # Clamp to 0 minimum
+            new_quantity = max(Decimal(0), new_quantity)
+            # Truncate to integer for count units, round non-count units
+            new_quantity = Decimal(int(new_quantity)) if item.quantity_unit == "count" else new_quantity.quantize(ITEM_QUANTITY_ROUNDING_QUANTUM)
+
+            # Update with direct assignment
+            item.quantity = new_quantity
+            item.save(update_fields=["quantity"])
+        elif action == "increment":
+            # Atomic increment with F() expression
+            Item.objects.filter(id=item_id).update(quantity=F("quantity") + step)
+            item.refresh_from_db()
+        else:  # decrement
+            # Atomic decrement with Greatest() to ensure non-negative
+            clamp = Decimal(0)
+            Item.objects.filter(id=item_id).update(
+                quantity=Greatest(F("quantity") - step, clamp)
+            )
+            item.refresh_from_db()
+
+        return JsonResponse({
+            "quantity": float(item.quantity),
+            "formatted": item.formatted_quantity or ""
+        })
+
+    except (InvalidOperation, ValueError, TypeError) as e:
+        return JsonResponse({"error": f"Invalid value: {e}"}, status=400)
+    except Exception:
+        logger.exception("[UpdateQuantityAPI] Unexpected error")
+        return JsonResponse({"error": "Failed to update quantity"}, status=500)
 
 
 def healthcheck_view(_: HttpRequest) -> JsonResponse:  # pragma: no cover - trivial

@@ -20,14 +20,16 @@ async function compressImage(file) {
     return new Promise((resolve, reject) => {
         const img = new Image();
         const objectUrl = URL.createObjectURL(file);
-        
+
         img.onload = () => {
+            // Revoke the temporary object URL used to load the image into the
+            // Image element; we keep the preview URL management separate.
             URL.revokeObjectURL(objectUrl);
-            
+
             // Calculate new dimensions maintaining aspect ratio
             let { width, height } = img;
             const originalSize = `${width}x${height}`;
-            
+
             if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION) {
                 if (width > height) {
                     height = Math.round(height * (MAX_IMAGE_DIMENSION / width));
@@ -37,15 +39,15 @@ async function compressImage(file) {
                     height = MAX_IMAGE_DIMENSION;
                 }
             }
-            
+
             // Create canvas and draw resized image
             const canvas = document.createElement('canvas');
             canvas.width = width;
             canvas.height = height;
-            
+
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, width, height);
-            
+
             // Convert to JPEG blob
             canvas.toBlob(
                 (blob) => {
@@ -60,17 +62,22 @@ async function compressImage(file) {
                 JPEG_QUALITY
             );
         };
-        
+
         img.onerror = () => {
             URL.revokeObjectURL(objectUrl);
             reject(new Error('Failed to load image for compression'));
         };
-        
+
         img.src = objectUrl;
     });
 }
 
-document.addEventListener('DOMContentLoaded', function() {
+/**
+ * Initialize add-items page interactions after DOM content is loaded.
+ *
+ * @returns {void}
+ */
+function initAddItemsFlow() {
     // Always log initialization regardless of debug mode
     console.log('[AddItems] Initializing add_items_flow.js');
     console.log('[AddItems] Referrer:', document.referrer);
@@ -98,6 +105,12 @@ document.addEventListener('DOMContentLoaded', function() {
     let isProcessing = false;
     let lastFileTimestamp = 0;
     
+    /**
+     * Revoke and clear the in-memory object URL used for the preview image.
+     * Ensures browser memory is released when previews are changed or removed.
+     *
+     * @returns {void}
+     */
     const cleanupObjectUrl = () => {
         if (currentObjectUrl) {
             URL.revokeObjectURL(currentObjectUrl);
@@ -105,7 +118,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
-    // Process the selected image file
+    /**
+     * Process the selected image file: compress, preview, upload to AI API,
+     * and populate the form with returned values.
+     *
+     * @param {File} file - The selected image file from the input element.
+     * @returns {Promise<void>} Resolves when processing and UI updates complete.
+     */
     async function processImageFile(file) {
         debugLog('[AddItems] processImageFile called', file ? file.name : 'no file');
         
@@ -201,7 +220,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Handle image selection - works for both camera and file upload
+    /**
+     * Handle a file input `change` event and begin processing the selected file.
+     *
+     * @param {Event} e - The input `change` event containing the FileList.
+     * @returns {void}
+     */
     function handleImageSelect(e) {
         const files = e.target.files;
         if (files && files.length > 0 && files[0]) {
@@ -213,11 +237,18 @@ document.addEventListener('DOMContentLoaded', function() {
     heroInput.addEventListener('change', handleImageSelect);
 
     // Handle skip button - uses shared revealSection utility
-    skipBtn.addEventListener('click', function() {
+    /**
+     * Reveal manual form entry and hide image preview when user skips AI flow.
+     *
+     * @returns {void}
+     */
+    function handleSkipToManual() {
         formCard.style.display = 'block';
         imagePreviewContainer.style.display = 'none';
         revealSection(formSection, null, null, { scrollBlock: 'start' });
-    });
+    }
+
+    skipBtn.addEventListener('click', handleSkipToManual);
 
     if (itemForm) {
         itemForm.addEventListener('submit', () => {
@@ -227,4 +258,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.addEventListener('pagehide', cleanupObjectUrl);
     window.addEventListener('beforeunload', cleanupObjectUrl);
-});
+
+}
+
+document.addEventListener('DOMContentLoaded', initAddItemsFlow);

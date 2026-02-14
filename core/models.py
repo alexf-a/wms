@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+from decimal import Decimal
 from typing import ClassVar
 from urllib.parse import urljoin
 
@@ -200,6 +201,73 @@ DIMENSION_UNIT_CHOICES = [
     ("ft", "Feet"),
     ("m", "Meters"),
 ]
+
+# Quantity units - single source of truth
+ITEM_QUANTITY_MAX_DIGITS = 10
+ITEM_QUANTITY_DECIMAL_PLACES = 2
+ITEM_QUANTITY_COUNT_STEP = Decimal("1")
+ITEM_QUANTITY_NON_COUNT_STEP = Decimal("0.1")
+# Rounding quantum for non-count quantities (e.g., 0.01 for 2 decimal places)
+ITEM_QUANTITY_ROUNDING_QUANTUM = Decimal(10) ** -ITEM_QUANTITY_DECIMAL_PLACES
+
+# Map unit symbol to display name
+UNIT_2_NAME = {
+    "count": "Count",
+    "mg": "Milligrams",
+    "g": "Grams",
+    "kg": "Kilograms",
+    "oz": "Ounces",
+    "lb": "Pounds",
+    "mL": "Milliliters",
+    "L": "Liters",
+    "fl_oz": "Fluid Ounces",
+    "gal": "Gallons",
+    "mm": "Millimeters",
+    "cm": "Centimeters",
+    "m": "Meters",
+    "in": "Inches",
+    "ft": "Feet",
+}
+
+# Map category to set of unit symbols
+CATEGORY_2_UNITS: dict[str, tuple[str]] = {
+    "count": ("count",),
+    "mass": ("mg", "g", "kg", "oz", "lb"),
+    "volume": ("mL", "L", "fl_oz", "gal"),
+    "length": ("mm", "cm", "m", "in", "ft"),
+}
+
+#: Radio options for quantity categories.
+#:
+#: Examples:
+#: - ("count", "Count")
+#: - ("mass", "Mass")
+QUANTITY_CATEGORY_CHOICES: list[tuple[str, str]] = [
+    (category, category.capitalize())
+    for category in CATEGORY_2_UNITS
+]
+
+#: Grouped unit choices for Django model fields.
+#:
+#: Examples:
+#: - ("Count", [("count", "Count")])
+#: - ("Mass", [("g", "Grams"), ("kg", "Kilograms")])
+QUANTITY_UNIT_CHOICES: list[tuple[str, list[tuple[str, str]]]] = [
+    (
+        category.capitalize(),
+        [(unit, UNIT_2_NAME[unit]) for unit in sorted(units)],
+    )
+    for category, units in sorted(CATEGORY_2_UNITS.items())
+]
+#: Reverse lookup from unit symbol to quantity category.
+#:
+#: Examples:
+#: - "kg" -> "mass"
+#: - "mL" -> "volume"
+CATEGORY_BY_UNIT: dict[str, str] = {}
+for category, units in CATEGORY_2_UNITS.items():
+    for unit in units:
+        CATEGORY_BY_UNIT[unit] = category
 
 
 class Unit(StorageSpace):
@@ -491,15 +559,44 @@ class Item(models.Model):
     """
     user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="items", on_delete=models.CASCADE, editable=False)
     name = models.CharField(max_length=255)
-    description = models.TextField()
+    description = models.TextField(blank=True, default="")
     created_on = models.DateTimeField(auto_now_add=True)
     image = models.ImageField(upload_to=user_item_image_upload_path, blank=True, null=True)
     unit = models.ForeignKey(Unit, related_name="items", on_delete=models.CASCADE)
+
+    # Quantity tracking (optional)
+    quantity = models.DecimalField(
+        max_digits=ITEM_QUANTITY_MAX_DIGITS,
+        decimal_places=ITEM_QUANTITY_DECIMAL_PLACES,
+        blank=True,
+        null=True,
+        help_text="Amount of this item",
+    )
+    quantity_unit = models.CharField(
+        max_length=10,
+        choices=QUANTITY_UNIT_CHOICES,
+        blank=True,
+        default="",
+        help_text="Unit of measurement for quantity"
+    )
 
     class Meta:
         """Model constraints for Item."""
 
         unique_together: ClassVar = ("user", "name")
+        constraints: ClassVar = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(quantity__isnull=True, quantity_unit="") |
+                    models.Q(quantity__isnull=False) & ~models.Q(quantity_unit="")
+                ),
+                name="item_quantity_all_or_nothing"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(quantity__isnull=True) | models.Q(quantity__gte=0),
+                name="item_quantity_non_negative"
+            ),
+        ]
 
     def __str__(self) -> str:
         return self.name
@@ -516,6 +613,25 @@ class Item(models.Model):
             raise ValueError(msg)
 
         super().save(*args, **kwargs)
+
+    @property
+    def formatted_quantity(self) -> str | None:
+        """Return formatted quantity string or None.
+
+        Returns:
+            str | None: Formatted quantity like "5 kg" or "100 count", or None if no quantity set.
+        """
+        if self.quantity is not None and self.quantity_unit:
+            # Get the display name for the unit
+            unit_display = UNIT_2_NAME.get(self.quantity_unit, self.quantity_unit)
+            # Format as integer for count, two decimals for others
+            formatted_value = (
+                int(self.quantity)
+                if self.quantity_unit == "count"
+                else self.quantity.quantize(Decimal("0.01"))
+            )
+            return f"{formatted_value} {unit_display.lower()}"
+        return None
 
     def to_search_input(self) -> ItemSearchInput:
         """Convert this Item instance to an ItemSearchInput for LLM search.

@@ -1203,14 +1203,14 @@ form {
 }
 
 fieldset {
-    border: 1px solid var(--wms-gray-200);
+    border: 1px solid var(--md-sys-color-outline-variant);
     border-radius: var(--wms-radius-md);
     padding: var(--wms-space-md);
     margin-bottom: var(--wms-space-md);
 }
 
 legend {
-    color: var(--wms-gray-900);
+    color: var(--md-sys-color-on-surface-variant);
     padding: 0 var(--wms-space-xs);
 }
 
@@ -1760,6 +1760,122 @@ input.search-input::placeholder,
 
 .m3-list-item--empty .m3-list-item__checkbox span::after {
     display: none;
+}
+
+/* ===================================
+   Quantity Controls
+   =================================== */
+
+.m3-item-card-wrapper {
+    display: flex;
+    flex-direction: column;
+    margin: 8px 0;
+}
+
+.m3-item-card-wrapper + .m3-item-card-wrapper {
+    margin-top: 8px;
+}
+
+.m3-item-card-wrapper .m3-list-item {
+    margin: 0;
+}
+
+.m3-quantity-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 8px 16px 12px;
+    background-color: var(--md-sys-color-surface);
+    border-radius: 0 0 var(--md-sys-shape-corner-large) var(--md-sys-shape-corner-large);
+}
+
+.qty-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--md-sys-shape-corner-full);
+    border: none;
+    background-color: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+    font-size: 20px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.qty-btn:hover {
+    background-color: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+    box-shadow: var(--md-sys-elevation-1);
+}
+
+.qty-btn:active {
+    transform: scale(0.95);
+    box-shadow: none;
+}
+
+.qty-value {
+    min-width: 80px;
+    text-align: center;
+    font-family: var(--md-sys-typescale-body-large-font-family);
+    font-size: var(--md-sys-typescale-body-large-font-size);
+    font-weight: 500;
+    color: var(--md-sys-color-on-surface);
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: var(--md-sys-shape-corner-small);
+    transition: background-color 0.2s ease;
+    user-select: none;
+}
+
+.qty-value:hover {
+    background-color: var(--md-sys-color-surface-container-highest);
+}
+
+.qty-value:focus {
+    outline: 2px solid var(--md-sys-color-primary);
+    outline-offset: 2px;
+}
+
+/* Zero quantity state - red styling */
+.qty-zero .qty-btn {
+    background-color: var(--md-sys-color-error);
+    color: var(--md-sys-color-on-error);
+}
+
+.qty-zero .qty-btn:hover {
+    background-color: var(--md-sys-color-error-container);
+    color: var(--md-sys-color-on-error-container);
+}
+
+.qty-zero .qty-value {
+    color: var(--md-sys-color-error);
+}
+
+/* Inline input for click-to-edit */
+.qty-input {
+    min-width: 80px;
+    max-width: 100px;
+    text-align: center;
+    font-family: var(--md-sys-typescale-body-large-font-family);
+    font-size: var(--md-sys-typescale-body-large-font-size);
+    font-weight: 500;
+    color: var(--md-sys-color-on-surface);
+    background-color: var(--md-sys-color-surface-container);
+    border: 2px solid var(--md-sys-color-primary);
+    border-radius: var(--md-sys-shape-corner-small);
+    padding: 4px 8px;
+    outline: none;
+}
+
+.qty-input:focus {
+    border-color: var(--md-sys-color-primary);
+    box-shadow: 0 0 0 2px var(--md-sys-color-primary-container);
 }
 
 /* ===================================
@@ -2921,5 +3037,116 @@ input.search-input::placeholder,
     
     .hierarchy-arrow {
         transform: rotate(90deg);
+    }
+}
+
+/* ==========================================
+   Quantity Section Styles
+   ========================================== */
+
+/* Title sits above a bordered body (like other form labels). */
+.quantity-section {
+    margin-top: var(--wms-space-md);
+    margin-bottom: 0;
+}
+
+.quantity-section__title {
+    margin: 0 0 var(--wms-space-sm) 0;
+    color: var(--md-sys-color-on-surface-variant);
+}
+
+.quantity-section__body {
+    border: 1px solid var(--md-sys-color-outline);
+    border-radius: var(--wms-radius-md);
+    padding: var(--wms-space-md);
+    background-color: var(--md-sys-color-surface-container-lowest);
+}
+
+.m3-form-optional-text {
+    font-weight: normal;
+    color: var(--md-sys-color-on-surface-variant);
+    font-size: var(--md-sys-typescale-body-small-font-size);
+}
+
+/* ==========================================
+   M3 Radio Group (Chip-style selection)
+   Reusable component for multi-option selection
+   ========================================== */
+
+.m3-radio-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--wms-space-sm);
+    margin-top: var(--wms-space-xs);
+}
+
+.m3-radio-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--md-sys-shape-corner-full);
+    background-color: var(--md-sys-color-surface-container-low);
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    font-family: var(--md-sys-typescale-label-large-font-family);
+    font-size: var(--md-sys-typescale-label-large-font-size);
+}
+
+.m3-radio-button:hover {
+    background-color: var(--md-sys-color-surface-container-high);
+}
+
+.m3-radio-button:has(.m3-radio-input:checked) {
+    background-color: var(--md-sys-color-secondary-container);
+    color: var(--md-sys-color-on-secondary-container);
+}
+
+.m3-radio-input {
+    width: 1.125rem;
+    height: 1.125rem;
+    accent-color: var(--md-sys-color-primary);
+    cursor: pointer;
+}
+
+.m3-radio-label {
+    cursor: pointer;
+}
+
+/* ==========================================
+   M3 Form Row (Inline field layout)
+   Reusable component for side-by-side form fields
+   ========================================== */
+
+.m3-form-row {
+    display: flex;
+    gap: var(--wms-space-md);
+    margin-top: var(--wms-space-sm);
+}
+
+.m3-form-field--flex {
+    flex: 1;
+    min-width: 0;
+}
+
+/* Quantity-specific: slightly wider amount field */
+.quantity-row .m3-form-field--flex:first-child {
+    flex: 1.2;
+}
+
+/* Mobile: stack form rows and compact radio buttons */
+@media (max-width: 480px) {
+    .m3-form-row {
+        flex-direction: column;
+        gap: var(--wms-space-sm);
+    }
+    
+    .m3-radio-group {
+        gap: var(--wms-space-xs);
+    }
+    
+    .m3-radio-button {
+        padding: 0.375rem 0.625rem;
+        font-size: var(--md-sys-typescale-label-medium-font-size);
     }
 }
