@@ -230,29 +230,41 @@ UNIT_2_NAME = {
 }
 
 # Map category to set of unit symbols
-CATEGORY_2_UNITS = {
-    "count": {"count"},
-    "mass": {"mg", "g", "kg", "oz", "lb"},
-    "volume": {"mL", "L", "fl_oz", "gal"},
-    "length": {"mm", "cm", "m", "in", "ft"},
+CATEGORY_2_UNITS: dict[str, tuple[str]] = {
+    "count": ("count",),
+    "mass": ("mg", "g", "kg", "oz", "lb"),
+    "volume": ("mL", "L", "fl_oz", "gal"),
+    "length": ("mm", "cm", "m", "in", "ft"),
 }
 
-# Derive quantity category choices for radio buttons
-QUANTITY_CATEGORY_CHOICES = [
+#: Radio options for quantity categories.
+#:
+#: Examples:
+#: - ("count", "Count")
+#: - ("mass", "Mass")
+QUANTITY_CATEGORY_CHOICES: list[tuple[str, str]] = [
     (category, category.capitalize())
     for category in CATEGORY_2_UNITS
 ]
 
-# Derive quantity unit choices for Django model field (grouped format)
-QUANTITY_UNIT_CHOICES = [
+#: Grouped unit choices for Django model fields.
+#:
+#: Examples:
+#: - ("Count", [("count", "Count")])
+#: - ("Mass", [("g", "Grams"), ("kg", "Kilograms")])
+QUANTITY_UNIT_CHOICES: list[tuple[str, list[tuple[str, str]]]] = [
     (
         category.capitalize(),
         [(unit, UNIT_2_NAME[unit]) for unit in sorted(units)],
     )
     for category, units in sorted(CATEGORY_2_UNITS.items())
 ]
-# Reverse mapping: unit -> category (for edit pre-selection)
-CATEGORY_BY_UNIT = {}
+#: Reverse lookup from unit symbol to quantity category.
+#:
+#: Examples:
+#: - "kg" -> "mass"
+#: - "mL" -> "volume"
+CATEGORY_BY_UNIT: dict[str, str] = {}
 for category, units in CATEGORY_2_UNITS.items():
     for unit in units:
         CATEGORY_BY_UNIT[unit] = category
