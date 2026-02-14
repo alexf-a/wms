@@ -258,6 +258,11 @@ function handleQuantityValueClick(e) {
     input.select();
     
     // Save on blur or Enter
+    /**
+     * Validate and persist the inline-edited quantity value.
+     *
+     * @returns {Promise<void>} Resolves after UI and request state are updated.
+     */
     const saveValue = async () => {
         const newValue = parseFloat(input.value);
         
@@ -340,6 +345,12 @@ function setupLongPress(button) {
     let repeatCount = 0;
     let didRepeat = false;
     
+    /**
+     * Start long-press timers and begin repeated quantity updates.
+     *
+     * @param {Event} e - Mouse or touch press event.
+     * @returns {void}
+     */
     const startLongPress = (e) => {
         e.preventDefault();
         didRepeat = false;
@@ -367,6 +378,12 @@ function setupLongPress(button) {
         }, 500); // Start repeating after 500ms hold
     };
     
+    /**
+     * Stop long-press timers and handle quick-tap touch fallback behavior.
+     *
+     * @param {Event} [e] - Mouse or touch release/cancel event.
+     * @returns {void}
+     */
     const stopLongPress = (e) => {
         const wasQuickTap = !didRepeat;
         
