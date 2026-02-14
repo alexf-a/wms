@@ -235,9 +235,6 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-# Only include core/static in STATICFILES_DIRS during development.
-# In production, rely on app-based static file discovery to avoid duplication.
-STATICFILES_DIRS = [BASE_DIR / "core" / "static"] if DEBUG else []
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
