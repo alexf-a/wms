@@ -1,0 +1,23 @@
+{% extends "core/base_tw.html" %}
+
+{% block content %}
+<div class="flex flex-col items-center justify-center px-6 py-12">
+    <h1 class="text-2xl font-bold">Welcome to WMS</h1>
+    <p class="mt-2 text-muted-foreground">Onboarding wizard coming soon.</p>
+    <button onclick="completeOnboarding()"
+            class="mt-6 rounded-lg bg-primary px-6 py-3 text-primary-foreground">
+        Skip &amp; Get Started
+    </button>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function completeOnboarding() {
+    fetch("{% url 'complete_onboarding_api' %}", {
+        method: "POST",
+        headers: {"X-CSRFToken": "{{ csrf_token }}"}
+    }).then(function() { window.location.href = "{% url 'home_view' %}"; });
+}
+</script>
+{% endblock %}
