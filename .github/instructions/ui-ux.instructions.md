@@ -15,7 +15,7 @@ Less content is more. Pursue sleekness and simplicity.
 
 ## CSS Framework: Tailwind CSS v4
 
-New and migrated templates use **Tailwind CSS v4** with the standalone CLI (no Node.js). The design system is defined entirely in `core/static/core/css/input.css` using `@theme` and CSS custom properties.
+New and migrated templates use **Tailwind CSS v4** with the standalone CLI (no Node.js). The design system is defined entirely in `core/tailwind/input.css` using `@theme` and CSS custom properties.
 
 ### Template Structure
 
