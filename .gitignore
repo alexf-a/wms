@@ -36,3 +36,7 @@ deploy/caddy-ca-qr.png
 
 staticfiles/*
 .DS_Store
+
+# Tailwind CSS
+bin/tailwindcss
+core/static/core/css/tailwind.css
