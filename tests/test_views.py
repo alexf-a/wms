@@ -334,12 +334,24 @@ class TestOnboardingView:
         response = client.get(reverse("onboarding"))
         assert response.status_code == http.HTTPStatus.OK
 
+    def test_onboarding_uses_correct_template(self, client: Client, user_needs_onboarding: User):
+        """Test onboarding page renders the onboarding template."""
+        client.force_login(user_needs_onboarding)
+        response = client.get(reverse("onboarding"))
+        assert "core/onboarding.html" in [t.name for t in response.templates]
+
     def test_onboarding_redirects_if_already_completed(self, client: Client, user: User):
         """Test onboarding redirects to home for users who already completed it."""
         client.force_login(user)
         response = client.get(reverse("onboarding"))
         assert response.status_code == http.HTTPStatus.FOUND
         assert response.url == reverse("home_view")
+
+    def test_onboarding_has_no_active_nav(self, client: Client, user_needs_onboarding: User):
+        """Test onboarding page does not set active_nav (no bottom nav)."""
+        client.force_login(user_needs_onboarding)
+        response = client.get(reverse("onboarding"))
+        assert "active_nav" not in response.context
 
 
 @pytest.mark.django_db
@@ -368,6 +380,70 @@ class TestCompleteOnboardingApi:
         client.force_login(user_needs_onboarding)
         response = client.get(reverse("complete_onboarding_api"))
         assert response.status_code == http.HTTPStatus.METHOD_NOT_ALLOWED
+
+    def test_complete_onboarding_is_idempotent(self, client: Client, user: User):
+        """Test completing onboarding when already onboarded still succeeds."""
+        client.force_login(user)
+        response = client.post(reverse("complete_onboarding_api"))
+        assert response.status_code == http.HTTPStatus.OK
+        data = json.loads(response.content)
+        assert data["status"] == "ok"
+
+        user.refresh_from_db()
+        assert user.has_completed_onboarding is True
+
+
+@pytest.mark.django_db
+class TestOnboardingFlow:
+    """End-to-end tests for the registration → onboarding → home flow."""
+
+    def test_new_user_has_onboarding_incomplete(self, client: Client):
+        """Test newly registered user has has_completed_onboarding=False."""
+        client.post(
+            reverse("register"),
+            {
+                "email": "flowtest@example.com",
+                "password1": "securepass123!",
+                "password2": "securepass123!",
+            },
+        )
+        user = User.objects.get(email="flowtest@example.com")
+        assert user.has_completed_onboarding is False
+
+    def test_full_onboarding_flow(self, client: Client):
+        """Test register → onboarding → complete → home works end-to-end."""
+        # Step 1: Register
+        response = client.post(
+            reverse("register"),
+            {
+                "email": "flowtest@example.com",
+                "password1": "securepass123!",
+                "password2": "securepass123!",
+            },
+        )
+        assert response.url == reverse("onboarding")
+
+        # Step 2: Onboarding page is accessible
+        response = client.get(reverse("onboarding"))
+        assert response.status_code == http.HTTPStatus.OK
+
+        # Step 3: Home redirects back to onboarding (not yet completed)
+        response = client.get(reverse("home_view"))
+        assert response.status_code == http.HTTPStatus.FOUND
+        assert response.url == reverse("onboarding")
+
+        # Step 4: Complete onboarding
+        response = client.post(reverse("complete_onboarding_api"))
+        assert response.status_code == http.HTTPStatus.OK
+
+        # Step 5: Home is now accessible
+        response = client.get(reverse("home_view"))
+        assert response.status_code == http.HTTPStatus.OK
+
+        # Step 6: Onboarding now redirects to home
+        response = client.get(reverse("onboarding"))
+        assert response.status_code == http.HTTPStatus.FOUND
+        assert response.url == reverse("home_view")
 
 
 @pytest.mark.django_db
