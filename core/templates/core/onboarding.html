@@ -1,23 +1,128 @@
 {% extends "core/base_tw.html" %}
+{% load static %}
+
+{% block title %}Welcome - WMS{% endblock %}
 
 {% block content %}
-<div class="flex flex-col items-center justify-center px-6 py-12">
-    <h1 class="text-2xl font-bold">Welcome to WMS</h1>
-    <p class="mt-2 text-muted-foreground">Onboarding wizard coming soon.</p>
-    <button onclick="completeOnboarding()"
-            class="mt-6 rounded-lg bg-primary px-6 py-3 text-primary-foreground">
-        Skip &amp; Get Started
-    </button>
+<div id="onboarding-wizard" class="flex flex-1 flex-col items-center justify-center px-6">
+  <div class="w-full max-w-sm">
+
+    <!-- Progress bar (steps 1-2 only) -->
+    <div id="progress-bar" class="mb-8 hidden">
+      <div class="flex items-center gap-2">
+        <div id="progress-step-1" class="h-1 flex-1 rounded-full bg-muted"></div>
+        <div id="progress-step-2" class="h-1 flex-1 rounded-full bg-muted"></div>
+      </div>
+      <p id="progress-label" class="mt-2 text-center text-xs text-muted-foreground"></p>
+    </div>
+
+    <!-- Step 0: Welcome -->
+    <div class="onboarding-step" data-step="0">
+      <div class="space-y-4 text-center">
+        <h1 class="text-2xl font-bold text-foreground">Welcome to WMS!</h1>
+        <p class="text-sm text-muted-foreground">
+          Let's set up your first storage space. WMS uses a simple hierarchy:
+        </p>
+        <div class="rounded-lg border border-border bg-card p-4 text-left text-sm">
+          <p class="font-medium text-foreground">Locations</p>
+          <p class="text-muted-foreground">Places where you store things (house, office, workshop)</p>
+          <p class="mt-3 font-medium text-foreground">Units</p>
+          <p class="text-muted-foreground">Containers within locations (shelf, drawer, toolbox)</p>
+        </div>
+        <button id="btn-get-started"
+                class="w-full rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+          Get Started
+        </button>
+      </div>
+    </div>
+
+    <!-- Step 1: Create Location -->
+    <div class="onboarding-step hidden" data-step="1">
+      <div class="space-y-4">
+        <div>
+          <h2 class="text-xl font-bold text-foreground">Create a Location</h2>
+          <p class="mt-1 text-sm text-muted-foreground">Where do you store things? You can skip this for now.</p>
+        </div>
+        <div>
+          <label class="mb-1 block text-xs font-medium text-muted-foreground" for="location-name">Location Name</label>
+          <input type="text" id="location-name" placeholder="e.g. My House, Workshop, Office"
+                 class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+        </div>
+        <div>
+          <label class="mb-1 block text-xs font-medium text-muted-foreground" for="location-address">Address (optional)</label>
+          <input type="text" id="location-address" placeholder="123 Main St"
+                 class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+        </div>
+        <div id="location-error" class="hidden rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive"></div>
+        <button id="btn-location-next"
+                class="w-full rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
+          Next
+        </button>
+        <button id="btn-location-skip"
+                class="w-full rounded-md border border-border bg-background px-4 py-2.5 text-sm font-medium text-foreground hover:bg-accent">
+          Skip for Now
+        </button>
+      </div>
+    </div>
+
+    <!-- Step 2: Create Unit -->
+    <div class="onboarding-step hidden" data-step="2">
+      <div class="space-y-4">
+        <div>
+          <h2 class="text-xl font-bold text-foreground">Create a Storage Unit</h2>
+          <p class="mt-1 text-sm text-muted-foreground">
+            A container where items go.<span id="unit-location-hint" class="hidden"> This will be inside <strong id="unit-location-name"></strong>.</span>
+          </p>
+        </div>
+        <div>
+          <label class="mb-1 block text-xs font-medium text-muted-foreground" for="unit-name">Unit Name</label>
+          <input type="text" id="unit-name" placeholder="e.g. Garage Shelf, Hall Closet, Toolbox"
+                 class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+        </div>
+        <div id="unit-error" class="hidden rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive"></div>
+        <button id="btn-unit-next"
+                class="w-full rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
+          Next
+        </button>
+        <div class="flex gap-3">
+          <button id="btn-unit-back"
+                  class="flex-1 rounded-md border border-border bg-background px-4 py-2.5 text-sm font-medium text-foreground hover:bg-accent">
+            Back
+          </button>
+          <button id="btn-unit-skip"
+                  class="flex-1 rounded-md border border-border bg-background px-4 py-2.5 text-sm font-medium text-foreground hover:bg-accent">
+            Skip
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: Done -->
+    <div class="onboarding-step hidden" data-step="3">
+      <div class="space-y-4 text-center">
+        <h2 class="text-xl font-bold text-foreground">You're All Set!</h2>
+        <p class="text-sm text-muted-foreground">Your storage space is ready. What would you like to do next?</p>
+        <a href="{% url 'add_items_to_unit' %}"
+           class="block w-full rounded-md bg-primary px-4 py-2.5 text-center text-sm font-medium text-primary-foreground hover:bg-primary/90">
+          Add an Item
+        </a>
+        <a href="{% url 'home_view' %}"
+           class="block w-full rounded-md border border-border bg-background px-4 py-2.5 text-center text-sm font-medium text-foreground hover:bg-accent">
+          Go to Home
+        </a>
+      </div>
+    </div>
+
+  </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<script>
-function completeOnboarding() {
-    fetch("{% url 'complete_onboarding_api' %}", {
-        method: "POST",
-        headers: {"X-CSRFToken": "{{ csrf_token }}"}
-    }).then(function() { window.location.href = "{% url 'home_view' %}"; });
-}
-</script>
+<script src="{% static 'core/js/fetch_utils.js' %}"></script>
+<script
+  src="{% static 'core/js/onboarding.js' %}"
+  data-create-location-url="{% url 'api_create_location' %}"
+  data-create-unit-url="{% url 'api_create_unit' %}"
+  data-complete-onboarding-url="{% url 'complete_onboarding_api' %}"
+></script>
 {% endblock %}

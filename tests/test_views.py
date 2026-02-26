@@ -317,6 +317,42 @@ class TestHomeView:
         assert response.status_code == http.HTTPStatus.FOUND
         assert response.url == reverse("onboarding")
 
+    def test_home_dashboard_counts_zero(self, client: Client, user: User):
+        """Test dashboard shows zero counts for new user with no data."""
+        client.force_login(user)
+        response = client.get(reverse("home_view"))
+        assert response.status_code == http.HTTPStatus.OK
+        assert response.context["location_count"] == 0
+        assert response.context["unit_count"] == 0
+        assert response.context["item_count"] == 0
+
+    def test_home_dashboard_counts_accurate(
+        self, client: Client, user: User, location: Location, standalone_unit: Unit, item: Item
+    ):
+        """Test dashboard counts match actual data."""
+        client.force_login(user)
+        response = client.get(reverse("home_view"))
+        assert response.status_code == http.HTTPStatus.OK
+        assert response.context["location_count"] == 1
+        assert response.context["unit_count"] == 1
+        assert response.context["item_count"] == 1
+
+    def test_home_dashboard_counts_exclude_other_users(
+        self, client: Client, user: User, other_user: User
+    ):
+        """Test dashboard counts only include current user's data."""
+        other_unit = Unit.objects.create(user=other_user, name="Other Bin")
+        Location.objects.create(user=other_user, name="Other House")
+        Item.objects.create(
+            user=other_user, name="Other Hammer", unit=other_unit, description="x"
+        )
+
+        client.force_login(user)
+        response = client.get(reverse("home_view"))
+        assert response.context["location_count"] == 0
+        assert response.context["unit_count"] == 0
+        assert response.context["item_count"] == 0
+
 
 @pytest.mark.django_db
 class TestOnboardingView:
@@ -444,6 +480,171 @@ class TestOnboardingFlow:
         response = client.get(reverse("onboarding"))
         assert response.status_code == http.HTTPStatus.FOUND
         assert response.url == reverse("home_view")
+
+
+@pytest.mark.django_db
+class TestCreateLocationAPI:
+    """Tests for the create location JSON API endpoint."""
+
+    def test_create_location_requires_auth(self, client: Client):
+        """Test create location API requires authentication."""
+        response = client.post(
+            reverse("api_create_location"),
+            data=json.dumps({"name": "My House"}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.FOUND
+        assert "login" in response.url
+
+    def test_create_location_success(self, client: Client, user: User):
+        """Test POST with valid name creates location and returns 201."""
+        client.force_login(user)
+        response = client.post(
+            reverse("api_create_location"),
+            data=json.dumps({"name": "New House"}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.CREATED
+        data = response.json()
+        assert data["name"] == "New House"
+        assert "id" in data
+        assert Location.objects.filter(user=user, name="New House").exists()
+
+    def test_create_location_with_address(self, client: Client, user: User):
+        """Test POST with name and address saves both fields."""
+        client.force_login(user)
+        response = client.post(
+            reverse("api_create_location"),
+            data=json.dumps({"name": "Office", "address": "456 Work Ave"}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.CREATED
+        loc = Location.objects.get(user=user, name="Office")
+        assert loc.address == "456 Work Ave"
+
+    def test_create_location_duplicate_name(self, client: Client, user: User):
+        """Test duplicate location name for same user returns 409."""
+        Location.objects.create(user=user, name="Duplicate")
+        client.force_login(user)
+        response = client.post(
+            reverse("api_create_location"),
+            data=json.dumps({"name": "Duplicate"}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.CONFLICT
+        assert "already exists" in response.json()["error"]
+
+    def test_create_location_empty_name(self, client: Client, user: User):
+        """Test POST with empty name returns 400."""
+        client.force_login(user)
+        response = client.post(
+            reverse("api_create_location"),
+            data=json.dumps({"name": ""}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.BAD_REQUEST
+        assert "required" in response.json()["error"].lower()
+
+    def test_create_location_rejects_get(self, client: Client, user: User):
+        """Test GET request is rejected with 405."""
+        client.force_login(user)
+        response = client.get(reverse("api_create_location"))
+        assert response.status_code == http.HTTPStatus.METHOD_NOT_ALLOWED
+
+
+@pytest.mark.django_db
+class TestCreateUnitAPI:
+    """Tests for the create unit JSON API endpoint."""
+
+    def test_create_unit_requires_auth(self, client: Client):
+        """Test create unit API requires authentication."""
+        response = client.post(
+            reverse("api_create_unit"),
+            data=json.dumps({"name": "Shelf"}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.FOUND
+        assert "login" in response.url
+
+    def test_create_unit_success(self, client: Client, user: User):
+        """Test POST with valid name creates unit and returns 201."""
+        client.force_login(user)
+        response = client.post(
+            reverse("api_create_unit"),
+            data=json.dumps({"name": "New Shelf"}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.CREATED
+        data = response.json()
+        assert data["name"] == "New Shelf"
+        assert "id" in data
+        assert "access_token" in data
+        assert Unit.objects.filter(user=user, name="New Shelf").exists()
+
+    def test_create_unit_with_location(self, client: Client, user: User):
+        """Test POST with location_id links unit to location."""
+        loc = Location.objects.create(user=user, name="API House")
+        client.force_login(user)
+        response = client.post(
+            reverse("api_create_unit"),
+            data=json.dumps({"name": "Garage Shelf", "location_id": loc.id}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.CREATED
+        unit = Unit.objects.get(user=user, name="Garage Shelf")
+        assert unit.location == loc
+
+    def test_create_unit_without_location(self, client: Client, user: User):
+        """Test POST without location_id creates standalone unit."""
+        client.force_login(user)
+        response = client.post(
+            reverse("api_create_unit"),
+            data=json.dumps({"name": "Loose Bin"}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.CREATED
+        unit = Unit.objects.get(user=user, name="Loose Bin")
+        assert unit.location is None
+
+    def test_create_unit_duplicate_name(self, client: Client, user: User):
+        """Test duplicate unit name for same user returns 409."""
+        Unit.objects.create(user=user, name="Existing Unit")
+        client.force_login(user)
+        response = client.post(
+            reverse("api_create_unit"),
+            data=json.dumps({"name": "Existing Unit"}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.CONFLICT
+        assert "already exists" in response.json()["error"]
+
+    def test_create_unit_empty_name(self, client: Client, user: User):
+        """Test POST with empty name returns 400."""
+        client.force_login(user)
+        response = client.post(
+            reverse("api_create_unit"),
+            data=json.dumps({"name": ""}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.BAD_REQUEST
+        assert "required" in response.json()["error"].lower()
+
+    def test_create_unit_rejects_get(self, client: Client, user: User):
+        """Test GET request is rejected with 405."""
+        client.force_login(user)
+        response = client.get(reverse("api_create_unit"))
+        assert response.status_code == http.HTTPStatus.METHOD_NOT_ALLOWED
+
+    def test_create_unit_other_users_location(self, client: Client, user: User, other_user: User):
+        """Test cannot link unit to another user's location."""
+        other_loc = Location.objects.create(user=other_user, name="Other Place")
+        client.force_login(user)
+        response = client.post(
+            reverse("api_create_unit"),
+            data=json.dumps({"name": "My Shelf", "location_id": other_loc.id}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.NOT_FOUND
 
 
 @pytest.mark.django_db

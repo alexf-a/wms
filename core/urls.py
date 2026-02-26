@@ -49,5 +49,7 @@ urlpatterns = [
     path("api/extract-item-features/", views.extract_item_features_api, name="extract_item_features_api"),
     path("api/item/<int:item_id>/quantity/", views.update_item_quantity_api, name="update_item_quantity_api"),
     path("api/onboarding/complete/", views.complete_onboarding_api, name="complete_onboarding_api"),
+    path("api/locations/create/", views.api_create_location, name="api_create_location"),
+    path("api/units/create/", views.api_create_unit, name="api_create_unit"),
     path("caddy-ca/download/", views.caddy_ca_download_view, name="caddy_ca_download"),
 ]

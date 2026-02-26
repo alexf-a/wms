@@ -36,7 +36,7 @@ from .forms import (
     WMSUserAuthForm,
     WMSUserCreationForm,
 )
-from .models import UNIT_2_NAME, Item, Unit
+from .models import UNIT_2_NAME, Item, Location, Unit
 from .models import ITEM_QUANTITY_COUNT_STEP, ITEM_QUANTITY_NON_COUNT_STEP, ITEM_QUANTITY_ROUNDING_QUANTUM
 
 logger = logging.getLogger(__name__)
@@ -232,8 +232,17 @@ def home_view(request: HttpRequest) -> HttpResponse:
     if request.user.is_authenticated and not request.user.has_completed_onboarding:
         return redirect("onboarding")
 
-    # Pass authentication status to the template
-    return render(request, "core/home.html", {"is_authenticated": request.user.is_authenticated, "active_nav": "home"})
+    context = {
+        "is_authenticated": request.user.is_authenticated,
+        "active_nav": "home",
+    }
+
+    if request.user.is_authenticated:
+        context["location_count"] = Location.objects.filter(user=request.user).count()
+        context["unit_count"] = Unit.objects.filter(user=request.user).count()
+        context["item_count"] = Item.objects.filter(user=request.user).count()
+
+    return render(request, "core/home.html", context)
 
 
 @login_required
@@ -268,6 +277,82 @@ def complete_onboarding_api(request: HttpRequest) -> JsonResponse:
     request.user.has_completed_onboarding = True
     request.user.save(update_fields=["has_completed_onboarding"])
     return JsonResponse({"status": "ok"})
+
+
+@login_required
+def api_create_location(request: HttpRequest) -> JsonResponse:
+    """Create a new location via JSON API.
+
+    Args:
+        request: The HTTP request with JSON body containing 'name' and optional 'address'.
+
+    Returns:
+        JsonResponse with created location's id and name (201), or error.
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    name = (data.get("name") or "").strip()
+    if not name:
+        return JsonResponse({"error": "Name is required"}, status=400)
+
+    address = (data.get("address") or "").strip() or None
+
+    try:
+        location = Location.objects.create(
+            user=request.user, name=name, address=address
+        )
+    except IntegrityError:
+        return JsonResponse(
+            {"error": f'A location named "{name}" already exists.'}, status=409
+        )
+
+    return JsonResponse({"id": location.id, "name": location.name}, status=201)
+
+
+@login_required
+def api_create_unit(request: HttpRequest) -> JsonResponse:
+    """Create a new unit via JSON API.
+
+    Args:
+        request: The HTTP request with JSON body containing 'name' and optional 'location_id'.
+
+    Returns:
+        JsonResponse with created unit's id, name, and access_token (201), or error.
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    name = (data.get("name") or "").strip()
+    if not name:
+        return JsonResponse({"error": "Name is required"}, status=400)
+
+    location_id = data.get("location_id")
+    location = None
+    if location_id:
+        location = get_object_or_404(Location, id=location_id, user=request.user)
+
+    try:
+        unit = Unit.objects.create(
+            user=request.user, name=name, location=location
+        )
+    except IntegrityError:
+        return JsonResponse(
+            {"error": f'A unit named "{name}" already exists.'}, status=409
+        )
+
+    return JsonResponse(
+        {"id": unit.id, "name": unit.name, "access_token": unit.access_token},
+        status=201,
+    )
 
 
 def getting_started_view(request: HttpRequest) -> HttpResponse:
