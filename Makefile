@@ -333,7 +333,7 @@ refresh-local:
 # =============================================================================
 
 # Tailwind standalone CLI settings
-TW_INPUT=core/static/core/css/input.css
+TW_INPUT=core/tailwind/input.css
 TW_OUTPUT=core/static/core/css/tailwind.css
 
 # Detect OS/arch for downloading the correct binary

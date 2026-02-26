@@ -31,7 +31,7 @@ COPY . /app
 ARG TW_VERSION
 RUN curl -sL https://github.com/tailwindlabs/tailwindcss/releases/download/${TW_VERSION}/tailwindcss-linux-x64 -o /usr/local/bin/tailwindcss \
  && chmod +x /usr/local/bin/tailwindcss \
- && tailwindcss -i core/static/core/css/input.css -o core/static/core/css/tailwind.css --minify
+ && tailwindcss -i core/tailwind/input.css -o core/static/core/css/tailwind.css --minify
 
 # Collect static in image build for WhiteNoise
 RUN python manage.py collectstatic --noinput || true
