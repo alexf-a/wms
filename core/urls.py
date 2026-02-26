@@ -17,6 +17,7 @@ urlpatterns = [
         auth_views.LogoutView.as_view(next_page="home_view"),
         name="logout",
     ),
+    path("onboarding/", views.onboarding_view, name="onboarding"),
     path("expand_inventory/", views.expand_inventory_view, name="expand_inventory"),
     path("create_storage/", views.create_storage_view, name="create_storage"),
     path("add_items_to_unit/", views.add_items_to_unit_view, name="add_items_to_unit"),
@@ -47,5 +48,6 @@ urlpatterns = [
     path("find-item/", views.item_search_view, name="item_search"),
     path("api/extract-item-features/", views.extract_item_features_api, name="extract_item_features_api"),
     path("api/item/<int:item_id>/quantity/", views.update_item_quantity_api, name="update_item_quantity_api"),
+    path("api/onboarding/complete/", views.complete_onboarding_api, name="complete_onboarding_api"),
     path("caddy-ca/download/", views.caddy_ca_download_view, name="caddy_ca_download"),
 ]

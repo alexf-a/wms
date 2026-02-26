@@ -15,7 +15,8 @@ def user(db) -> WMSUser:
     """Create a test user with email-based authentication."""
     return WMSUser.objects.create_user(
         email="owner@example.com",
-        password="testpass123"
+        password="testpass123",
+        has_completed_onboarding=True,
     )
 
 
@@ -24,7 +25,8 @@ def other_user(db) -> WMSUser:
     """Create a second test user for access control tests."""
     return WMSUser.objects.create_user(
         email="other@example.com",
-        password="testpass123"
+        password="testpass123",
+        has_completed_onboarding=True,
     )
 
 
@@ -38,6 +40,16 @@ def user_must_change_password(db) -> WMSUser:
     user.must_change_password = True
     user.save()
     return user
+
+
+@pytest.fixture
+def user_needs_onboarding(db) -> WMSUser:
+    """Create a test user who has not completed onboarding."""
+    return WMSUser.objects.create_user(
+        email="onboarding@example.com",
+        password="testpass123!",
+        has_completed_onboarding=False,
+    )
 
 
 @pytest.fixture

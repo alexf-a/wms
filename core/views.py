@@ -126,7 +126,7 @@ def register_view(request: HttpRequest) -> HttpResponse:
         if form.is_valid():
             user = form.save()
             login(request, user)
-            return redirect("home_view")
+            return redirect("onboarding")
         logger.error("Registration form errors: %s", form.errors)
     else:
         form = WMSUserCreationForm()
@@ -229,8 +229,46 @@ def home_view(request: HttpRequest) -> HttpResponse:
     Returns:
         The rendered home page with content based on authentication status.
     """
+    if request.user.is_authenticated and not request.user.has_completed_onboarding:
+        return redirect("onboarding")
+
     # Pass authentication status to the template
     return render(request, "core/home.html", {"is_authenticated": request.user.is_authenticated, "active_nav": "home"})
+
+
+@login_required
+def onboarding_view(request: HttpRequest) -> HttpResponse:
+    """Render the onboarding wizard.
+
+    Redirects to home if the user has already completed onboarding.
+
+    Args:
+        request: The HTTP request object.
+
+    Returns:
+        The rendered onboarding page or a redirect to home.
+    """
+    if request.user.has_completed_onboarding:
+        return redirect("home_view")
+    return render(request, "core/onboarding.html")
+
+
+@login_required
+def complete_onboarding_api(request: HttpRequest) -> JsonResponse:
+    """Mark the current user as having completed onboarding.
+
+    Args:
+        request: The HTTP request object.
+
+    Returns:
+        JSON response indicating success or method not allowed.
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+    request.user.has_completed_onboarding = True
+    request.user.save(update_fields=["has_completed_onboarding"])
+    return JsonResponse({"status": "ok"})
+
 
 def getting_started_view(request: HttpRequest) -> HttpResponse:
     """Render the getting started guide page.

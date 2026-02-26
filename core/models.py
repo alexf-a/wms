@@ -73,6 +73,12 @@ class WMSUser(AbstractUser):
         help_text="If True, user will be required to change password on next login."
     )
 
+    # Onboarding wizard completion
+    has_completed_onboarding = models.BooleanField(
+        default=False,
+        help_text="If True, user has completed the onboarding wizard."
+    )
+
     # Use email as the username field for authentication
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []  # Email is already the USERNAME_FIELD, so don't include it here

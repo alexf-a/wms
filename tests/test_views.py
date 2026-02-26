@@ -54,7 +54,7 @@ class TestRegisterView:
             },
         )
         assert response.status_code == http.HTTPStatus.FOUND
-        assert response.url == reverse("home_view")
+        assert response.url == reverse("onboarding")
 
         # Verify user was created
         user = User.objects.get(email="newuser@example.com")
@@ -308,6 +308,66 @@ class TestHomeView:
         assert response.status_code == http.HTTPStatus.OK
         assert response.context["is_authenticated"]
         assert response.context["active_nav"] == "home"
+
+
+    def test_home_redirects_to_onboarding_for_new_user(self, client: Client, user_needs_onboarding: User):
+        """Test home page redirects to onboarding for users who haven't completed it."""
+        client.force_login(user_needs_onboarding)
+        response = client.get(reverse("home_view"))
+        assert response.status_code == http.HTTPStatus.FOUND
+        assert response.url == reverse("onboarding")
+
+
+@pytest.mark.django_db
+class TestOnboardingView:
+    """Tests for the onboarding wizard view."""
+
+    def test_onboarding_requires_auth(self, client: Client):
+        """Test onboarding page requires authentication."""
+        response = client.get(reverse("onboarding"))
+        assert response.status_code == http.HTTPStatus.FOUND
+        assert "login" in response.url
+
+    def test_onboarding_renders_for_new_user(self, client: Client, user_needs_onboarding: User):
+        """Test onboarding page renders for users who haven't completed it."""
+        client.force_login(user_needs_onboarding)
+        response = client.get(reverse("onboarding"))
+        assert response.status_code == http.HTTPStatus.OK
+
+    def test_onboarding_redirects_if_already_completed(self, client: Client, user: User):
+        """Test onboarding redirects to home for users who already completed it."""
+        client.force_login(user)
+        response = client.get(reverse("onboarding"))
+        assert response.status_code == http.HTTPStatus.FOUND
+        assert response.url == reverse("home_view")
+
+
+@pytest.mark.django_db
+class TestCompleteOnboardingApi:
+    """Tests for the complete onboarding API endpoint."""
+
+    def test_complete_onboarding_requires_auth(self, client: Client):
+        """Test complete onboarding API requires authentication."""
+        response = client.post(reverse("complete_onboarding_api"))
+        assert response.status_code == http.HTTPStatus.FOUND
+        assert "login" in response.url
+
+    def test_complete_onboarding_sets_flag(self, client: Client, user_needs_onboarding: User):
+        """Test POST sets has_completed_onboarding to True."""
+        client.force_login(user_needs_onboarding)
+        response = client.post(reverse("complete_onboarding_api"))
+        assert response.status_code == http.HTTPStatus.OK
+        data = json.loads(response.content)
+        assert data["status"] == "ok"
+
+        user_needs_onboarding.refresh_from_db()
+        assert user_needs_onboarding.has_completed_onboarding is True
+
+    def test_complete_onboarding_rejects_get(self, client: Client, user_needs_onboarding: User):
+        """Test GET request is rejected with 405."""
+        client.force_login(user_needs_onboarding)
+        response = client.get(reverse("complete_onboarding_api"))
+        assert response.status_code == http.HTTPStatus.METHOD_NOT_ALLOWED
 
 
 @pytest.mark.django_db
