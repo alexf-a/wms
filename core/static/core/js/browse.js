@@ -1,0 +1,379 @@
+/**
+ * Browse page — client-side drill-down navigation.
+ *
+ * 3-screen state machine: locations → units → items.
+ * Screen 1 (locations) is server-rendered; screens 2-3 populated via API.
+ *
+ * When loaded via <script> tag with data-* attributes, auto-initializes.
+ * When loaded via require() (tests), exports initBrowse(config) for manual init.
+ */
+
+/**
+ * Initialize the browse page drill-down navigation.
+ *
+ * @param {Object} config - URL templates for API endpoints.
+ * @param {string} config.browseLocationsUrl - URL for the locations list API.
+ * @param {string} config.browseLocationUnitsUrl - URL template for location units API (contains '/0/' placeholder).
+ * @param {string} config.browseUnitItemsUrl - URL template for unit items API (contains '/0/' and '/PLACEHOLDER/' placeholders).
+ * @param {string} config.unitDetailUrl - URL template for unit detail page.
+ * @returns {Object} Public API with navigateToLocationUnits, navigateToUnitItems, navigateBack, escapeHtml, escapeAttr.
+ */
+function initBrowse(config) {
+  'use strict';
+
+  // --- State ---
+  var currentScreen = 'locations';
+  var navigationStack = [];
+  var originalSubtitle = '';
+
+  // --- DOM refs ---
+  var screenLocations = document.getElementById('screen-locations');
+  var screenUnits = document.getElementById('screen-units');
+  var screenItems = document.getElementById('screen-items');
+  var browseTitle = document.getElementById('browse-title');
+  var browseSubtitle = document.getElementById('browse-subtitle');
+  var backBtn = document.getElementById('browse-back-btn');
+
+  // Save original subtitle for restoring on back navigation
+  if (browseSubtitle) {
+    originalSubtitle = browseSubtitle.textContent;
+  }
+
+  // --- Utilities ---
+
+  /**
+   * Escape a string for safe insertion into HTML content.
+   *
+   * @param {string} str - The raw string to escape.
+   * @returns {string} HTML-escaped string.
+   */
+  function escapeHtml(str) {
+    if (!str) return '';
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(str));
+    return div.innerHTML;
+  }
+
+  /**
+   * Escape a string for safe insertion into HTML attribute values.
+   *
+   * @param {string} str - The raw string to escape.
+   * @returns {string} Attribute-safe escaped string.
+   */
+  function escapeAttr(str) {
+    return escapeHtml(str).replace(/"/g, '&quot;');
+  }
+
+  /**
+   * Return the singular or plural form of a word based on count.
+   *
+   * @param {number} count - The number to check.
+   * @param {string} singular - The singular form.
+   * @param {string} [plural] - The plural form (defaults to singular + 's').
+   * @returns {string} The appropriate word form.
+   */
+  function pluralize(count, singular, plural) {
+    return count === 1 ? singular : (plural || singular + 's');
+  }
+
+  // --- Screen management ---
+
+  /**
+   * Show a screen and hide all others. Updates back button and title for locations screen.
+   *
+   * @param {string} name - Screen to show: 'locations', 'units', or 'items'.
+   */
+  function showScreen(name) {
+    currentScreen = name;
+    screenLocations.classList.add('hidden');
+    screenUnits.classList.add('hidden');
+    screenItems.classList.add('hidden');
+
+    if (name === 'locations') {
+      screenLocations.classList.remove('hidden');
+      backBtn.classList.add('hidden');
+      browseTitle.textContent = 'Browse';
+      browseSubtitle.textContent = originalSubtitle;
+    } else if (name === 'units') {
+      screenUnits.classList.remove('hidden');
+      backBtn.classList.remove('hidden');
+    } else if (name === 'items') {
+      screenItems.classList.remove('hidden');
+      backBtn.classList.remove('hidden');
+    }
+  }
+
+  // --- Card rendering ---
+
+  /**
+   * Render an HTML card for a unit with icon, name, item count, and chevron.
+   *
+   * @param {Object} unit - Unit data from the API.
+   * @param {number} unit.user_id - Owner user ID.
+   * @param {string} unit.access_token - Unit access token.
+   * @param {string} unit.name - Unit display name.
+   * @param {number} unit.item_count - Number of items in the unit.
+   * @returns {string} HTML string for the unit card.
+   */
+  function renderUnitCard(unit) {
+    return (
+      '<a href="#" class="browse-unit-card flex items-center gap-3 rounded-lg border border-border bg-card p-4 no-underline hover:border-primary/50 transition-colors"' +
+      ' data-unit-user-id="' + escapeAttr(String(unit.user_id)) + '"' +
+      ' data-unit-access-token="' + escapeAttr(unit.access_token) + '"' +
+      ' data-unit-name="' + escapeAttr(unit.name) + '">' +
+      '<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">' +
+      '<svg class="h-5 w-5 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>' +
+      '<polyline points="3.27 6.96 12 12.01 20.73 6.96"/>' +
+      '<line x1="12" y1="22.08" x2="12" y2="12"/>' +
+      '</svg></div>' +
+      '<div class="min-w-0 flex-1">' +
+      '<p class="truncate text-sm font-medium text-foreground">' + escapeHtml(unit.name) + '</p>' +
+      '</div>' +
+      '<span class="shrink-0 text-xs text-muted-foreground">' +
+      unit.item_count + ' ' + pluralize(unit.item_count, 'item') +
+      '</span>' +
+      '<svg class="h-4 w-4 shrink-0 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>' +
+      '</a>'
+    );
+  }
+
+  /**
+   * Render an HTML card for an item with icon, name, and optional quantity.
+   *
+   * @param {Object} item - Item data from the API.
+   * @param {string} item.name - Item display name.
+   * @param {number|null} item.quantity - Item quantity (null if unset).
+   * @param {string} item.quantity_unit - Unit of measurement for quantity.
+   * @returns {string} HTML string for the item card.
+   */
+  function renderItemCard(item) {
+    var qtyText = '';
+    if (item.quantity !== null && item.quantity !== undefined) {
+      qtyText = item.quantity + (item.quantity_unit ? ' ' + escapeHtml(item.quantity_unit) : '');
+    }
+
+    var detailUrl = config.unitDetailUrl;
+    return (
+      '<div class="flex items-center gap-3 rounded-lg border border-border bg-card p-4">' +
+      '<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">' +
+      '<svg class="h-5 w-5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/>' +
+      '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>' +
+      '<polyline points="3.27 6.96 12 12.01 20.73 6.96"/>' +
+      '<line x1="12" y1="22.08" x2="12" y2="12"/>' +
+      '</svg></div>' +
+      '<div class="min-w-0 flex-1">' +
+      '<p class="truncate text-sm font-medium text-foreground">' + escapeHtml(item.name) + '</p>' +
+      (qtyText ? '<p class="text-xs text-muted-foreground">' + escapeHtml(qtyText) + '</p>' : '') +
+      '</div>' +
+      '</div>'
+    );
+  }
+
+  /**
+   * Render an empty state placeholder with icon and message.
+   *
+   * @param {string} message - The message to display.
+   * @returns {string} HTML string for the empty state.
+   */
+  function renderEmptyState(message) {
+    return (
+      '<div class="py-12 text-center">' +
+      '<svg class="mx-auto h-12 w-12 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>' +
+      '</svg>' +
+      '<p class="mt-4 text-sm text-muted-foreground">' + escapeHtml(message) + '</p>' +
+      '</div>'
+    );
+  }
+
+  // --- Screen rendering ---
+
+  /**
+   * Populate the units screen with unit cards or an empty state.
+   *
+   * @param {Array<Object>} units - Array of unit objects from the API.
+   */
+  function renderUnitsScreen(units) {
+    var html = '';
+    if (units.length === 0) {
+      html = renderEmptyState('No units in this location');
+    } else {
+      for (var i = 0; i < units.length; i++) {
+        html += renderUnitCard(units[i]);
+      }
+    }
+    screenUnits.innerHTML = html;
+  }
+
+  /**
+   * Populate the items screen with child unit cards, item cards, or an empty state.
+   *
+   * @param {Object} data - Unit items response from the API.
+   * @param {Array<Object>} data.child_units - Child/sub-unit objects.
+   * @param {Array<Object>} data.items - Item objects in this unit.
+   */
+  function renderItemsScreen(data) {
+    var html = '';
+
+    // Child units section
+    if (data.child_units.length > 0) {
+      html += '<p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Sub-units</p>';
+      for (var i = 0; i < data.child_units.length; i++) {
+        html += renderUnitCard(data.child_units[i]);
+      }
+    }
+
+    // Items section
+    if (data.items.length > 0) {
+      if (data.child_units.length > 0) {
+        html += '<p class="mt-4 text-xs font-medium uppercase tracking-wide text-muted-foreground">Items</p>';
+      }
+      for (var j = 0; j < data.items.length; j++) {
+        html += renderItemCard(data.items[j]);
+      }
+    }
+
+    // Empty state
+    if (data.child_units.length === 0 && data.items.length === 0) {
+      html = renderEmptyState('This unit is empty');
+    }
+
+    screenItems.innerHTML = html;
+  }
+
+  // --- Navigation ---
+
+  /**
+   * Fetch units for a location and navigate to the units screen.
+   *
+   * @param {string} locationId - The location ID to fetch units for.
+   * @param {string} locationName - The location name to display in the title.
+   */
+  function navigateToLocationUnits(locationId, locationName) {
+    navigationStack.push({ screen: 'locations' });
+    browseTitle.textContent = locationName;
+    browseSubtitle.textContent = 'Loading...';
+
+    var url = config.browseLocationUnitsUrl.replace('/0/', '/' + locationId + '/');
+    apiFetch(url).then(function (res) {
+      return res.json();
+    }).then(function (data) {
+      browseSubtitle.textContent = data.units.length + ' ' + pluralize(data.units.length, 'unit');
+      renderUnitsScreen(data.units);
+      showScreen('units');
+    }).catch(function () {
+      browseSubtitle.textContent = 'Failed to load';
+    });
+  }
+
+  /**
+   * Fetch items and child units for a unit and navigate to the items screen.
+   *
+   * @param {string} userId - The unit owner's user ID.
+   * @param {string} accessToken - The unit's access token.
+   * @param {string} unitName - The unit name to display in the title.
+   */
+  function navigateToUnitItems(userId, accessToken, unitName) {
+    navigationStack.push({ screen: currentScreen });
+    browseTitle.textContent = unitName;
+    browseSubtitle.textContent = 'Loading...';
+
+    var url = config.browseUnitItemsUrl
+      .replace('/0/', '/' + userId + '/')
+      .replace('/PLACEHOLDER/', '/' + accessToken + '/');
+    apiFetch(url).then(function (res) {
+      return res.json();
+    }).then(function (data) {
+      var parts = [];
+      parts.push(data.items.length + ' ' + pluralize(data.items.length, 'item'));
+      if (data.child_units.length > 0) {
+        parts.push(data.child_units.length + ' ' + pluralize(data.child_units.length, 'sub-unit'));
+      }
+      browseSubtitle.textContent = parts.join(', ');
+      renderItemsScreen(data);
+      showScreen('items');
+    }).catch(function () {
+      browseSubtitle.textContent = 'Failed to load';
+    });
+  }
+
+  /**
+   * Navigate back to the previous screen in the navigation stack.
+   */
+  function navigateBack() {
+    if (navigationStack.length === 0) return;
+    var prev = navigationStack.pop();
+    showScreen(prev.screen);
+  }
+
+  // --- Event delegation ---
+
+  /**
+   * Attach click event delegation for location and unit cards within a container.
+   *
+   * @param {HTMLElement} container - The container element to listen on.
+   */
+  function handleCardClick(container) {
+    container.addEventListener('click', function (e) {
+      var locationCard = e.target.closest('.browse-location-card');
+      if (locationCard) {
+        e.preventDefault();
+        navigateToLocationUnits(
+          locationCard.dataset.locationId,
+          locationCard.dataset.locationName
+        );
+        return;
+      }
+
+      var unitCard = e.target.closest('.browse-unit-card');
+      if (unitCard) {
+        e.preventDefault();
+        navigateToUnitItems(
+          unitCard.dataset.unitUserId,
+          unitCard.dataset.unitAccessToken,
+          unitCard.dataset.unitName
+        );
+      }
+    });
+  }
+
+  // Location screen: server-rendered cards
+  handleCardClick(screenLocations);
+  // Units screen: JS-rendered cards
+  handleCardClick(screenUnits);
+  // Items screen: JS-rendered sub-unit cards
+  handleCardClick(screenItems);
+
+  // Back button
+  backBtn.addEventListener('click', navigateBack);
+
+  // Initialize on locations screen
+  showScreen('locations');
+
+  // Return public API for testing
+  return {
+    navigateToLocationUnits: navigateToLocationUnits,
+    navigateToUnitItems: navigateToUnitItems,
+    navigateBack: navigateBack,
+    escapeHtml: escapeHtml,
+    escapeAttr: escapeAttr,
+  };
+}
+
+// Auto-initialize when loaded via <script> tag with data attributes
+if (typeof document !== 'undefined' && document.currentScript) {
+  var scriptTag = document.currentScript;
+  initBrowse({
+    browseLocationsUrl: scriptTag.getAttribute('data-browse-locations-url'),
+    browseLocationUnitsUrl: scriptTag.getAttribute('data-browse-location-units-url'),
+    browseUnitItemsUrl: scriptTag.getAttribute('data-browse-unit-items-url'),
+    unitDetailUrl: scriptTag.getAttribute('data-unit-detail-url'),
+  });
+}
+
+// Export for testing
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { initBrowse: initBrowse };
+}

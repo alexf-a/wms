@@ -51,5 +51,8 @@ urlpatterns = [
     path("api/onboarding/complete/", views.complete_onboarding_api, name="complete_onboarding_api"),
     path("api/locations/create/", views.api_create_location, name="api_create_location"),
     path("api/units/create/", views.api_create_unit, name="api_create_unit"),
+    path("api/browse/", views.api_browse_locations, name="api_browse_locations"),
+    path("api/browse/location/<int:location_id>/", views.api_browse_location_units, name="api_browse_location_units"),
+    path("api/browse/unit/<int:user_id>/<slug:access_token>/", views.api_browse_unit_items, name="api_browse_unit_items"),
     path("caddy-ca/download/", views.caddy_ca_download_view, name="caddy_ca_download"),
 ]

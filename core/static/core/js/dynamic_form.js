@@ -1,3 +1,10 @@
+/**
+ * Dynamic multi-step form — progressive field reveal with validation.
+ *
+ * Scans the DOM for forms with `data-m3-dynamic-form` and initializes
+ * step-by-step field reveal, input validation, and conditional visibility.
+ * Runs automatically on DOMContentLoaded.
+ */
 (function () {
     'use strict';
 
@@ -16,6 +23,11 @@
         forms.forEach((form) => initializeDynamicForm(form));
     });
 
+    /**
+     * Initialize a single dynamic form: parse steps, attach listeners, set up conditionals.
+     *
+     * @param {HTMLFormElement} form - The form element with `data-m3-dynamic-form`.
+     */
     function initializeDynamicForm(form) {
         const stepElements = Array.from(form.querySelectorAll(FIELD_SELECTOR));
         if (!stepElements.length) {
@@ -32,6 +44,7 @@
         const conditionalElements = form.querySelectorAll(CONDITIONAL_SELECTOR);
         initializeConditionalSteps(form, conditionalElements, stepsMap);
 
+        /** @param {number} step - The step number to update the next button for. */
         const updateNextButton = (step) => {
             const groups = stepsMap[step] || [];
 
@@ -56,6 +69,7 @@
             });
         };
 
+        /** @param {number} step - The step number to reveal. */
         const showStep = (step) => {
             const groups = stepsMap[step] || [];
             if (!groups.length) {
@@ -74,6 +88,7 @@
             currentStep = Math.max(currentStep, step);
         };
 
+        /** Advance to the next step if not already at the last step. */
         const goToNextStep = () => {
             if (currentStep >= totalSteps) {
                 return;
@@ -90,6 +105,12 @@
             .forEach((step) => updateNextButton(step));
     }
 
+    /**
+     * Group step elements by their `data-step` number.
+     *
+     * @param {Array<HTMLElement>} stepElements - Elements with `data-step` attributes.
+     * @returns {Object<number, Array<HTMLElement>>} Map of step number to element arrays.
+     */
     function groupStepsByNumber(stepElements) {
         return stepElements.reduce((acc, el) => {
             const step = Number(el.dataset.step);
@@ -106,6 +127,13 @@
         }, {});
     }
 
+    /**
+     * Determine the total number of steps from `data-total-steps` attribute or step map keys.
+     *
+     * @param {HTMLElement} form - The form element.
+     * @param {Object<number, Array<HTMLElement>>} stepsMap - Map of step numbers to elements.
+     * @returns {number} The total number of steps.
+     */
     function getTotalSteps(form, stepsMap) {
         const attrValue = Number(form.dataset.totalSteps);
         if (Number.isFinite(attrValue) && attrValue > 0) {
@@ -115,6 +143,13 @@
         return Math.max(...Object.keys(stepsMap).map(Number));
     }
 
+    /**
+     * Determine the initial step from `data-initial-step` attribute or step map keys.
+     *
+     * @param {HTMLElement} form - The form element.
+     * @param {Object<number, Array<HTMLElement>>} stepsMap - Map of step numbers to elements.
+     * @returns {number} The initial step number.
+     */
     function getInitialStep(form, stepsMap) {
         const attrValue = Number(form.dataset.initialStep);
         if (Number.isFinite(attrValue) && attrValue > 0) {
@@ -124,6 +159,12 @@
         return Math.min(...Object.keys(stepsMap).map(Number));
     }
 
+    /**
+     * Build a map of step number to the first eligible input element for that step.
+     *
+     * @param {Object<number, Array<HTMLElement>>} stepsMap - Map of step numbers to elements.
+     * @returns {Object<number, HTMLElement>} Map of step number to input element.
+     */
     function resolveStepInputs(stepsMap) {
         const result = {};
         Object.entries(stepsMap).forEach(([step, groups]) => {
@@ -138,6 +179,12 @@
         return result;
     }
 
+    /**
+     * Find the first eligible input element within a step group.
+     *
+     * @param {HTMLElement} group - The step group element.
+     * @returns {HTMLElement|null} The first eligible input, or null if none found.
+     */
     function findEligibleInput(group) {
         return (
             group.querySelector(STEP_INPUT_SELECTOR) ||
@@ -147,6 +194,12 @@
         );
     }
 
+    /**
+     * Check whether an input element has a non-empty value.
+     *
+     * @param {HTMLElement} input - The input element to check.
+     * @returns {boolean} True if the input has a value.
+     */
     function hasInputValue(input) {
         if (!input || input.disabled) {
             return false;
@@ -172,6 +225,11 @@
         return Boolean(input.value && input.value.trim().length > 0);
     }
 
+    /**
+     * Focus an input element after a short delay.
+     *
+     * @param {HTMLElement|undefined} input - The input element to focus.
+     */
     function focusInput(input) {
         if (!input || typeof input.focus !== 'function' || input.disabled) {
             return;
@@ -182,6 +240,13 @@
         }, FOCUS_DELAY);
     }
 
+    /**
+     * Attach input and keydown listeners to step inputs for validation and auto-advance.
+     *
+     * @param {Object<number, Array<HTMLElement>>} stepsMap - Map of step numbers to elements.
+     * @param {Function} updateNextButton - Callback to update next button visibility.
+     * @param {Function} goToNextStep - Callback to advance to the next step.
+     */
     function attachInputListeners(stepsMap, updateNextButton, goToNextStep) {
         // Iterate over all groups to attach listeners to each group's input
         Object.entries(stepsMap).forEach(([stepKey, groups]) => {
@@ -219,6 +284,12 @@
         });
     }
 
+    /**
+     * Attach click listeners to all next buttons to advance on click.
+     *
+     * @param {HTMLElement} form - The form element.
+     * @param {Function} goToNextStep - Callback to advance to the next step.
+     */
     function attachNextButtonListeners(form, goToNextStep) {
         const buttons = form.querySelectorAll(NEXT_BTN_SELECTOR);
         buttons.forEach((button) => {
@@ -229,6 +300,13 @@
         });
     }
 
+    /**
+     * Attach click listeners to skip buttons to jump to a target step.
+     *
+     * @param {HTMLElement} form - The form element.
+     * @param {number} totalSteps - The total number of steps (used as default skip target).
+     * @param {Function} showStep - Callback to show a specific step.
+     */
     function attachSkipButtonListeners(form, totalSteps, showStep) {
         const buttons = form.querySelectorAll(SKIP_BTN_SELECTOR);
         buttons.forEach((button) => {
@@ -241,6 +319,13 @@
         });
     }
 
+    /**
+     * Initialize conditional step visibility based on `data-show-if` attributes.
+     *
+     * @param {HTMLElement} form - The form element.
+     * @param {NodeList} conditionalElements - Elements with `data-show-if` attributes.
+     * @param {Object<number, Array<HTMLElement>>} stepsMap - Map of step numbers to elements.
+     */
     function initializeConditionalSteps(form, conditionalElements, stepsMap) {
         if (!conditionalElements.length) {
             return;
@@ -305,12 +390,26 @@
         });
     }
 
+    /**
+     * Get the current value of a named form field.
+     *
+     * @param {HTMLElement} form - The form element.
+     * @param {string} fieldName - The name attribute of the field.
+     * @returns {string} The field's current value, or empty string if not found.
+     */
     function getFieldValue(form, fieldName) {
         const input = form.querySelector(`[name="${escapeCssIdentifier(fieldName)}"]:checked`) ||
                      form.querySelector(`[name="${escapeCssIdentifier(fieldName)}"]`);
         return input ? input.value : '';
     }
 
+    /**
+     * Escape a string for safe use as a CSS identifier in querySelector.
+     * Uses `CSS.escape` when available, with a polyfill fallback.
+     *
+     * @param {string} value - The string to escape.
+     * @returns {string} The CSS-safe escaped string.
+     */
     function escapeCssIdentifier(value) {
         if (window.CSS && typeof window.CSS.escape === 'function') {
             return window.CSS.escape(value);

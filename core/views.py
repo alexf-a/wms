@@ -11,7 +11,7 @@ from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError
-from django.db.models import F
+from django.db.models import Count, F
 from django.db.models.functions import Greatest
 from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -355,6 +355,117 @@ def api_create_unit(request: HttpRequest) -> JsonResponse:
     )
 
 
+@login_required
+def api_browse_locations(request: HttpRequest) -> JsonResponse:
+    """Return locations with unit counts and orphan units with item counts.
+
+    Args:
+        request: The HTTP request object.
+
+    Returns:
+        JsonResponse with 'locations' and 'orphan_units' lists.
+    """
+    if request.method != "GET":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    locations = (
+        Location.objects.filter(user=request.user)
+        .annotate(unit_count=Count("unit_set"))
+        .order_by("name")
+        .values("id", "name", "address", "unit_count")
+    )
+
+    orphan_units = (
+        Unit.objects.filter(
+            user=request.user, location__isnull=True, parent_unit__isnull=True
+        )
+        .annotate(item_count=Count("items"))
+        .order_by("name")
+        .values("id", "name", "user_id", "access_token", "item_count")
+    )
+
+    return JsonResponse({
+        "locations": list(locations),
+        "orphan_units": list(orphan_units),
+    })
+
+
+@login_required
+def api_browse_location_units(request: HttpRequest, location_id: int) -> JsonResponse:
+    """Return units within a location with item and child unit counts.
+
+    Args:
+        request: The HTTP request object.
+        location_id: The ID of the location to browse.
+
+    Returns:
+        JsonResponse with 'location' info and 'units' list.
+    """
+    if request.method != "GET":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    location = get_object_or_404(Location, id=location_id, user=request.user)
+
+    units = (
+        Unit.objects.filter(user=request.user, location=location)
+        .annotate(
+            item_count=Count("items"),
+            child_count=Count("child_units"),
+        )
+        .order_by("name")
+        .values("id", "name", "user_id", "access_token", "item_count", "child_count")
+    )
+
+    return JsonResponse({
+        "location": {"id": location.id, "name": location.name},
+        "units": list(units),
+    })
+
+
+@login_required
+def api_browse_unit_items(request: HttpRequest, user_id: int, access_token: str) -> JsonResponse:
+    """Return items and child units within a unit.
+
+    Args:
+        request: The HTTP request object.
+        user_id: The ID of the unit owner.
+        access_token: The unit's access token.
+
+    Returns:
+        JsonResponse with 'unit' info, 'parent_label', 'child_units', and 'items'.
+    """
+    if request.method != "GET":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    unit = get_object_or_404(
+        Unit, user_id=user_id, access_token=access_token, user=request.user
+    )
+
+    child_units = (
+        Unit.objects.filter(parent_unit=unit)
+        .annotate(item_count=Count("items"))
+        .order_by("name")
+        .values("id", "name", "user_id", "access_token", "item_count")
+    )
+
+    items = unit.items.order_by("name").values(
+        "id", "name", "quantity", "quantity_unit"
+    )
+
+    parent_label = ""
+    if unit.location:
+        parent_label = unit.location.name
+    elif unit.parent_unit:
+        parent_label = unit.parent_unit.name
+
+    return JsonResponse({
+        "unit": {"id": unit.id, "name": unit.name},
+        "parent_label": parent_label,
+        "child_units": list(child_units),
+        "items": list(items),
+    })
+
+
 def getting_started_view(request: HttpRequest) -> HttpResponse:
     """Render the getting started guide page.
 
@@ -438,16 +549,34 @@ def add_items_to_unit_view(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def list_units(request: HttpRequest) -> HttpResponse:
-    """List all units for the current user.
+    """List all locations and orphan units for the current user.
+
+    Serves as the browse page's initial data source. Locations include unit
+    counts; orphan units include item counts. JS handles drill-down navigation.
 
     Args:
         request: The HTTP request object.
 
     Returns:
-        The rendered list units page.
+        The rendered browse page with locations and orphan units.
     """
-    units = Unit.objects.filter(user=request.user)
-    return render(request, "core/list_units.html", {"units": units, "active_nav": "see"})
+    locations = (
+        Location.objects.filter(user=request.user)
+        .annotate(unit_count=Count("unit_set"))
+        .order_by("name")
+    )
+    orphan_units = (
+        Unit.objects.filter(
+            user=request.user, location__isnull=True, parent_unit__isnull=True
+        )
+        .annotate(item_count=Count("items"))
+        .order_by("name")
+    )
+    return render(request, "core/list_units.html", {
+        "locations": locations,
+        "orphan_units": orphan_units,
+        "active_nav": "see",
+    })
 
 @login_required
 def unit_detail(request: HttpRequest, user_id: int, access_token: str) -> HttpResponse:

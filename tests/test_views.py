@@ -762,13 +762,16 @@ class TestListUnitsView:
         assert "login" in response.url
 
     def test_list_units_displays_user_units(self, client: Client, user: User, standalone_unit: Unit):
-        """Test list units shows only user's units."""
+        """Test list units shows locations and orphan units."""
         client.force_login(user)
         response = client.get(reverse("list_units"))
         assert response.status_code == http.HTTPStatus.OK
-        assert "units" in response.context
-        assert standalone_unit in response.context["units"]
+        assert "locations" in response.context
+        assert "orphan_units" in response.context
         assert response.context["active_nav"] == "see"
+        # standalone_unit has no location, so it should be in orphan_units
+        orphan_names = [u.name for u in response.context["orphan_units"]]
+        assert standalone_unit.name in orphan_names
 
 
 @pytest.mark.django_db
@@ -1688,4 +1691,193 @@ class TestUpdateItemQuantityAPI:
         """Test GET method returns 405."""
         client.force_login(user)
         response = client.get(self._url(item_with_quantity.id))
+        assert response.status_code == http.HTTPStatus.METHOD_NOT_ALLOWED
+
+
+# =============================================================================
+# Browse API Endpoints
+# =============================================================================
+
+
+@pytest.mark.django_db
+class TestBrowseLocationsAPI:
+    """Tests for the browse locations JSON API endpoint."""
+
+    def test_requires_auth(self, client: Client):
+        """Test browse locations API requires authentication."""
+        response = client.get(reverse("api_browse_locations"))
+        assert response.status_code == http.HTTPStatus.FOUND
+        assert "login" in response.url
+
+    def test_returns_locations_with_unit_counts(
+        self, client: Client, user: User, location: Location, unit_in_location: Unit
+    ):
+        """Test GET returns locations with accurate unit counts."""
+        client.force_login(user)
+        response = client.get(reverse("api_browse_locations"))
+        assert response.status_code == http.HTTPStatus.OK
+        data = response.json()
+        assert len(data["locations"]) == 1
+        loc = data["locations"][0]
+        assert loc["name"] == location.name
+        assert loc["unit_count"] == 1
+
+    def test_includes_orphan_units_with_item_counts(
+        self, client: Client, user: User, standalone_unit: Unit, item: Item
+    ):
+        """Test orphan units (no location, no parent) with item counts."""
+        client.force_login(user)
+        response = client.get(reverse("api_browse_locations"))
+        data = response.json()
+        assert len(data["orphan_units"]) == 1
+        orphan = data["orphan_units"][0]
+        assert orphan["name"] == standalone_unit.name
+        assert orphan["item_count"] == 1
+        assert orphan["access_token"] == standalone_unit.access_token
+
+    def test_excludes_other_users_data(
+        self, client: Client, user: User, other_user: User
+    ):
+        """Test only own locations and units are returned."""
+        Location.objects.create(user=other_user, name="Other Place")
+        Unit.objects.create(user=other_user, name="Other Box")
+        client.force_login(user)
+        response = client.get(reverse("api_browse_locations"))
+        data = response.json()
+        assert len(data["locations"]) == 0
+        assert len(data["orphan_units"]) == 0
+
+    def test_empty_user(self, client: Client, user: User):
+        """Test user with no data gets empty lists."""
+        client.force_login(user)
+        response = client.get(reverse("api_browse_locations"))
+        data = response.json()
+        assert data["locations"] == []
+        assert data["orphan_units"] == []
+
+    def test_rejects_post(self, client: Client, user: User):
+        """Test POST request is rejected with 405."""
+        client.force_login(user)
+        response = client.post(reverse("api_browse_locations"))
+        assert response.status_code == http.HTTPStatus.METHOD_NOT_ALLOWED
+
+
+@pytest.mark.django_db
+class TestBrowseLocationUnitsAPI:
+    """Tests for the browse location units JSON API endpoint."""
+
+    def _url(self, location_id: int) -> str:
+        return reverse("api_browse_location_units", kwargs={"location_id": location_id})
+
+    def test_requires_auth(self, client: Client, location: Location):
+        """Test browse location units API requires authentication."""
+        response = client.get(self._url(location.id))
+        assert response.status_code == http.HTTPStatus.FOUND
+        assert "login" in response.url
+
+    def test_returns_units_with_counts(
+        self, client: Client, user: User, location: Location, unit_in_location: Unit, item: Item
+    ):
+        """Test GET returns units with item and child counts."""
+        # Add an item to unit_in_location
+        Item.objects.create(user=user, name="Wrench", unit=unit_in_location)
+        client.force_login(user)
+        response = client.get(self._url(location.id))
+        assert response.status_code == http.HTTPStatus.OK
+        data = response.json()
+        assert data["location"]["id"] == location.id
+        assert data["location"]["name"] == location.name
+        assert len(data["units"]) == 1
+        unit_data = data["units"][0]
+        assert unit_data["name"] == unit_in_location.name
+        assert unit_data["item_count"] == 1
+
+    def test_404_for_other_users_location(
+        self, client: Client, user: User, other_user: User
+    ):
+        """Test cannot browse other user's location."""
+        other_loc = Location.objects.create(user=other_user, name="Other Place")
+        client.force_login(user)
+        response = client.get(self._url(other_loc.id))
+        assert response.status_code == http.HTTPStatus.NOT_FOUND
+
+    def test_rejects_post(self, client: Client, user: User, location: Location):
+        """Test POST request is rejected with 405."""
+        client.force_login(user)
+        response = client.post(self._url(location.id))
+        assert response.status_code == http.HTTPStatus.METHOD_NOT_ALLOWED
+
+
+@pytest.mark.django_db
+class TestBrowseUnitItemsAPI:
+    """Tests for the browse unit items JSON API endpoint."""
+
+    def _url(self, user_id: int, access_token: str) -> str:
+        return reverse(
+            "api_browse_unit_items",
+            kwargs={"user_id": user_id, "access_token": access_token},
+        )
+
+    def test_requires_auth(self, client: Client, standalone_unit: Unit):
+        """Test browse unit items API requires authentication."""
+        response = client.get(
+            self._url(standalone_unit.user_id, standalone_unit.access_token)
+        )
+        assert response.status_code == http.HTTPStatus.FOUND
+        assert "login" in response.url
+
+    def test_returns_items_and_child_units(
+        self, client: Client, user: User, standalone_unit: Unit, nested_unit: Unit, item: Item
+    ):
+        """Test GET returns items and child units with counts."""
+        client.force_login(user)
+        response = client.get(
+            self._url(standalone_unit.user_id, standalone_unit.access_token)
+        )
+        assert response.status_code == http.HTTPStatus.OK
+        data = response.json()
+        assert data["unit"]["id"] == standalone_unit.id
+        assert data["unit"]["name"] == standalone_unit.name
+        assert len(data["items"]) == 1
+        assert data["items"][0]["name"] == item.name
+        assert len(data["child_units"]) == 1
+        assert data["child_units"][0]["name"] == nested_unit.name
+
+    def test_returns_parent_label_for_location(
+        self, client: Client, user: User, location: Location, unit_in_location: Unit
+    ):
+        """Test parent_label is set to location name when unit has a location."""
+        client.force_login(user)
+        response = client.get(
+            self._url(unit_in_location.user_id, unit_in_location.access_token)
+        )
+        data = response.json()
+        assert data["parent_label"] == location.name
+
+    def test_returns_parent_label_for_parent_unit(
+        self, client: Client, user: User, standalone_unit: Unit, nested_unit: Unit
+    ):
+        """Test parent_label is set to parent unit name when unit has a parent."""
+        client.force_login(user)
+        response = client.get(
+            self._url(nested_unit.user_id, nested_unit.access_token)
+        )
+        data = response.json()
+        assert data["parent_label"] == standalone_unit.name
+
+    def test_404_for_other_users_unit(
+        self, client: Client, user: User, other_user: User
+    ):
+        """Test cannot browse other user's unit."""
+        other_unit = Unit.objects.create(user=other_user, name="Other Box")
+        client.force_login(user)
+        response = client.get(self._url(other_unit.user_id, other_unit.access_token))
+        assert response.status_code == http.HTTPStatus.NOT_FOUND
+
+    def test_rejects_post(self, client: Client, user: User, standalone_unit: Unit):
+        """Test POST request is rejected with 405."""
+        client.force_login(user)
+        response = client.post(
+            self._url(standalone_unit.user_id, standalone_unit.access_token)
+        )
         assert response.status_code == http.HTTPStatus.METHOD_NOT_ALLOWED

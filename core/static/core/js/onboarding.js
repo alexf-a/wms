@@ -5,6 +5,14 @@
  * When loaded via require() (tests), exports initOnboarding(config) for manual init.
  */
 
+/**
+ * Initialize the onboarding wizard with step navigation and API integration.
+ *
+ * @param {Object} config - URL endpoints for the onboarding APIs.
+ * @param {string} config.createLocationUrl - URL for creating a location.
+ * @param {string} config.createUnitUrl - URL for creating a unit.
+ * @param {string} config.completeOnboardingUrl - URL for marking onboarding complete.
+ */
 function initOnboarding(config) {
   'use strict';
 
@@ -40,6 +48,11 @@ function initOnboarding(config) {
 
   // --- Functions ---
 
+  /**
+   * Show the given wizard step and hide all others.
+   *
+   * @param {number} n - Step index (0 = welcome, 1 = location, 2 = unit, 3 = done).
+   */
   function showStep(n) {
     currentStep = n;
     steps.forEach(function (el) { el.classList.add('hidden'); });
@@ -47,6 +60,9 @@ function initOnboarding(config) {
     updateProgress();
   }
 
+  /**
+   * Update the progress bar and label to reflect the current step.
+   */
   function updateProgress() {
     if (currentStep === 1 || currentStep === 2) {
       progressBar.classList.remove('hidden');
@@ -60,22 +76,42 @@ function initOnboarding(config) {
     }
   }
 
+  /**
+   * Enable or disable all buttons in the wizard to prevent double submissions.
+   *
+   * @param {boolean} disabled - Whether to disable buttons.
+   */
   function setDisabled(disabled) {
     saving = disabled;
     var buttons = document.querySelectorAll('#onboarding-wizard button');
     buttons.forEach(function (btn) { btn.disabled = disabled; });
   }
 
+  /**
+   * Show an error message in the given element.
+   *
+   * @param {HTMLElement} el - The error display element.
+   * @param {string} message - The error message to show.
+   */
   function showError(el, message) {
     el.textContent = message;
     el.classList.remove('hidden');
   }
 
+  /**
+   * Hide the error message in the given element.
+   *
+   * @param {HTMLElement} el - The error display element to hide.
+   */
   function hideError(el) {
     el.classList.add('hidden');
     el.textContent = '';
   }
 
+  /**
+   * Create a location via the API and advance to the unit step.
+   * If the name is empty, skips to the unit step without creating.
+   */
   async function handleCreateLocation() {
     var name = locationNameInput.value.trim();
     if (!name) {
@@ -111,6 +147,10 @@ function initOnboarding(config) {
     }
   }
 
+  /**
+   * Create a unit via the API and finish onboarding.
+   * If the name is empty, finishes without creating a unit.
+   */
   async function handleCreateUnit() {
     var name = unitNameInput.value.trim();
     if (!name) {
@@ -143,6 +183,9 @@ function initOnboarding(config) {
     }
   }
 
+  /**
+   * Mark onboarding as complete via the API and show the done step.
+   */
   async function finish() {
     setDisabled(true);
     try {
