@@ -31,7 +31,6 @@ from .forms import (
     ItemForm,
     ItemSearchForm,
     PasswordChangeForm,
-    StorageSpaceForm,
     UnitForm,
     WMSUserAuthForm,
     WMSUserCreationForm,
@@ -466,6 +465,256 @@ def api_browse_unit_items(request: HttpRequest, user_id: int, access_token: str)
     })
 
 
+@login_required
+def api_update_location(request: HttpRequest, location_id: int) -> JsonResponse:
+    """Update an existing location via JSON API.
+
+    Args:
+        request: The HTTP request with JSON body containing 'name' and optional 'address'.
+        location_id: The ID of the location to update.
+
+    Returns:
+        JsonResponse with updated location data (200), or error.
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    location = get_object_or_404(Location, id=location_id, user=request.user)
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    name = (data.get("name") or "").strip()
+    if not name:
+        return JsonResponse({"error": "Name is required"}, status=400)
+
+    location.name = name
+    location.address = (data.get("address") or "").strip() or None
+
+    try:
+        location.save()
+    except IntegrityError:
+        return JsonResponse(
+            {"error": f'A location named "{name}" already exists.'}, status=409
+        )
+
+    return JsonResponse({"id": location.id, "name": location.name, "address": location.address})
+
+
+@login_required
+def api_delete_location(request: HttpRequest, location_id: int) -> JsonResponse:
+    """Delete a location via JSON API. Orphans child units.
+
+    Args:
+        request: The HTTP request object.
+        location_id: The ID of the location to delete.
+
+    Returns:
+        JsonResponse with success status (200), or error.
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    location = get_object_or_404(Location, id=location_id, user=request.user)
+
+    # Orphan child units before deleting
+    location.unit_set.update(location=None)
+    location.delete()
+
+    return JsonResponse({"success": True})
+
+
+@login_required
+def api_unit_detail_json(request: HttpRequest, user_id: int, access_token: str) -> JsonResponse:
+    """Return full unit data for edit dialog population.
+
+    Args:
+        request: The HTTP request object.
+        user_id: The ID of the unit owner.
+        access_token: The unit's access token.
+
+    Returns:
+        JsonResponse with all editable unit fields.
+    """
+    if request.method != "GET":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    unit = get_object_or_404(Unit, user_id=user_id, access_token=access_token)
+    if unit.user != request.user:
+        raise Http404("Unit not found")
+
+    return JsonResponse({
+        "id": unit.id,
+        "name": unit.name,
+        "description": unit.description or "",
+        "location_id": unit.location_id,
+        "parent_unit_id": unit.parent_unit_id,
+        "length": unit.length,
+        "width": unit.width,
+        "height": unit.height,
+        "dimensions_unit": unit.dimensions_unit or "",
+        "user_id": unit.user_id,
+        "access_token": unit.access_token,
+    })
+
+
+@login_required
+def api_update_unit(request: HttpRequest, user_id: int, access_token: str) -> JsonResponse:
+    """Update an existing unit via JSON API.
+
+    Args:
+        request: The HTTP request with JSON body containing unit fields.
+        user_id: The ID of the unit owner.
+        access_token: The unit's access token.
+
+    Returns:
+        JsonResponse with updated unit data (200), or error.
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    unit = get_object_or_404(Unit, user_id=user_id, access_token=access_token)
+    if unit.user != request.user:
+        raise Http404("Unit not found")
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    name = (data.get("name") or "").strip()
+    if not name:
+        return JsonResponse({"error": "Name is required"}, status=400)
+
+    # Validate dimensions: all-or-nothing
+    length = data.get("length")
+    width = data.get("width")
+    height = data.get("height")
+    dimensions_unit = (data.get("dimensions_unit") or "").strip() or None
+    dim_values = [length, width, height, dimensions_unit]
+    dim_present = [v is not None and v != "" for v in dim_values]
+
+    if any(dim_present) and not all(dim_present):
+        return JsonResponse(
+            {"error": "All dimension fields must be provided together, or all left empty."},
+            status=400,
+        )
+
+    # Validate container: location or parent_unit, not both
+    location_id = data.get("location_id")
+    parent_unit_id = data.get("parent_unit_id")
+    if location_id and parent_unit_id:
+        return JsonResponse(
+            {"error": "A unit cannot have both a location and a parent unit."},
+            status=400,
+        )
+
+    unit.name = name
+    unit.description = (data.get("description") or "").strip() or None
+
+    # Set container
+    if location_id:
+        location = get_object_or_404(Location, id=location_id, user=request.user)
+        unit.location = location
+        unit.parent_unit = None
+    elif parent_unit_id:
+        parent = get_object_or_404(Unit, id=parent_unit_id, user=request.user)
+        unit.parent_unit = parent
+        unit.location = None
+    else:
+        unit.location = None
+        unit.parent_unit = None
+
+    # Set dimensions
+    if all(dim_present):
+        unit.length = float(length)
+        unit.width = float(width)
+        unit.height = float(height)
+        unit.dimensions_unit = dimensions_unit
+    else:
+        unit.length = None
+        unit.width = None
+        unit.height = None
+        unit.dimensions_unit = None
+
+    try:
+        unit.save()
+    except IntegrityError:
+        return JsonResponse(
+            {"error": f'A unit named "{name}" already exists.'}, status=409
+        )
+
+    return JsonResponse({
+        "id": unit.id, "name": unit.name, "access_token": unit.access_token,
+    })
+
+
+@login_required
+def api_delete_unit(request: HttpRequest, user_id: int, access_token: str) -> JsonResponse:
+    """Delete a unit via JSON API. Orphans child units, cascade-deletes items.
+
+    Args:
+        request: The HTTP request object.
+        user_id: The ID of the unit owner.
+        access_token: The unit's access token.
+
+    Returns:
+        JsonResponse with success status and items deleted count (200), or error.
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    unit = get_object_or_404(Unit, user_id=user_id, access_token=access_token)
+    if unit.user != request.user:
+        raise Http404("Unit not found")
+
+    # Count items before deletion
+    items_count = unit.items.count()
+
+    # Orphan child units before deleting
+    unit.child_units.update(parent_unit=None)
+
+    # Delete unit (cascade deletes items)
+    unit.delete()
+
+    return JsonResponse({"success": True, "items_deleted": items_count})
+
+
+@login_required
+def api_container_options(request: HttpRequest) -> JsonResponse:
+    """Return locations and units available as container options.
+
+    Args:
+        request: The HTTP request object. Accepts optional 'exclude_unit' query param.
+
+    Returns:
+        JsonResponse with 'locations' and 'units' lists.
+    """
+    if request.method != "GET":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    locations = list(
+        Location.objects.filter(user=request.user)
+        .order_by("name")
+        .values("id", "name")
+    )
+
+    units_qs = Unit.objects.filter(user=request.user).order_by("name")
+
+    exclude_unit = request.GET.get("exclude_unit")
+    if exclude_unit:
+        try:
+            units_qs = units_qs.exclude(id=int(exclude_unit))
+        except (ValueError, TypeError):
+            pass
+
+    units = list(units_qs.values("id", "name", "user_id", "access_token"))
+
+    return JsonResponse({"locations": locations, "units": units})
+
+
 def getting_started_view(request: HttpRequest) -> HttpResponse:
     """Render the getting started guide page.
 
@@ -491,29 +740,8 @@ def expand_inventory_view(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def create_storage_view(request: HttpRequest) -> HttpResponse:
-    """Handle the creation of a new storage space (Location or Unit).
-
-    Args:
-        request: The HTTP request object.
-
-    Returns:
-        The rendered create storage page or a redirect to the created object's detail page.
-    """
-    if request.method == "POST":
-        form = StorageSpaceForm(request.POST, user=request.user)
-        if form.is_valid():
-            created_object = form.save()
-
-            # Redirect to the appropriate detail page
-            if hasattr(created_object, "access_token"):  # It's a Unit
-                return redirect("unit_detail", user_id=request.user.id, access_token=created_object.access_token)
-            # It's a Location - redirect to list_units for now (no location detail view exists)
-            messages.success(request, f"Location '{created_object.name}' created successfully!")
-            return redirect("expand_inventory")
-    else:
-        form = StorageSpaceForm(user=request.user)
-
-    return render(request, "core/create_storage.html", {"form": form})
+    """Redirect to the browse page where storage is now created via dialogs."""
+    return redirect("list_units")
 
 @login_required
 def add_items_to_unit_view(request: HttpRequest) -> HttpResponse:

@@ -1,17 +1,17 @@
 /**
  * Dynamic multi-step form — progressive field reveal with validation.
  *
- * Scans the DOM for forms with `data-m3-dynamic-form` and initializes
+ * Scans the DOM for forms with `data-dynamic-form` and initializes
  * step-by-step field reveal, input validation, and conditional visibility.
  * Runs automatically on DOMContentLoaded.
  */
 (function () {
     'use strict';
 
-    const FORM_SELECTOR = '[data-m3-dynamic-form]';
-    const FIELD_SELECTOR = '.m3-dynamic-field[data-step]';
-    const NEXT_BTN_SELECTOR = '.m3-next-btn';
-    const SKIP_BTN_SELECTOR = '.m3-skip-btn';
+    const FORM_SELECTOR = '[data-dynamic-form]';
+    const FIELD_SELECTOR = '.dynamic-field[data-step]';
+    const NEXT_BTN_SELECTOR = '.next-btn';
+    const SKIP_BTN_SELECTOR = '.skip-btn';
     const STEP_INPUT_SELECTOR = '[data-step-input]';
     const CONDITIONAL_SELECTOR = '[data-show-if]';
     const DEFAULT_VISIBLE_DISPLAY = 'flex';
@@ -26,7 +26,7 @@
     /**
      * Initialize a single dynamic form: parse steps, attach listeners, set up conditionals.
      *
-     * @param {HTMLFormElement} form - The form element with `data-m3-dynamic-form`.
+     * @param {HTMLFormElement} form - The form element with `data-dynamic-form`.
      */
     function initializeDynamicForm(form) {
         const stepElements = Array.from(form.querySelectorAll(FIELD_SELECTOR));
@@ -371,10 +371,10 @@
                     
                     if (shouldShow) {
                         // Remove the hidden class to allow step logic to control visibility
-                        conditional.element.classList.remove('m3-conditional-hidden');
+                        conditional.element.classList.remove('conditional-hidden');
                     } else {
                         // Add the hidden class
-                        conditional.element.classList.add('m3-conditional-hidden');
+                        conditional.element.classList.add('conditional-hidden');
                     }
                 });
             };

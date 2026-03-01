@@ -16,7 +16,7 @@
  * @param {string} config.browseLocationUnitsUrl - URL template for location units API (contains '/0/' placeholder).
  * @param {string} config.browseUnitItemsUrl - URL template for unit items API (contains '/0/' and '/PLACEHOLDER/' placeholders).
  * @param {string} config.unitDetailUrl - URL template for unit detail page.
- * @returns {Object} Public API with navigateToLocationUnits, navigateToUnitItems, navigateBack, escapeHtml, escapeAttr.
+ * @returns {Object} Public API with navigateToLocationUnits, navigateToUnitItems, navigateBack, refreshCurrentScreen, getCurrentContext, escapeHtml, escapeAttr.
  */
 function initBrowse(config) {
   'use strict';
@@ -25,6 +25,11 @@ function initBrowse(config) {
   var currentScreen = 'locations';
   var navigationStack = [];
   var originalSubtitle = '';
+  var currentLocationId = null;
+  var currentLocationName = null;
+  var currentUnitUserId = null;
+  var currentUnitAccessToken = null;
+  var currentUnitName = null;
 
   // --- DOM refs ---
   var screenLocations = document.getElementById('screen-locations');
@@ -117,7 +122,7 @@ function initBrowse(config) {
    */
   function renderUnitCard(unit) {
     return (
-      '<a href="#" class="browse-unit-card flex items-center gap-3 rounded-lg border border-border bg-card p-4 no-underline hover:border-primary/50 transition-colors"' +
+      '<a href="#" class="browse-unit-card relative flex items-center gap-3 rounded-lg border border-border bg-card p-4 no-underline hover:border-primary/50 transition-colors"' +
       ' data-unit-user-id="' + escapeAttr(String(unit.user_id)) + '"' +
       ' data-unit-access-token="' + escapeAttr(unit.access_token) + '"' +
       ' data-unit-name="' + escapeAttr(unit.name) + '">' +
@@ -133,6 +138,15 @@ function initBrowse(config) {
       '<span class="shrink-0 text-xs text-muted-foreground">' +
       unit.item_count + ' ' + pluralize(unit.item_count, 'item') +
       '</span>' +
+      '<button type="button" class="entity-menu-btn shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"' +
+      ' data-entity-type="unit"' +
+      ' data-entity-user-id="' + escapeAttr(String(unit.user_id)) + '"' +
+      ' data-entity-access-token="' + escapeAttr(unit.access_token) + '"' +
+      ' data-entity-name="' + escapeAttr(unit.name) + '"' +
+      ' aria-label="Unit options">' +
+      '<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/>' +
+      '</svg></button>' +
       '<svg class="h-4 w-4 shrink-0 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>' +
       '</a>'
     );
@@ -253,6 +267,8 @@ function initBrowse(config) {
    */
   function navigateToLocationUnits(locationId, locationName) {
     navigationStack.push({ screen: 'locations' });
+    currentLocationId = locationId;
+    currentLocationName = locationName;
     browseTitle.textContent = locationName;
     browseSubtitle.textContent = 'Loading...';
 
@@ -277,6 +293,9 @@ function initBrowse(config) {
    */
   function navigateToUnitItems(userId, accessToken, unitName) {
     navigationStack.push({ screen: currentScreen });
+    currentUnitUserId = userId;
+    currentUnitAccessToken = accessToken;
+    currentUnitName = unitName;
     browseTitle.textContent = unitName;
     browseSubtitle.textContent = 'Loading...';
 
@@ -305,7 +324,52 @@ function initBrowse(config) {
   function navigateBack() {
     if (navigationStack.length === 0) return;
     var prev = navigationStack.pop();
+    if (prev.screen === 'locations') {
+      currentLocationId = null;
+      currentLocationName = null;
+      currentUnitUserId = null;
+      currentUnitAccessToken = null;
+      currentUnitName = null;
+    } else if (prev.screen === 'units') {
+      currentUnitUserId = null;
+      currentUnitAccessToken = null;
+      currentUnitName = null;
+    }
     showScreen(prev.screen);
+  }
+
+  /**
+   * Re-fetch and re-render the current screen. Used by browse_crud.js after mutations.
+   * Screen 1 (locations, server-rendered): triggers a full page reload.
+   * Screen 2 (units): re-calls navigateToLocationUnits with stored context.
+   * Screen 3 (items): re-calls navigateToUnitItems with stored context.
+   */
+  function refreshCurrentScreen() {
+    if (currentScreen === 'locations') {
+      window.location.reload();
+    } else if (currentScreen === 'units' && currentLocationId) {
+      navigationStack.pop();
+      navigateToLocationUnits(currentLocationId, currentLocationName);
+    } else if (currentScreen === 'items' && currentUnitUserId) {
+      navigationStack.pop();
+      navigateToUnitItems(currentUnitUserId, currentUnitAccessToken, currentUnitName);
+    }
+  }
+
+  /**
+   * Return the current navigation context for use by browse_crud.js.
+   *
+   * @returns {Object} Context with screen, locationId, locationName, unitUserId, unitAccessToken, unitName.
+   */
+  function getCurrentContext() {
+    return {
+      screen: currentScreen,
+      locationId: currentLocationId,
+      locationName: currentLocationName,
+      unitUserId: currentUnitUserId,
+      unitAccessToken: currentUnitAccessToken,
+      unitName: currentUnitName,
+    };
   }
 
   // --- Event delegation ---
@@ -317,6 +381,12 @@ function initBrowse(config) {
    */
   function handleCardClick(container) {
     container.addEventListener('click', function (e) {
+      // Don't navigate when clicking entity menu buttons
+      if (e.target.closest('.entity-menu-btn')) {
+        e.preventDefault();
+        return;
+      }
+
       var locationCard = e.target.closest('.browse-location-card');
       if (locationCard) {
         e.preventDefault();
@@ -357,6 +427,8 @@ function initBrowse(config) {
     navigateToLocationUnits: navigateToLocationUnits,
     navigateToUnitItems: navigateToUnitItems,
     navigateBack: navigateBack,
+    refreshCurrentScreen: refreshCurrentScreen,
+    getCurrentContext: getCurrentContext,
     escapeHtml: escapeHtml,
     escapeAttr: escapeAttr,
   };
@@ -365,12 +437,16 @@ function initBrowse(config) {
 // Auto-initialize when loaded via <script> tag with data attributes
 if (typeof document !== 'undefined' && document.currentScript) {
   var scriptTag = document.currentScript;
-  initBrowse({
+  var browseApi = initBrowse({
     browseLocationsUrl: scriptTag.getAttribute('data-browse-locations-url'),
     browseLocationUnitsUrl: scriptTag.getAttribute('data-browse-location-units-url'),
     browseUnitItemsUrl: scriptTag.getAttribute('data-browse-unit-items-url'),
     unitDetailUrl: scriptTag.getAttribute('data-unit-detail-url'),
   });
+  var browseApp = document.getElementById('browse-app');
+  if (browseApp) {
+    browseApp._browseApi = browseApi;
+  }
 }
 
 // Export for testing

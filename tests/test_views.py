@@ -695,7 +695,7 @@ class TestExpandInventoryView:
 
 @pytest.mark.django_db
 class TestCreateStorageView:
-    """Tests for creating storage spaces (locations/units)."""
+    """Tests for create storage view (now redirects to browse page)."""
 
     def test_create_storage_requires_authentication(self, client: Client):
         """Test create storage view requires login."""
@@ -703,47 +703,19 @@ class TestCreateStorageView:
         assert response.status_code == http.HTTPStatus.FOUND
         assert "login" in response.url
 
-    def test_create_storage_get_renders_form(self, client: Client, user: User):
-        """Test GET request renders storage creation form."""
+    def test_create_storage_redirects_to_browse(self, client: Client, user: User):
+        """Test GET request redirects to browse page."""
         client.force_login(user)
         response = client.get(reverse("create_storage"))
-        assert response.status_code == http.HTTPStatus.OK
-        assert "form" in response.context
-
-    def test_create_storage_post_creates_unit(self, client: Client, user: User):
-        """Test POST creates a unit successfully."""
-        client.force_login(user)
-        response = client.post(
-            reverse("create_storage"),
-            {
-                "stores_items": "unit",
-                "name": "Test Unit",
-                "description": "Test description",
-            },
-        )
         assert response.status_code == http.HTTPStatus.FOUND
+        assert reverse("list_units") in response.url
 
-        # Verify unit was created
-        unit = Unit.objects.get(name="Test Unit", user=user)
-        assert unit.description == "Test description"
-        assert unit.user == user
-
-    def test_create_storage_post_creates_location(self, client: Client, user: User):
-        """Test POST creates a location successfully."""
+    def test_create_storage_post_also_redirects(self, client: Client, user: User):
+        """Test POST request also redirects to browse page."""
         client.force_login(user)
-        response = client.post(
-            reverse("create_storage"),
-            {
-                "stores_items": "location",
-                "name": "Test Location",
-                "description": "Test location description",
-            },
-        )
+        response = client.post(reverse("create_storage"), {"name": "Test"})
         assert response.status_code == http.HTTPStatus.FOUND
-
-        # Verify location was created
-        location = Location.objects.get(name="Test Location", user=user)
-        assert location.description == "Test location description"
+        assert reverse("list_units") in response.url
 
 
 # =============================================================================
@@ -1881,3 +1853,362 @@ class TestBrowseUnitItemsAPI:
             self._url(standalone_unit.user_id, standalone_unit.access_token)
         )
         assert response.status_code == http.HTTPStatus.METHOD_NOT_ALLOWED
+
+
+# =============================================================================
+# Phase 6: Location & Unit CRUD API Endpoints
+# =============================================================================
+
+
+@pytest.mark.django_db
+class TestUpdateLocationAPI:
+    """Tests for the update location JSON API endpoint."""
+
+    def _url(self, location_id: int) -> str:
+        return reverse("api_update_location", kwargs={"location_id": location_id})
+
+    def test_requires_auth(self, client: Client, location: Location):
+        """Test update location API requires authentication."""
+        response = client.post(
+            self._url(location.id),
+            data=json.dumps({"name": "Updated"}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.FOUND
+        assert "login" in response.url
+
+    def test_success(self, client: Client, user: User, location: Location):
+        """Test POST with valid name updates location and returns 200."""
+        client.force_login(user)
+        response = client.post(
+            self._url(location.id),
+            data=json.dumps({"name": "Updated House", "address": "456 New St"}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.OK
+        data = response.json()
+        assert data["name"] == "Updated House"
+        assert data["address"] == "456 New St"
+        location.refresh_from_db()
+        assert location.name == "Updated House"
+        assert location.address == "456 New St"
+
+    def test_duplicate_name(self, client: Client, user: User, location: Location):
+        """Test duplicate location name for same user returns 409."""
+        Location.objects.create(user=user, name="Other Place")
+        client.force_login(user)
+        response = client.post(
+            self._url(location.id),
+            data=json.dumps({"name": "Other Place"}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.CONFLICT
+        assert "already exists" in response.json()["error"]
+
+    def test_404_for_other_user(
+        self, client: Client, user: User, other_user: User
+    ):
+        """Test cannot update other user's location."""
+        other_loc = Location.objects.create(user=other_user, name="Other Home")
+        client.force_login(user)
+        response = client.post(
+            self._url(other_loc.id),
+            data=json.dumps({"name": "Hacked"}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.NOT_FOUND
+
+    def test_rejects_get(self, client: Client, user: User, location: Location):
+        """Test GET request is rejected with 405."""
+        client.force_login(user)
+        response = client.get(self._url(location.id))
+        assert response.status_code == http.HTTPStatus.METHOD_NOT_ALLOWED
+
+
+@pytest.mark.django_db
+class TestDeleteLocationAPI:
+    """Tests for the delete location JSON API endpoint."""
+
+    def _url(self, location_id: int) -> str:
+        return reverse("api_delete_location", kwargs={"location_id": location_id})
+
+    def test_requires_auth(self, client: Client, location: Location):
+        """Test delete location API requires authentication."""
+        response = client.post(self._url(location.id))
+        assert response.status_code == http.HTTPStatus.FOUND
+        assert "login" in response.url
+
+    def test_success_orphans_units(
+        self, client: Client, user: User, location: Location, unit_in_location: Unit
+    ):
+        """Test POST deletes location and orphans child units."""
+        client.force_login(user)
+        response = client.post(self._url(location.id))
+        assert response.status_code == http.HTTPStatus.OK
+        assert response.json()["success"] is True
+        assert not Location.objects.filter(id=location.id).exists()
+        # Child unit should still exist but with no location
+        unit_in_location.refresh_from_db()
+        assert unit_in_location.location is None
+
+    def test_404_for_other_user(
+        self, client: Client, user: User, other_user: User
+    ):
+        """Test cannot delete other user's location."""
+        other_loc = Location.objects.create(user=other_user, name="Other Home")
+        client.force_login(user)
+        response = client.post(self._url(other_loc.id))
+        assert response.status_code == http.HTTPStatus.NOT_FOUND
+
+    def test_rejects_get(self, client: Client, user: User, location: Location):
+        """Test GET request is rejected with 405."""
+        client.force_login(user)
+        response = client.get(self._url(location.id))
+        assert response.status_code == http.HTTPStatus.METHOD_NOT_ALLOWED
+
+
+@pytest.mark.django_db
+class TestUnitDetailJsonAPI:
+    """Tests for the unit detail JSON API endpoint."""
+
+    def _url(self, user_id: int, access_token: str) -> str:
+        return reverse(
+            "api_unit_detail_json",
+            kwargs={"user_id": user_id, "access_token": access_token},
+        )
+
+    def test_requires_auth(self, client: Client, standalone_unit: Unit):
+        """Test unit detail JSON API requires authentication."""
+        response = client.get(
+            self._url(standalone_unit.user_id, standalone_unit.access_token)
+        )
+        assert response.status_code == http.HTTPStatus.FOUND
+        assert "login" in response.url
+
+    def test_returns_all_fields(
+        self, client: Client, user: User, unit_with_dimensions: Unit
+    ):
+        """Test GET returns all editable unit fields."""
+        client.force_login(user)
+        response = client.get(
+            self._url(unit_with_dimensions.user_id, unit_with_dimensions.access_token)
+        )
+        assert response.status_code == http.HTTPStatus.OK
+        data = response.json()
+        assert data["name"] == "Toolbox"
+        assert data["description"] == "Red toolbox"
+        assert data["length"] == 24.0
+        assert data["width"] == 12.0
+        assert data["height"] == 8.0
+        assert data["dimensions_unit"] == "in"
+        assert "id" in data
+        assert "user_id" in data
+        assert "access_token" in data
+
+    def test_404_for_other_user(
+        self, client: Client, user: User, other_user: User
+    ):
+        """Test cannot view other user's unit detail."""
+        other_unit = Unit.objects.create(user=other_user, name="Other Box")
+        client.force_login(user)
+        response = client.get(
+            self._url(other_unit.user_id, other_unit.access_token)
+        )
+        assert response.status_code == http.HTTPStatus.NOT_FOUND
+
+
+@pytest.mark.django_db
+class TestUpdateUnitAPI:
+    """Tests for the update unit JSON API endpoint."""
+
+    def _url(self, user_id: int, access_token: str) -> str:
+        return reverse(
+            "api_update_unit",
+            kwargs={"user_id": user_id, "access_token": access_token},
+        )
+
+    def test_requires_auth(self, client: Client, standalone_unit: Unit):
+        """Test update unit API requires authentication."""
+        response = client.post(
+            self._url(standalone_unit.user_id, standalone_unit.access_token),
+            data=json.dumps({"name": "Updated"}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.FOUND
+        assert "login" in response.url
+
+    def test_success(self, client: Client, user: User, standalone_unit: Unit):
+        """Test POST with valid name updates unit and returns 200."""
+        client.force_login(user)
+        response = client.post(
+            self._url(standalone_unit.user_id, standalone_unit.access_token),
+            data=json.dumps({"name": "Updated Bin", "description": "New desc"}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.OK
+        data = response.json()
+        assert data["name"] == "Updated Bin"
+        standalone_unit.refresh_from_db()
+        assert standalone_unit.name == "Updated Bin"
+        assert standalone_unit.description == "New desc"
+
+    def test_update_with_location(
+        self, client: Client, user: User, standalone_unit: Unit, location: Location
+    ):
+        """Test POST with location_id assigns unit to location."""
+        client.force_login(user)
+        response = client.post(
+            self._url(standalone_unit.user_id, standalone_unit.access_token),
+            data=json.dumps({"name": standalone_unit.name, "location_id": location.id}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.OK
+        standalone_unit.refresh_from_db()
+        assert standalone_unit.location == location
+        assert standalone_unit.parent_unit is None
+
+    def test_dimensions_all_or_nothing(
+        self, client: Client, user: User, standalone_unit: Unit
+    ):
+        """Test partial dimensions returns 400."""
+        client.force_login(user)
+        response = client.post(
+            self._url(standalone_unit.user_id, standalone_unit.access_token),
+            data=json.dumps({"name": "Test", "length": 10}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.BAD_REQUEST
+        assert "dimension" in response.json()["error"].lower()
+
+    def test_404_for_other_user(
+        self, client: Client, user: User, other_user: User
+    ):
+        """Test cannot update other user's unit."""
+        other_unit = Unit.objects.create(user=other_user, name="Other Box")
+        client.force_login(user)
+        response = client.post(
+            self._url(other_unit.user_id, other_unit.access_token),
+            data=json.dumps({"name": "Hacked"}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.NOT_FOUND
+
+    def test_rejects_get(self, client: Client, user: User, standalone_unit: Unit):
+        """Test GET request is rejected with 405."""
+        client.force_login(user)
+        response = client.get(
+            self._url(standalone_unit.user_id, standalone_unit.access_token)
+        )
+        assert response.status_code == http.HTTPStatus.METHOD_NOT_ALLOWED
+
+
+@pytest.mark.django_db
+class TestDeleteUnitAPI:
+    """Tests for the delete unit JSON API endpoint."""
+
+    def _url(self, user_id: int, access_token: str) -> str:
+        return reverse(
+            "api_delete_unit",
+            kwargs={"user_id": user_id, "access_token": access_token},
+        )
+
+    def test_requires_auth(self, client: Client, standalone_unit: Unit):
+        """Test delete unit API requires authentication."""
+        response = client.post(
+            self._url(standalone_unit.user_id, standalone_unit.access_token)
+        )
+        assert response.status_code == http.HTTPStatus.FOUND
+        assert "login" in response.url
+
+    def test_success_cascade_deletes_items(
+        self, client: Client, user: User, standalone_unit: Unit, item: Item
+    ):
+        """Test POST deletes unit, cascade-deletes items, orphans children."""
+        # item fixture is in standalone_unit
+        child = Unit.objects.create(
+            user=user, name="Child", parent_unit=standalone_unit
+        )
+        client.force_login(user)
+        response = client.post(
+            self._url(standalone_unit.user_id, standalone_unit.access_token)
+        )
+        assert response.status_code == http.HTTPStatus.OK
+        data = response.json()
+        assert data["success"] is True
+        assert data["items_deleted"] == 1
+        assert not Unit.objects.filter(id=standalone_unit.id).exists()
+        assert not Item.objects.filter(id=item.id).exists()
+        # Child unit should still exist but with no parent
+        child.refresh_from_db()
+        assert child.parent_unit is None
+
+    def test_404_for_other_user(
+        self, client: Client, user: User, other_user: User
+    ):
+        """Test cannot delete other user's unit."""
+        other_unit = Unit.objects.create(user=other_user, name="Other Box")
+        client.force_login(user)
+        response = client.post(
+            self._url(other_unit.user_id, other_unit.access_token)
+        )
+        assert response.status_code == http.HTTPStatus.NOT_FOUND
+
+    def test_rejects_get(self, client: Client, user: User, standalone_unit: Unit):
+        """Test GET request is rejected with 405."""
+        client.force_login(user)
+        response = client.get(
+            self._url(standalone_unit.user_id, standalone_unit.access_token)
+        )
+        assert response.status_code == http.HTTPStatus.METHOD_NOT_ALLOWED
+
+
+@pytest.mark.django_db
+class TestContainerOptionsAPI:
+    """Tests for the container options JSON API endpoint."""
+
+    def test_requires_auth(self, client: Client):
+        """Test container options API requires authentication."""
+        response = client.get(reverse("api_container_options"))
+        assert response.status_code == http.HTTPStatus.FOUND
+        assert "login" in response.url
+
+    def test_returns_locations_and_units(
+        self, client: Client, user: User, location: Location, standalone_unit: Unit
+    ):
+        """Test GET returns locations and units for the current user."""
+        client.force_login(user)
+        response = client.get(reverse("api_container_options"))
+        assert response.status_code == http.HTTPStatus.OK
+        data = response.json()
+        loc_names = [loc["name"] for loc in data["locations"]]
+        unit_names = [u["name"] for u in data["units"]]
+        assert location.name in loc_names
+        assert standalone_unit.name in unit_names
+
+    def test_excludes_other_users_data(
+        self, client: Client, user: User, other_user: User
+    ):
+        """Test only returns current user's locations and units."""
+        Location.objects.create(user=other_user, name="Other Place")
+        Unit.objects.create(user=other_user, name="Other Bin")
+        client.force_login(user)
+        response = client.get(reverse("api_container_options"))
+        assert response.status_code == http.HTTPStatus.OK
+        data = response.json()
+        for loc in data["locations"]:
+            assert loc["name"] != "Other Place"
+        for u in data["units"]:
+            assert u["name"] != "Other Bin"
+
+    def test_exclude_unit_param(
+        self, client: Client, user: User, standalone_unit: Unit
+    ):
+        """Test exclude_unit query param removes a unit from results."""
+        client.force_login(user)
+        response = client.get(
+            reverse("api_container_options") + f"?exclude_unit={standalone_unit.id}"
+        )
+        assert response.status_code == http.HTTPStatus.OK
+        data = response.json()
+        unit_ids = [u["id"] for u in data["units"]]
+        assert standalone_unit.id not in unit_ids

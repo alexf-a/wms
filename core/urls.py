@@ -54,5 +54,11 @@ urlpatterns = [
     path("api/browse/", views.api_browse_locations, name="api_browse_locations"),
     path("api/browse/location/<int:location_id>/", views.api_browse_location_units, name="api_browse_location_units"),
     path("api/browse/unit/<int:user_id>/<slug:access_token>/", views.api_browse_unit_items, name="api_browse_unit_items"),
+    path("api/locations/<int:location_id>/update/", views.api_update_location, name="api_update_location"),
+    path("api/locations/<int:location_id>/delete/", views.api_delete_location, name="api_delete_location"),
+    path("api/units/<int:user_id>/<slug:access_token>/detail/", views.api_unit_detail_json, name="api_unit_detail_json"),
+    path("api/units/<int:user_id>/<slug:access_token>/update/", views.api_update_unit, name="api_update_unit"),
+    path("api/units/<int:user_id>/<slug:access_token>/delete/", views.api_delete_unit, name="api_delete_unit"),
+    path("api/container-options/", views.api_container_options, name="api_container_options"),
     path("caddy-ca/download/", views.caddy_ca_download_view, name="caddy_ca_download"),
 ]

@@ -1,0 +1,74 @@
+{# Edit Unit dialog — name, description, container picker, dimensions. Pre-populated by JS. #}
+<dialog id="edit-unit-dialog"
+        class="w-full max-w-md rounded-lg border border-border bg-card p-0 text-card-foreground shadow-xl backdrop:bg-foreground/40
+               open:animate-[dialog-in_200ms_ease-out]
+               [&.dialog--closing]:animate-[dialog-out_150ms_ease-in]">
+    <div class="px-6 py-5">
+        <h2 class="text-lg font-semibold text-foreground">Edit Unit</h2>
+
+        <input type="hidden" id="edit-unit-user-id">
+        <input type="hidden" id="edit-unit-access-token">
+
+        <p id="edit-unit-error" class="mt-3 hidden rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive" role="alert"></p>
+
+        <div class="mt-4 space-y-4">
+            <div>
+                <label class="mb-1 block text-xs font-medium text-muted-foreground" for="edit-unit-name">Name</label>
+                <input type="text" id="edit-unit-name"
+                       class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                       placeholder="Unit name" required>
+            </div>
+            <div>
+                <label class="mb-1 block text-xs font-medium text-muted-foreground" for="edit-unit-description">Description <span class="text-muted-foreground/60">(optional)</span></label>
+                <textarea id="edit-unit-description" rows="2"
+                          class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                          placeholder="Brief description"></textarea>
+            </div>
+            <div>
+                <label class="mb-1 block text-xs font-medium text-muted-foreground" for="edit-unit-container">Container <span class="text-muted-foreground/60">(optional)</span></label>
+                <select id="edit-unit-container"
+                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+                    <option value="">No container (standalone)</option>
+                    {# Options populated by JS from api_container_options #}
+                </select>
+            </div>
+
+            {# Dimensions section #}
+            <div>
+                <label class="mb-1 block text-xs font-medium text-muted-foreground">Dimensions <span class="text-muted-foreground/60">(optional)</span></label>
+                <div class="flex items-center gap-2">
+                    <input type="number" id="edit-unit-length" step="any" min="0"
+                           class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                           placeholder="L">
+                    <span class="text-muted-foreground">&times;</span>
+                    <input type="number" id="edit-unit-width" step="any" min="0"
+                           class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                           placeholder="W">
+                    <span class="text-muted-foreground">&times;</span>
+                    <input type="number" id="edit-unit-height" step="any" min="0"
+                           class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                           placeholder="H">
+                    <select id="edit-unit-dimensions-unit"
+                            class="w-20 shrink-0 rounded-md border border-input bg-background px-2 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+                        <option value="">--</option>
+                        <option value="in">in</option>
+                        <option value="cm">cm</option>
+                        <option value="ft">ft</option>
+                        <option value="m">m</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-6 flex gap-3">
+            <button type="button" id="edit-unit-cancel"
+                    class="flex-1 rounded-md border border-border bg-background px-4 py-2.5 text-sm font-medium text-foreground hover:bg-accent">
+                Cancel
+            </button>
+            <button type="button" id="edit-unit-submit"
+                    class="flex-1 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                Save
+            </button>
+        </div>
+    </div>
+</dialog>
