@@ -1,88 +1,169 @@
-{% extends "core/base.html" %}
+{% extends "core/base_tw.html" %}
 {% load static %}
 
-{% block title %}Find Your Item - WMS{% endblock %}
-
-{% block extra_head %}{% endblock %}
+{% block title %}Find - WMS{% endblock %}
 
 {% block content %}
-    <div class="m3-page-shell m3-page-shell--primary">
-        <section class="m3-search-stack">
-            <form method="post" class="m3-form-vertical m3-form-vertical--floating" novalidate>
-                {% csrf_token %}
-                <div id="search-field-group" class="m3-field-group">
-                    <div class="m3-filled-text-field">
-                        {{ form.query }}
-                        <button type="submit" class="m3-input-action" aria-label="Run search">
-                            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                                <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.71.71l.27.28v.79l5 4.99L20.49 19zM9.5 14a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z" />
-                            </svg>
-                        </button>
-                    </div>
-                </div>
+<div class="mx-auto max-w-sm">
+    <h1 class="text-xl font-bold text-foreground mb-1">Find</h1>
+    <p class="text-sm text-muted-foreground mb-4">Search your inventory</p>
 
-                <!-- Browse by Unit Button -->
-                <div class="hero-skip-wrapper">
-                    <button type="button" id="browse-by-unit-btn" class="skip-link">
-                        <span>Browse by Unit</span>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
-                        </svg>
-                    </button>
-                </div>
+    <!-- Search Form -->
+    <form method="post" novalidate>
+        {% csrf_token %}
 
-                <!-- Unit Filter Section (Initially Hidden) -->
-                <div id="unit-filter-section" class="unit-filter-section" style="display: none;">
-                    <div class="m3-field-group">
-                        <label for="unit_filter" class="m3-field-label">Select a Unit</label>
-                        <div class="m3-select-wrapper">
-                            {% with selected=selected_unit_id|default_if_none:'' %}
-                                <select id="unit_filter" name="unit_filter" class="m3-select">
-                                    <option value="" {% if not selected %}selected{% endif %}>Select a Unit</option>
-                                    {% if units %}
-                                        {% for unit in units %}
-                                            <option value="{{ unit.id }}" data-url="{% url 'unit_detail' unit.user_id unit.access_token %}" {% if selected == unit.id|stringformat:"s" %}selected{% endif %}>{{ unit.name }}</option>
-                                        {% endfor %}
-                                    {% else %}
-                                        <option value="" disabled>You haven't added any units yet</option>
-                                    {% endif %}
-                                </select>
-                            {% endwith %}
-                        </div>
-                    </div>
-                </div>
-            </form>
-        </section>
+        <!-- Search Input -->
+        <div id="search-field-group" class="relative mb-4">
+            <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input type="text" name="query" id="id_query"
+                   value="{{ form.query.value|default:'' }}"
+                   placeholder="Where is my..."
+                   maxlength="255"
+                   class="w-full rounded-md border border-input bg-background py-2 pl-10 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                   required>
+            <button type="submit" class="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground hover:text-foreground" aria-label="Search">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                    <polyline points="12 5 19 12 12 19"/>
+                </svg>
+            </button>
+        </div>
 
-        {% if result %}
-        <section aria-live="polite" aria-atomic="true">
-            <div class="m3-list" role="list">
-                <article class="m3-card m3-card--tonal m3-search-results__card" role="listitem">
-                    {% if found_item and found_item.image %}
-                        <div class="m3-search-results__thumbnail">
-                            <img src="{{ found_item.image.url }}" alt="{{ found_item.name }}" class="m3-thumbnail-img">
-                        </div>
-                    {% else %}
-                        <div class="m3-search-results__avatar" aria-hidden="true">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M20 6h-2.18c.11-.31.18-.65.18-1 0-1.66-1.34-3-3-3-1.05 0-1.96.54-2.5 1.35l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM9 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm11 15H4v-2h16v2zm0-5H4V8h5.08L7 10.83 8.62 12 11 8.76l1-1.36 1 1.36L15.38 12 17 10.83 14.92 8H20v6z"/>
-                            </svg>
-                        </div>
-                    {% endif %}
-                    <div class="m3-search-results__content">
-                        {{ result|linebreaksbr }}
-                    </div>
-                </article>
+        <!-- Browse by Unit Toggle -->
+        <div class="mb-6 text-center">
+            <button type="button" id="browse-by-unit-btn"
+                    class="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+                <span>Browse by unit</span>
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Unit Filter Section (initially hidden) -->
+        <div id="unit-filter-section" class="mb-6" style="display: none;">
+            <label for="unit_filter" class="mb-1 block text-xs font-medium text-muted-foreground">Select a unit</label>
+            {% with selected=selected_unit_id|default_if_none:'' %}
+            <select id="unit_filter" name="unit_filter"
+                    class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+                <option value="" {% if not selected %}selected{% endif %}>Select a unit</option>
+                {% if units %}
+                    {% for unit in units %}
+                    <option value="{{ unit.id }}" data-url="{% url 'unit_detail' unit.user_id unit.access_token %}" {% if selected == unit.id|stringformat:"s" %}selected{% endif %}>{{ unit.name }}</option>
+                    {% endfor %}
+                {% else %}
+                    <option value="" disabled>You haven't added any units yet</option>
+                {% endif %}
+            </select>
+            {% endwith %}
+        </div>
+    </form>
+
+    {% if result %}
+    <!-- Search Results -->
+    <section aria-live="polite" aria-atomic="true" class="mt-2">
+        <p class="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+            <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            Result
+        </p>
+        <div class="rounded-lg border border-border bg-card p-4">
+            <div class="flex gap-3">
+                {% if found_item and found_item.image %}
+                <div class="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-muted">
+                    <img src="{{ found_item.image.url }}" alt="{{ found_item.name }}" class="h-full w-full object-cover">
+                </div>
+                {% else %}
+                <div class="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-muted">
+                    <svg class="h-6 w-6 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0022 16z"/>
+                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                        <line x1="12" y1="22.08" x2="12" y2="12"/>
+                    </svg>
+                </div>
+                {% endif %}
+                <div class="flex-1 min-w-0 text-sm text-foreground leading-relaxed">
+                    {{ result|linebreaksbr }}
+                </div>
             </div>
-        </section>
-        {% endif %}
+        </div>
+    </section>
+    {% elif not result and form.query.value %}
+    <!-- Empty state after search -->
+    <div class="flex flex-col items-center justify-center py-12 text-center">
+        <p class="text-sm text-muted-foreground">No results for "{{ form.query.value }}"</p>
     </div>
+    {% else %}
+    <!-- Empty state before search -->
+    <div class="flex flex-col items-center justify-center py-12 text-center">
+        <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-muted">
+            <svg class="h-6 w-6 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+        </div>
+        <p class="text-sm text-muted-foreground">Search across all your items using natural language</p>
+    </div>
+    {% endif %}
+</div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'core/js/ui_utils.js' %}"></script>
-<script src="{% static 'core/js/item_search.js' %}"></script>
-{% if selected_unit_id %}
-<script>showUnitFilterSection();</script>
-{% endif %}
+<script>
+/**
+ * Item search page interactions.
+ * Handles: auto-focus, browse-by-unit toggle, unit selection navigation.
+ */
+document.addEventListener('DOMContentLoaded', function() {
+    /** @type {HTMLInputElement|null} */
+    var searchInput = document.getElementById('id_query');
+    /** @type {HTMLButtonElement|null} */
+    var browseBtn = document.getElementById('browse-by-unit-btn');
+    /** @type {HTMLElement|null} */
+    var unitSection = document.getElementById('unit-filter-section');
+    /** @type {HTMLSelectElement|null} */
+    var unitSelect = document.getElementById('unit_filter');
+    /** @type {HTMLElement|null} */
+    var searchGroup = document.getElementById('search-field-group');
+
+    // Auto-focus search input on load
+    if (searchInput) searchInput.focus();
+
+    /**
+     * Toggle browse-by-unit section visibility.
+     * Hides the search bar and shows the unit picker.
+     * @returns {void}
+     */
+    function showUnitSection() {
+        if (!unitSection) return;
+        if (searchGroup) searchGroup.style.display = 'none';
+        unitSection.style.display = 'block';
+        if (browseBtn) browseBtn.style.display = 'none';
+        setTimeout(function() {
+            unitSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
+        if (unitSelect) setTimeout(function() { unitSelect.focus(); }, 300);
+    }
+
+    if (browseBtn) browseBtn.addEventListener('click', showUnitSection);
+
+    // Navigate to unit detail when a unit is selected
+    if (unitSelect) {
+        unitSelect.addEventListener('change', function() {
+            var url = this.options[this.selectedIndex].dataset.url;
+            if (url) window.location.href = url;
+        });
+    }
+
+    {% if selected_unit_id %}
+    // Pre-show unit section if a unit was selected
+    showUnitSection();
+    {% endif %}
+});
+</script>
 {% endblock %}
