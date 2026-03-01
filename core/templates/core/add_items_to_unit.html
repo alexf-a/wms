@@ -1,181 +1,379 @@
-{% extends "core/base.html" %}
+{% extends "core/base_tw.html" %}
 {% load static %}
 
 {% block title %}Add Item - WMS{% endblock %}
 
 {% block content %}
-<div class="m3-page-shell add-item-flow">
-    
-    <!-- Snackbar for error messages -->
-    <div id="error-snackbar" class="m3-snackbar" role="alert" aria-live="polite">
-        <span id="error-snackbar-text" class="m3-snackbar-text"></span>
-        <button type="button" id="error-snackbar-dismiss" class="m3-snackbar-action" aria-label="Dismiss">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+<!-- Error toast (fixed above bottom nav) -->
+<div id="error-snackbar" class="fixed inset-x-6 bottom-20 z-50 mx-auto hidden max-w-sm rounded-lg bg-destructive px-4 py-3 text-sm text-white shadow-lg" role="alert">
+    <div class="flex items-center gap-2">
+        <span id="error-snackbar-text" class="flex-1"></span>
+        <button type="button" id="error-snackbar-dismiss" class="text-white/80 hover:text-white" aria-label="Dismiss">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
             </svg>
         </button>
     </div>
-    
-    <!-- Single form wrapping everything -->
-    <form method="post" enctype="multipart/form-data" id="item-form" class="m3-form-vertical">
-        {% csrf_token %}
-        
-        <!-- Hero Action: Image Upload Section -->
-        <section class="hero-upload-section">
-            <div class="hero-upload-container">
-                
-                <!-- Large Camera Upload Button -->
-                <div class="hero-upload-button-wrapper">
-                    <input type="file" id="hero-image-input" name="image" accept="image/*" class="visually-hidden-input" aria-label="Upload item image for AI analysis">
-                    <label for="hero-image-input" class="hero-upload-btn" role="button" tabindex="0" aria-label="Upload item image">
-                        <div class="hero-upload-icon">
-                            <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M12 15.2l-2.5-2.5 1.4-1.4.6.6V8h1.5v3.9l.6-.6 1.4 1.4-2.5 2.5zM21 5v14c0 1.1-.9 2-2 2H5c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2h14c1.1 0 2 .9 2 2zM7 18h10V6H7v12z"/>
-                                <path d="M12 7c-1.1 0-2 .9-2 2 0 .37.11.7.28 1L12 11.72 13.72 10c.17-.3.28-.63.28-1 0-1.1-.9-2-2-2z"/>
-                            </svg>
-                        </div>
-                        <span class="hero-upload-text md-typescale-title-large">Take Photo or Upload</span>
-                        <span class="hero-upload-subtext md-typescale-body-medium">AI will auto-fill details</span>
-                    </label>
-                    <a href="{% url 'getting_started' %}#adding-items" class="m3-help-link" target="_blank" rel="noopener noreferrer" aria-label="How does AI auto-fill work? (opens in new window)">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+</div>
+
+<form method="post" enctype="multipart/form-data" id="item-form">
+    {% csrf_token %}
+
+    <!-- Hero Upload Section -->
+    <section class="mx-auto max-w-sm">
+        <div class="flex flex-col items-center gap-6 py-8">
+
+            <!-- Camera Upload Button -->
+            <div class="flex flex-col items-center gap-3">
+                <input type="file" id="hero-image-input" name="image" accept="image/*" class="hidden" aria-label="Upload item image for AI analysis">
+                <label for="hero-image-input"
+                       class="flex cursor-pointer flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-border bg-card px-12 py-10 text-center transition-colors hover:border-primary hover:bg-primary/5"
+                       role="button" tabindex="0" aria-label="Upload item image">
+                    <svg class="h-16 w-16 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+                        <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                    <span class="text-lg font-semibold text-foreground">Take Photo or Upload</span>
+                    <span class="text-sm text-muted-foreground">AI will auto-fill details</span>
+                </label>
+                <a href="{% url 'getting_started' %}#adding-items"
+                   class="inline-flex items-center gap-1 text-xs text-accent hover:underline"
+                   target="_blank" rel="noopener noreferrer"
+                   aria-label="How does AI auto-fill work? (opens in new window)">
+                    <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                    </svg>
+                    How does AI auto-fill work?
+                </a>
+            </div>
+
+            <!-- Skip to Manual -->
+            <button type="button" id="skip-to-manual"
+                    class="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+                Skip and enter manually
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
+                </svg>
+            </button>
+        </div>
+    </section>
+
+    <!-- Manual Form Section (initially hidden — revealed by add_items_flow.js) -->
+    <section id="form-section" class="mx-auto max-w-sm" style="display:none">
+
+        <!-- Image Preview (shown after upload) -->
+        <div id="image-preview-container" class="mb-4" style="display:none">
+            <div class="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
+                <img id="preview-image" src="" alt="Item preview" class="h-12 w-12 rounded-md object-cover">
+                <span class="flex-1 text-sm text-foreground">Image uploaded</span>
+                <label for="hero-image-input"
+                       class="cursor-pointer rounded-md border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent"
+                       role="button" tabindex="0">
+                    Change
+                </label>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loading-indicator" class="py-12 text-center" style="display:none">
+            <div class="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary"></div>
+            <p class="mt-4 text-sm text-muted-foreground">AI is analyzing your image...</p>
+        </div>
+
+        <!-- Form Card -->
+        <div id="form-card" class="rounded-lg border border-border bg-card p-6" style="display:none">
+            <h2 class="mb-4 text-lg font-semibold text-foreground">Item Details</h2>
+
+            <!-- Name -->
+            <div class="mb-4">
+                <label for="id_name" class="mb-1 block text-xs font-medium text-muted-foreground">Name</label>
+                <input type="text" name="name" id="id_name"
+                       value="{{ form.name.value|default:'' }}"
+                       class="w-full rounded-md border {% if form.name.errors %}border-destructive{% else %}border-input{% endif %} bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                       required>
+                {% if form.name.errors %}
+                <p class="mt-1 text-xs text-destructive">{{ form.name.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Description -->
+            <div class="mb-4">
+                <label for="id_description" class="mb-1 block text-xs font-medium text-muted-foreground">Description</label>
+                <textarea name="description" id="id_description" rows="4"
+                          class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring">{{ form.description.value|default:'' }}</textarea>
+            </div>
+
+            <!-- Unit with Create New -->
+            <div class="mb-4">
+                <div class="mb-1 flex items-center justify-between">
+                    <label for="id_unit" class="text-xs font-medium text-muted-foreground">Unit</label>
+                    <button type="button" id="add-unit-inline-btn"
+                            class="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80">
+                        <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
                         </svg>
-                        <span>How does AI auto-fill work?</span>
-                    </a>
-                </div>
-                
-                <!-- Skip Option -->
-                <div class="hero-skip-wrapper">
-                    <button type="button" id="skip-to-manual" class="skip-link">
-                        <span>Skip and enter manually</span>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
-                        </svg>
+                        New unit
                     </button>
                 </div>
+                <select name="unit" id="id_unit"
+                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                        required>
+                    <option value="">Select a unit...</option>
+                    {% for unit in units %}
+                    <option value="{{ unit.id }}"{% if form.unit.value|stringformat:"s" == unit.id|stringformat:"s" %} selected{% endif %}>{{ unit.name }}</option>
+                    {% endfor %}
+                </select>
             </div>
-        </section>
 
-        <!-- Manual Form Section (Initially Hidden) -->
-        <section id="form-section" class="form-section">
-            <!-- Image Preview (shown after upload) -->
-            <div id="image-preview-container" class="image-preview-container">
-                <div class="m3-card m3-card--outlined">
-                    <div class="m3-card__content image-preview-flex">
-                        <img id="preview-image" src="" alt="Item preview" class="preview-thumbnail">
-                        <div class="image-preview-flex-fill">
-                            <div class="md-typescale-body-medium image-preview-text">
-                                Image uploaded
-                            </div>
-                        </div>
-                        <label for="hero-image-input" class="m3-button m3-button-outlined" role="button" tabindex="0">
-                            <span class="m3-button-label">Change</span>
+            <!-- Quantity Section (Optional) -->
+            <div class="mb-6 rounded-lg border border-border bg-muted/30 p-4">
+                <h3 class="mb-3 text-sm font-medium text-foreground">
+                    Quantity <span class="text-muted-foreground">(optional)</span>
+                </h3>
+
+                <!-- Category Radio Buttons -->
+                <div class="mb-3">
+                    <label class="mb-1.5 block text-xs font-medium text-muted-foreground">Measurement Type</label>
+                    <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="Measurement type">
+                        {% for category in QUANTITY_CATEGORIES %}
+                        <label class="inline-flex cursor-pointer items-center rounded-full border border-border px-3 py-1.5 text-xs transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/10 has-[:checked]:text-primary hover:bg-accent/10">
+                            <input type="radio" name="quantity_category" value="{{ category }}" class="sr-only"{% if form.quantity_category.value == category %} checked{% endif %}>
+                            {{ category|capfirst }}
                         </label>
+                        {% endfor %}
                     </div>
                 </div>
-            </div>
 
-            <!-- Loading State -->
-            <div id="loading-indicator" class="loading-indicator">
-                <div class="loading-spinner"></div>
-                <p class="md-typescale-body-large">AI is analyzing your image...</p>
-            </div>
-
-            <!-- Form Card -->
-            <div id="form-card" class="m3-card m3-card--filled">
-                <div class="m3-card__content">
-                    <h2 class="md-typescale-title-large m3-card__title form-card-title">
-                        Item Details
-                    </h2>
-                    
-                    <!-- Name Field -->
-                    <div class="m3-form-field{% if form.name.errors %} m3-form-field--error{% endif %}">
-                        <label for="id_name" class="m3-form-label">Name</label>
-                        <input type="text" name="name" id="id_name" class="m3-text-field{% if form.name.errors %} m3-text-field--error{% endif %}" value="{{ form.name.value|default:'' }}" required>
-                        {% if form.name.errors %}
-                        <span class="m3-form-error">{{ form.name.errors.0 }}</span>
-                        {% endif %}
+                <!-- Amount + Unit inline -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label for="id_quantity" class="mb-1 block text-xs font-medium text-muted-foreground">Amount</label>
+                        <input type="number" name="quantity" id="id_quantity"
+                               step="0.01" min="0"
+                               value="{{ form.quantity.value|default_if_none:'' }}"
+                               placeholder="e.g., 12"
+                               class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring">
                     </div>
-                    
-                    <!-- Description Field -->
-                    <div class="m3-form-field">
-                        <label for="id_description" class="m3-form-label">Description</label>
-                        <textarea name="description" id="id_description" class="m3-text-field" rows="4">{{ form.description.value|default:'' }}</textarea>
-                    </div>
-                    
-                    <!-- Unit Field -->
-                    <div class="m3-form-field">
-                        <label for="id_unit" class="m3-form-label">Unit</label>
-                        <select name="unit" id="id_unit" class="m3-text-field" required>
-                            <option value="">Select a unit...</option>
-                            {% for unit in units %}
-                            <option value="{{ unit.id }}"{% if form.unit.value|stringformat:"s" == unit.id|stringformat:"s" %} selected{% endif %}>{{ unit.name }}</option>
+                    <div>
+                        <label for="id_quantity_unit" class="mb-1 block text-xs font-medium text-muted-foreground">Unit</label>
+                        <select name="quantity_unit" id="id_quantity_unit"
+                                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+                            <option value="">Select...</option>
+                            {% for opt in QUANTITY_UNIT_OPTIONS %}
+                            <option value="{{ opt.value }}" data-category="{{ opt.category }}"{% if form.quantity_unit.value == opt.value %} selected{% endif %}>{{ opt.label }}</option>
                             {% endfor %}
                         </select>
                     </div>
-                    
-                    <!-- Quantity Section (Optional) -->
-                    <div class="quantity-section">
-                        <div class="quantity-section__title md-typescale-title-small">Quantity <span class="m3-form-optional-text">(optional)</span></div>
-                        <div class="quantity-section__body">
-                        
-                        <!-- Quantity Category Radio Buttons -->
-                        <div class="m3-form-field">
-                            <label class="m3-form-label">Measurement Type</label>
-                            <div class="m3-radio-group" role="radiogroup" aria-label="Measurement type">
-                                {% for category in QUANTITY_CATEGORIES %}
-                                <label class="m3-radio-button">
-                                    <input type="radio" name="quantity_category" value="{{ category }}" class="m3-radio-input"{% if form.quantity_category.value == category %} checked{% endif %}>
-                                    <span class="m3-radio-label">{{ category|capfirst }}</span>
-                                </label>
-                                {% endfor %}
-                            </div>
-                        </div>
-                        
-                        <!-- Quantity Amount and Unit (inline) -->
-                        <div class="m3-form-row quantity-row">
-                            <div class="m3-form-field m3-form-field--flex">
-                                <label for="id_quantity" class="m3-form-label">Amount</label>
-                                <input type="number" name="quantity" id="id_quantity" class="m3-text-field" step="0.01" min="0" value="{{ form.quantity.value|default_if_none:'' }}" placeholder="e.g., 12">
-                            </div>
-                            <div class="m3-form-field m3-form-field--flex">
-                                <label for="id_quantity_unit" class="m3-form-label">Unit</label>
-                                <select name="quantity_unit" id="id_quantity_unit" class="m3-text-field">
-                                    <option value="">Select...</option>
-                                    {% for opt in QUANTITY_UNIT_OPTIONS %}
-                                    <option value="{{ opt.value }}" data-category="{{ opt.category }}"{% if form.quantity_unit.value == opt.value %} selected{% endif %}>{{ opt.label }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                        </div>
-                        </div>
-                    </div>
-                    
-                    <div class="m3-card__actions form-actions-spacing">
-                        <button type="submit" class="m3-button m3-button-filled m3-button-standard">
-                            <svg class="m3-button-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M19 13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
-                            </svg>
-                            <span class="m3-button-label">Add Item</span>
-                        </button>
-                        <a href="{% url 'list_units' %}" class="m3-button m3-button-tonal m3-button-standard">
-                            <svg class="m3-button-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
-                            </svg>
-                            <span class="m3-button-label">Cancel</span>
-                        </a>
-                    </div>
                 </div>
             </div>
-        </section>
-    </form>
-</div>
+
+            <!-- Actions -->
+            <div class="flex gap-3">
+                <a href="{% url 'list_units' %}"
+                   class="flex-1 rounded-md border border-border bg-background px-4 py-2.5 text-center text-sm font-medium text-foreground hover:bg-accent">
+                    Cancel
+                </a>
+                <button type="submit"
+                        class="flex-1 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                    Add Item
+                </button>
+            </div>
+        </div>
+    </section>
+</form>
+{% endblock %}
+
+{% block dialogs %}
+{% include "core/includes/dialogs/create_unit.html" %}
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'core/js/ui_utils.js' %}"></script>
+<script>
+/**
+ * Tailwind-compatible UI utilities for the add-item flow.
+ * Replaces ui_utils.js functions used by add_items_flow.js.
+ */
+
+/**
+ * Reveal a hidden section with smooth scroll.
+ * @param {HTMLElement} section - The section element to reveal.
+ * @param {HTMLElement|null} triggerBtn - Button to hide (unused here).
+ * @param {HTMLElement|null} [focusElement] - Element to focus after reveal.
+ * @param {Object} [options] - Configuration options.
+ * @param {string} [options.scrollBlock='center'] - Scroll alignment.
+ * @returns {void}
+ */
+function revealSection(section, triggerBtn, focusElement, options) {
+    options = options || {};
+    if (!section) return;
+    section.style.display = 'block';
+    if (triggerBtn) triggerBtn.style.display = 'none';
+    setTimeout(function() {
+        section.scrollIntoView({ behavior: 'smooth', block: options.scrollBlock || 'center' });
+    }, 100);
+    if (focusElement) setTimeout(function() { focusElement.focus(); }, 300);
+}
+
+/**
+ * Show an error message in the toast banner.
+ * @param {string} message - The error message to display.
+ * @returns {void}
+ */
+function showErrorSnackbar(message) {
+    var snackbar = document.getElementById('error-snackbar');
+    var snackbarText = document.getElementById('error-snackbar-text');
+    var dismissBtn = document.getElementById('error-snackbar-dismiss');
+    if (!snackbar || !snackbarText) return;
+    snackbarText.textContent = message;
+    snackbar.classList.remove('hidden');
+    var timeout = setTimeout(function() { snackbar.classList.add('hidden'); }, 6000);
+    if (dismissBtn) {
+        dismissBtn.onclick = function() {
+            clearTimeout(timeout);
+            snackbar.classList.add('hidden');
+        };
+    }
+}
+
+/**
+ * Show form section and form card when server-side validation errors exist.
+ * @param {string} formSectionId - ID of the form section element.
+ * @param {string} formCardId - ID of the form card element.
+ * @returns {void}
+ */
+function showFormSectionWithErrors(formSectionId, formCardId) {
+    var formSection = document.getElementById(formSectionId);
+    var formCard = document.getElementById(formCardId);
+    if (formSection) formSection.style.display = 'block';
+    if (formCard) formCard.style.display = 'block';
+}
+</script>
 <script src="{% static 'core/js/add_items_flow.js' %}"></script>
 <script src="{% static 'core/js/quantity_category_filter.js' %}"></script>
-{% include "core/includes/form_error_snackbar_script.html" with form=form reveal_form_section=True form_section_id='form-section' form_card_id='form-card' %}
+{% if form.errors %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    showFormSectionWithErrors("form-section", "form-card");
+    {% for field, errors in form.errors.items %}{% for error in errors %}{% if field == '__all__' %}
+    showErrorSnackbar("{{ error|escapejs }}");
+    {% else %}
+    showErrorSnackbar("{{ field|title }}: {{ error|escapejs }}");
+    {% endif %}{% endfor %}{% endfor %}
+});
+</script>
+{% endif %}
+<script src="{% static 'core/js/fetch_utils.js' %}"></script>
+<script>
+/**
+ * Inline unit creation from the add-item page.
+ * Opens the create-unit dialog and adds the new unit to the dropdown.
+ */
+document.addEventListener('DOMContentLoaded', function() {
+    var addBtn = document.getElementById('add-unit-inline-btn');
+    var dialog = document.getElementById('create-unit-dialog');
+    var cancelBtn = document.getElementById('create-unit-cancel');
+    var submitBtn = document.getElementById('create-unit-submit');
+    var nameInput = document.getElementById('create-unit-name');
+    var containerSelect = document.getElementById('create-unit-container');
+    var errorEl = document.getElementById('create-unit-error');
+    var unitSelect = document.getElementById('id_unit');
+
+    if (!addBtn || !dialog) return;
+
+    /**
+     * Show an error inside the create-unit dialog.
+     * @param {string} msg - Error message to display.
+     * @returns {void}
+     */
+    function showDialogError(msg) {
+        if (errorEl) {
+            errorEl.textContent = msg;
+            errorEl.classList.remove('hidden');
+        }
+    }
+
+    /**
+     * Open the create-unit dialog and load container options.
+     * @returns {void}
+     */
+    function openDialog() {
+        nameInput.value = '';
+        if (errorEl) errorEl.classList.add('hidden');
+        // Load container options
+        apiFetch('{% url "api_container_options" %}')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                // Clear existing options except the first (standalone)
+                while (containerSelect.options.length > 1) {
+                    containerSelect.remove(1);
+                }
+                data.locations.forEach(function(loc) {
+                    var opt = document.createElement('option');
+                    opt.value = 'location:' + loc.id;
+                    opt.textContent = loc.name;
+                    containerSelect.appendChild(opt);
+                });
+                data.units.forEach(function(u) {
+                    var opt = document.createElement('option');
+                    opt.value = 'unit:' + u.id;
+                    opt.textContent = u.name;
+                    containerSelect.appendChild(opt);
+                });
+            })
+            .catch(function() { /* container picker is optional */ });
+        dialog.showModal();
+    }
+
+    addBtn.addEventListener('click', openDialog);
+
+    cancelBtn.addEventListener('click', function() {
+        dialog.close();
+    });
+
+    dialog.addEventListener('click', function(e) {
+        if (e.target === dialog) dialog.close();
+    });
+
+    submitBtn.addEventListener('click', function() {
+        var name = nameInput.value.trim();
+        if (!name) {
+            showDialogError('Name is required.');
+            return;
+        }
+        var body = { name: name };
+        // Parse container selection
+        var containerVal = containerSelect.value;
+        if (containerVal) {
+            var parts = containerVal.split(':');
+            if (parts[0] === 'location') body.location_id = parseInt(parts[1], 10);
+            else if (parts[0] === 'unit') body.parent_unit_id = parseInt(parts[1], 10);
+        }
+        submitBtn.disabled = true;
+        apiFetch('{% url "api_create_unit" %}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        })
+        .then(function(r) {
+            if (!r.ok) return r.json().then(function(d) { throw new Error(d.error || 'Failed to create unit'); });
+            return r.json();
+        })
+        .then(function(data) {
+            // Add new unit to the dropdown and select it
+            var opt = document.createElement('option');
+            opt.value = data.id;
+            opt.textContent = data.name;
+            opt.selected = true;
+            unitSelect.appendChild(opt);
+            dialog.close();
+        })
+        .catch(function(err) {
+            showDialogError(err.message);
+        })
+        .finally(function() {
+            submitBtn.disabled = false;
+        });
+    });
+});
+</script>
 {% endblock %}

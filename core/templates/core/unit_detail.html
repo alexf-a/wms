@@ -1,212 +1,443 @@
-{% extends "core/base.html" %}
+{% extends "core/base_tw.html" %}
 {% load static %}
 
 {% block title %}{{ unit.name }} - WMS{% endblock %}
 
 {% block content %}
-<div class="m3-page-shell">
-    <!-- Unit Header Card -->
-    <div class="m3-card m3-card--filled">
-        <div class="m3-card__content">
-            <div class="m3-card__icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M4 4H20V20H4V4ZM6 6V18H18V6H6ZM8 8H16V10H8V8ZM8 12H16V14H8V12Z" fill="currentColor"/>
+<!-- Error toast -->
+<div id="error-snackbar" class="fixed inset-x-6 bottom-20 z-50 mx-auto hidden max-w-sm rounded-lg bg-destructive px-4 py-3 text-sm text-white shadow-lg" role="alert">
+    <div class="flex items-center gap-2">
+        <span id="error-snackbar-text" class="flex-1"></span>
+        <button type="button" id="error-snackbar-dismiss" class="text-white/80 hover:text-white" aria-label="Dismiss">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+            </svg>
+        </button>
+    </div>
+</div>
+
+<!-- Unit Header Card -->
+<div class="rounded-lg border border-border bg-card p-5">
+    <div class="flex items-start justify-between">
+        <div class="flex items-center gap-3">
+            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M20 2H4c-1 0-2 .9-2 2v3.01c0 .72.43 1.34 1 1.69V20c0 1.1 1.1 2 2 2h14c.9 0 2-.9 2-2V8.7c.57-.35 1-.97 1-1.69V4c0-1.1-1-2-2-2zm-5 12H9v-2h6v2zm5-7H4V4h16v3z"/>
                 </svg>
             </div>
-            
-            <div class="m3-card__header">
-                <h1 class="md-typescale-headline-medium m3-card__title">{{ unit.name }}</h1>
-                
-                <!-- Overflow Menu -->
-                <div class="m3-overflow-menu">
-                    <button type="button" class="m3-overflow-menu-button" id="unit-menu-button" aria-label="Unit options" aria-haspopup="true" aria-expanded="false">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
-                        </svg>
-                    </button>
-                    
-                    <div class="m3-overflow-menu-dropdown" id="unit-menu-dropdown">
-                        <a href="{% url 'unit_edit' unit.user_id unit.access_token %}" class="m3-overflow-menu-item">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
-                            </svg>
-                            <span>Edit</span>
-                        </a>
-                        
-                        <form method="POST" action="{% url 'unit_delete' unit.user_id unit.access_token %}" style="margin: 0;" id="delete-form">
-                            {% csrf_token %}
-                            <button type="button" class="m3-overflow-menu-item m3-overflow-menu-item--danger" id="delete-button" data-confirm-message="Are you sure you want to delete this unit? All items inside will be permanently deleted. Child units will survive but become standalone. This action cannot be undone.">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
-                                </svg>
-                                <span>Delete</span>
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-            
-            {% if unit.description %}
-            <p class="md-typescale-body-medium m3-card__description">
-                {{ unit.description }}
-            </p>
-            {% endif %}
-            {% if unit.length and unit.width and unit.height and unit.dimensions_unit %}
-                <p class="md-typescale-body-small m3-card__description" style="margin-top: 0.5rem; opacity: 0.8;">
-                    Dimensions: {{ unit.length }} × {{ unit.width }} × {{ unit.height }} {{ unit.get_dimensions_unit_display|lower }}
+            <div>
+                <h1 class="text-xl font-semibold text-foreground">{{ unit.name }}</h1>
+                {% if unit.description %}
+                <p class="mt-0.5 text-sm text-muted-foreground">{{ unit.description }}</p>
+                {% endif %}
+                {% if unit.length and unit.width and unit.height and unit.dimensions_unit %}
+                <p class="mt-0.5 text-xs text-muted-foreground/80">
+                    {{ unit.length }} &times; {{ unit.width }} &times; {{ unit.height }} {{ unit.get_dimensions_unit_display|lower }}
                 </p>
-            {% endif %}
+                {% endif %}
+            </div>
         </div>
-        <div class="m3-card__actions">
-            <a href="{% url 'unit_qr' unit.user_id unit.access_token %}" class="m3-button m3-button-tonal">
-                <svg class="m3-button-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M3 11h8V3H3v8zm2-6h4v4H5V5zm8-2v8h8V3h-8zm6 6h-4V5h4v4zM3 21h8v-8H3v8zm2-6h4v4H5v-4zm13 2h3v3h2v-3h3v-2h-3v-3h-2v3h-3v2z"/>
+        <!-- Unit actions -->
+        <div class="flex shrink-0 gap-1">
+            <a href="{% url 'unit_edit' unit.user_id unit.access_token %}" class="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground" aria-label="Edit unit">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
                 </svg>
-                <span class="m3-button-label">Download QR Code</span>
             </a>
-            <a href="{% url 'getting_started' %}#qr-codes" class="m3-help-link" target="_blank" rel="noopener noreferrer" aria-label="How to use QR codes (opens in new window)">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+            <a href="{% url 'unit_qr' unit.user_id unit.access_token %}" class="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground" aria-label="Download QR code">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M3 11h8V3H3v8zm2-6h4v4H5V5zm8-2v8h8V3h-8zm6 6h-4V5h4v4zM3 21h8v-8H3v8zm2-6h4v4H5v-4zm13-2h2v2h-2v-2zm-2 2h2v2h-2v-2zm2 2h2v2h-2v-2zm-2 2h2v2h-2v-2zm2 2h2v2h-2v-2z"/>
                 </svg>
-                <span>How to use QR codes</span>
-            </a>
-            <a href="{% url 'add_items_to_unit' %}" class="m3-button m3-button-filled">
-                <svg class="m3-button-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M19 13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
-                </svg>
-                <span class="m3-button-label">Add Items</span>
             </a>
         </div>
     </div>
-
-    <!-- Items Section -->
-    <h2 class="md-typescale-title-large" style="margin-top: var(--wms-space-xl); margin-bottom: var(--wms-space-md); color: var(--md-sys-color-on-surface);"> Your Items </h2>
-    
-    {% if unit.items.all %}
-        {% csrf_token %}
-        <div class="m3-list">
-            {% for item in unit.items.all %}
-                <div class="m3-item-card-wrapper" 
-                     data-item-id="{{ item.id }}"
-                     {% if item.quantity is not None %}data-quantity="{{ item.quantity }}" data-quantity-unit="{{ item.quantity_unit }}"{% endif %}>
-                    <a href="{% url 'item_detail' item.id %}" class="m3-list-item" style="text-decoration: none; color: inherit;">
-                        <div class="m3-list-item__leading{% if item.image %} m3-list-item__leading--has-image{% endif %}">
-                            {% if item.image %}
-                                <img src="{{ item.image.url }}" alt="{{ item.name }}" class="m3-thumbnail-img">
-                            {% else %}
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M20 6h-2.18c.11-.31.18-.65.18-1 0-1.66-1.34-3-3-3-1.05 0-1.96.54-2.5 1.35l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM9 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm11 15H4v-2h16v2zm0-5H4V8h5.08L7 10.83 8.62 12 11 8.76l1-1.36 1 1.36L15.38 12 17 10.83 14.92 8H20v6z"/>
-                                </svg>
-                            {% endif %}
-                        </div>
-                        <div class="m3-list-item__content">
-                            <div class="md-typescale-body-large" style="font-weight: 500; color: var(--md-sys-color-on-surface);">
-                                {{ item.name }}
-                            </div>
-                            {% if item.description %}
-                                <div class="md-typescale-body-medium" style="color: var(--md-sys-color-on-surface-variant); margin-top: 4px;">
-                                    {{ item.description|truncatewords:15 }}
-                                </div>
-                            {% endif %}
-                        </div>
-                    </a>
-                    {% if item.quantity is not None %}
-                        <div class="m3-quantity-controls{% if item.quantity == 0 %} qty-zero{% endif %}">
-                            <button type="button" class="qty-btn qty-decrement" aria-label="Decrease quantity">−</button>
-                            <span class="qty-value" 
-                                  role="spinbutton" 
-                                  aria-valuenow="{{ item.quantity }}" 
-                                  aria-valuemin="0"
-                                  tabindex="0">{{ item.formatted_quantity }}</span>
-                            <button type="button" class="qty-btn qty-increment" aria-label="Increase quantity">+</button>
-                        </div>
-                    {% endif %}
-                </div>
-            {% endfor %}
-                <div class="m3-button-centered">
-                    <a href="{% url 'add_items_to_unit' %}" class="m3-button m3-button-filled m3-button-small" style="flex-direction: column; gap: 4px; padding: 16px 24px;">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M19 13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
-                        </svg>
-                        <span class="md-typescale-label-small">Add Item</span>
-                    </a>
-                </div>
-        </div>
-    {% else %}
-        <div class="m3-card m3-card--filled" style="text-align: center; padding: var(--wms-space-xl);">
-            <div class="m3-card__content">
-                <div class="m3-card__icon" style="margin: 0 auto var(--wms-space-md);">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M20 6h-2.18c.11-.31.18-.65.18-1 0-1.66-1.34-3-3-3-1.05 0-1.96.54-2.5 1.35l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM9 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm11 15H4v-2h16v2zm0-5H4V8h5.08L7 10.83 8.62 12 11 8.76l1-1.36 1 1.36L15.38 12 17 10.83 14.92 8H20v6z" fill="currentColor"/>
-                    </svg>
-                </div>
-                <p class="md-typescale-body-large" style="color: var(--md-sys-color-on-surface-variant); margin-bottom: var(--wms-space-md);">
-                    This unit is empty
-                </p>
-                <div class="m3-button-centered">
-                    <a href="{% url 'add_items_to_unit' %}" class="m3-button m3-button-filled m3-button-small" style="flex-direction: column; gap: 4px; padding: 16px 24px;">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M19 13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
-                        </svg>
-                        <span class="md-typescale-label-small">Add Item</span>
-                    </a>
-                </div>
-            </div>
-        </div>
-    {% endif %}
-
-    <!-- Back Button -->
-    <div style="margin-top: var(--wms-space-xl);">
-        <a href="{% url 'list_units' %}" class="m3-button m3-button-tonal m3-button-small">
-            <svg class="m3-button-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+    <div class="mt-4">
+        <a href="{% url 'add_items_to_unit' %}"
+           class="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
             </svg>
-            <span class="m3-button-label">Back</span>
+            Add Items
         </a>
     </div>
 </div>
 
-<nav class="m3-bottom-nav">
-    <a href="{% url 'home_view' %}" class="m3-nav-item">
-        <div class="m3-nav-icon-container">
-            <svg class="m3-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
-            </svg>
-        </div>
-        <span class="m3-nav-label">Home</span>
-    </a>
+<!-- Items Section -->
+{% csrf_token %}
+<h2 class="mb-3 mt-6 text-lg font-semibold text-foreground">Your Items</h2>
 
-    <a href="{% url 'list_units' %}" class="m3-nav-item m3-nav-item-active">
-        <div class="m3-nav-icon-container">
-            <svg class="m3-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M20 2H4c-1 0-2 .9-2 2v3.01c0 .72.43 1.34 1 1.69V20c0 1.1 1.1 2 2 2h14c.9 0 2-.9 2-2V8.7c.57-.35 1-.97 1-1.69V4c0-1.1-1-2-2-2zm-5 12H9v-2h6v2zm5-7H4V4h16v3z" />
-            </svg>
+{% if unit.items.all %}
+<div class="space-y-2">
+    {% for item in unit.items.all %}
+    <div class="m3-item-card-wrapper group flex items-center rounded-lg border border-border bg-card transition-colors hover:bg-accent/5"
+         data-item-id="{{ item.id }}"
+         {% if item.quantity is not None %}data-quantity="{{ item.quantity }}" data-quantity-unit="{{ item.quantity_unit }}"{% endif %}>
+        <button type="button" class="item-detail-trigger flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left"
+                data-item-id="{{ item.id }}">
+            <!-- Thumbnail -->
+            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-muted {% if item.image %}overflow-hidden{% endif %}">
+                {% if item.image %}
+                <img src="{{ item.image.url }}" alt="{{ item.name }}" class="h-10 w-10 object-cover">
+                {% else %}
+                <svg class="h-5 w-5 text-muted-foreground" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M20 6h-2.18c.11-.31.18-.65.18-1 0-1.66-1.34-3-3-3-1.05 0-1.96.54-2.5 1.35l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM9 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm11 15H4v-2h16v2zm0-5H4V8h5.08L7 10.83 8.62 12 11 8.76l1-1.36 1 1.36L15.38 12 17 10.83 14.92 8H20v6z"/>
+                </svg>
+                {% endif %}
+            </div>
+            <!-- Text -->
+            <div class="min-w-0 flex-1">
+                <div class="truncate text-sm font-medium text-foreground">{{ item.name }}</div>
+                {% if item.description %}
+                <div class="truncate text-xs text-muted-foreground">{{ item.description|truncatewords:12 }}</div>
+                {% endif %}
+            </div>
+        </button>
+        {% if item.quantity is not None %}
+        <div class="m3-quantity-controls flex shrink-0 items-center gap-1 pr-3{% if item.quantity == 0 %} qty-zero{% endif %}">
+            <button type="button" class="qty-btn qty-decrement flex h-7 w-7 items-center justify-center rounded-full border border-border text-sm text-foreground hover:bg-accent" aria-label="Decrease quantity">&minus;</button>
+            <span class="qty-value min-w-[3rem] text-center text-xs font-medium text-foreground"
+                  role="spinbutton"
+                  aria-valuenow="{{ item.quantity }}"
+                  aria-valuemin="0"
+                  tabindex="0">{{ item.formatted_quantity }}</span>
+            <button type="button" class="qty-btn qty-increment flex h-7 w-7 items-center justify-center rounded-full border border-border text-sm text-foreground hover:bg-accent" aria-label="Increase quantity">+</button>
         </div>
-        <span class="m3-nav-label">Inventory</span>
-    </a>
+        {% endif %}
+    </div>
+    {% endfor %}
 
-    <a href="{% url 'item_search' %}" class="m3-nav-item">
-        <div class="m3-nav-icon-container">
-            <svg class="m3-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.71.71l.27.28v.79l5 4.99L20.49 19zM9.5 14a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z" />
-            </svg>
-        </div>
-        <span class="m3-nav-label">Search</span>
+    <!-- Add more items -->
+    <a href="{% url 'add_items_to_unit' %}" class="flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border py-4 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary">
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19 13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
+        </svg>
+        Add Item
     </a>
-</nav>
+</div>
+{% else %}
+<div class="rounded-lg border border-border bg-card py-12 text-center">
+    <svg class="mx-auto h-10 w-10 text-muted-foreground/50" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M20 6h-2.18c.11-.31.18-.65.18-1 0-1.66-1.34-3-3-3-1.05 0-1.96.54-2.5 1.35l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM9 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm11 15H4v-2h16v2zm0-5H4V8h5.08L7 10.83 8.62 12 11 8.76l1-1.36 1 1.36L15.38 12 17 10.83 14.92 8H20v6z"/>
+    </svg>
+    <p class="mt-3 text-sm text-muted-foreground">This unit is empty</p>
+    <a href="{% url 'add_items_to_unit' %}"
+       class="mt-4 inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19 13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
+        </svg>
+        Add Item
+    </a>
+</div>
+{% endif %}
+
+<!-- Back link -->
+<div class="mt-6">
+    <a href="{% url 'list_units' %}" class="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+        </svg>
+        Back to browse
+    </a>
+</div>
+{% endblock %}
+
+{% block dialogs %}
+{% include "core/includes/dialogs/item_detail_sheet.html" %}
+{% include "core/includes/dialogs/edit_item.html" %}
+{% include "core/includes/dialogs/move_item.html" %}
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'core/js/ui_utils.js' %}"></script>
 <script>
-// Pass UNIT_2_NAME from Python to JavaScript
+/**
+ * Tailwind-compatible showErrorSnackbar for unit detail page.
+ * @param {string} message - The error message to display.
+ * @returns {void}
+ */
+function showErrorSnackbar(message) {
+    var sb = document.getElementById('error-snackbar');
+    var txt = document.getElementById('error-snackbar-text');
+    var btn = document.getElementById('error-snackbar-dismiss');
+    if (!sb || !txt) return;
+    txt.textContent = message;
+    sb.classList.remove('hidden');
+    var t = setTimeout(function() { sb.classList.add('hidden'); }, 6000);
+    if (btn) btn.onclick = function() { clearTimeout(t); sb.classList.add('hidden'); };
+}
+
+// Quantity logic globals (used by quantity_logic.js and quantity_controls.js)
 window.WMS_UNIT_2_NAME = {{ unit_2_name_json|safe }};
 window.WMS_QUANTITY_DECIMAL_PLACES = {{ QUANTITY_DECIMAL_PLACES }};
 window.WMS_QUANTITY_NON_COUNT_STEP = {{ QUANTITY_NON_COUNT_STEP }};
 </script>
 <script src="{% static 'core/js/quantity_logic.js' %}"></script>
 <script src="{% static 'core/js/quantity_controls.js' %}"></script>
+<script src="{% static 'core/js/fetch_utils.js' %}"></script>
 <script>
-document.addEventListener('DOMContentLoaded', initUnitDetailPage);
+/**
+ * Unit detail page — item dialogs wiring.
+ * Handles item detail sheet, edit, delete, and move dialogs.
+ */
+document.addEventListener('DOMContentLoaded', function() {
+    /* ---- Element refs ---- */
+    var sheet = document.getElementById('item-detail-sheet');
+    var sheetLoading = document.getElementById('item-detail-loading');
+    var sheetContent = document.getElementById('item-detail-content');
+    var sheetName = document.getElementById('item-detail-name');
+    var sheetDesc = document.getElementById('item-detail-desc');
+    var sheetImgWrap = document.getElementById('item-detail-image-wrap');
+    var sheetImg = document.getElementById('item-detail-image');
+    var sheetQtyWrap = document.getElementById('item-detail-qty-wrap');
+    var sheetQty = document.getElementById('item-detail-qty');
+    var sheetUnit = document.getElementById('item-detail-unit');
+    var sheetLink = document.getElementById('item-detail-link');
+    var sheetEditBtn = document.getElementById('item-detail-edit-btn');
+    var sheetMoveBtn = document.getElementById('item-detail-move-btn');
+    var sheetDeleteBtn = document.getElementById('item-detail-delete-btn');
+
+    var editDialog = document.getElementById('edit-item-dialog');
+    var editName = document.getElementById('edit-item-name');
+    var editDesc = document.getElementById('edit-item-desc');
+    var editError = document.getElementById('edit-item-error');
+    var editCancel = document.getElementById('edit-item-cancel');
+    var editSubmit = document.getElementById('edit-item-submit');
+
+    var deleteDialog = document.getElementById('delete-item-dialog');
+    var deleteName = document.getElementById('delete-item-name');
+    var deleteError = document.getElementById('delete-item-error');
+    var deleteCancel = document.getElementById('delete-item-cancel');
+    var deleteSubmit = document.getElementById('delete-item-submit');
+
+    var moveDialog = document.getElementById('move-item-dialog');
+    var moveName = document.getElementById('move-item-name');
+    var moveUnit = document.getElementById('move-item-unit');
+    var moveError = document.getElementById('move-item-error');
+    var moveCancel = document.getElementById('move-item-cancel');
+    var moveSubmit = document.getElementById('move-item-submit');
+
+    /** @type {number|null} Currently selected item ID */
+    var currentItemId = null;
+    /** @type {Object|null} Cached item data from last detail fetch */
+    var currentItemData = null;
+
+    /* ---- Helpers ---- */
+
+    /**
+     * Close a dialog with animation.
+     * @param {HTMLDialogElement} dialog - The dialog to close.
+     * @returns {void}
+     */
+    function closeDialog(dialog) {
+        dialog.classList.add('dialog--closing');
+        setTimeout(function() {
+            dialog.classList.remove('dialog--closing');
+            dialog.close();
+        }, 150);
+    }
+
+    /**
+     * Show an error inside a dialog.
+     * @param {HTMLElement} el - The error paragraph element.
+     * @param {string} msg - Error message.
+     * @returns {void}
+     */
+    function showError(el, msg) {
+        el.textContent = msg;
+        el.classList.remove('hidden');
+    }
+
+    /**
+     * Hide a dialog error element.
+     * @param {HTMLElement} el - The error paragraph element.
+     * @returns {void}
+     */
+    function hideError(el) {
+        if (el) el.classList.add('hidden');
+    }
+
+    /**
+     * Populate the move-item unit select with the user's units.
+     * @param {number} excludeUnitId - Unit ID to exclude (current unit).
+     * @returns {void}
+     */
+    function populateMoveUnits(excludeUnitId) {
+        // Clear existing options except placeholder
+        while (moveUnit.options.length > 1) moveUnit.remove(1);
+        apiFetch('/api/container-options/')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                data.units.forEach(function(u) {
+                    if (u.id !== excludeUnitId) {
+                        var opt = document.createElement('option');
+                        opt.value = u.id;
+                        opt.textContent = u.name;
+                        moveUnit.appendChild(opt);
+                    }
+                });
+            })
+            .catch(function() {});
+    }
+
+    /* ---- Item Detail Sheet ---- */
+
+    if (sheet) {
+        sheet.addEventListener('click', function(e) {
+            if (e.target === sheet) closeDialog(sheet);
+        });
+    }
+
+    /**
+     * Open the item detail bottom sheet for a given item.
+     * @param {number} itemId - The database ID of the item.
+     * @returns {void}
+     */
+    function openItemDetail(itemId) {
+        currentItemId = itemId;
+        currentItemData = null;
+        sheetLoading.classList.remove('hidden');
+        sheetContent.classList.add('hidden');
+        sheet.showModal();
+
+        apiFetch('/api/item/' + itemId + '/detail/')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                currentItemData = data;
+                sheetName.textContent = data.name;
+                sheetDesc.textContent = data.description || 'No description';
+                sheetLink.href = '/item/' + data.id + '/';
+
+                if (data.image_url) {
+                    sheetImg.src = data.image_url;
+                    sheetImg.alt = data.name;
+                    sheetImgWrap.classList.remove('hidden');
+                } else {
+                    sheetImgWrap.classList.add('hidden');
+                }
+
+                if (data.formatted_quantity) {
+                    sheetQty.textContent = data.formatted_quantity;
+                    sheetQtyWrap.classList.remove('hidden');
+                } else {
+                    sheetQtyWrap.classList.add('hidden');
+                }
+
+                sheetUnit.textContent = data.unit_name;
+                sheetLoading.classList.add('hidden');
+                sheetContent.classList.remove('hidden');
+            })
+            .catch(function(err) {
+                closeDialog(sheet);
+                showErrorSnackbar(err.message || 'Failed to load item details');
+            });
+    }
+
+    document.querySelectorAll('.item-detail-trigger').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            openItemDetail(parseInt(btn.getAttribute('data-item-id')));
+        });
+    });
+
+    /* ---- Edit Item ---- */
+
+    if (sheetEditBtn) {
+        sheetEditBtn.addEventListener('click', function() {
+            if (!currentItemData) return;
+            closeDialog(sheet);
+            editName.value = currentItemData.name;
+            editDesc.value = currentItemData.description || '';
+            hideError(editError);
+            editDialog.showModal();
+        });
+    }
+
+    if (editCancel) editCancel.addEventListener('click', function() { closeDialog(editDialog); });
+    if (editDialog) editDialog.addEventListener('click', function(e) { if (e.target === editDialog) closeDialog(editDialog); });
+
+    if (editSubmit) {
+        editSubmit.addEventListener('click', function() {
+            var name = editName.value.trim();
+            if (!name) { showError(editError, 'Name is required.'); return; }
+            editSubmit.disabled = true;
+            apiFetch('/api/item/' + currentItemId + '/update/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name, description: editDesc.value.trim() }),
+            })
+            .then(function(r) {
+                if (!r.ok) return r.json().then(function(d) { throw new Error(d.error || 'Failed'); });
+                return r.json();
+            })
+            .then(function() { closeDialog(editDialog); location.reload(); })
+            .catch(function(err) { showError(editError, err.message); })
+            .finally(function() { editSubmit.disabled = false; });
+        });
+    }
+
+    /* ---- Delete Item ---- */
+
+    if (sheetDeleteBtn) {
+        sheetDeleteBtn.addEventListener('click', function() {
+            if (!currentItemData) return;
+            closeDialog(sheet);
+            deleteName.textContent = currentItemData.name;
+            hideError(deleteError);
+            deleteDialog.showModal();
+        });
+    }
+
+    if (deleteCancel) deleteCancel.addEventListener('click', function() { closeDialog(deleteDialog); });
+    if (deleteDialog) deleteDialog.addEventListener('click', function(e) { if (e.target === deleteDialog) closeDialog(deleteDialog); });
+
+    if (deleteSubmit) {
+        deleteSubmit.addEventListener('click', function() {
+            deleteSubmit.disabled = true;
+            apiFetch('/api/item/' + currentItemId + '/delete/', { method: 'POST' })
+            .then(function(r) {
+                if (!r.ok) return r.json().then(function(d) { throw new Error(d.error || 'Failed'); });
+                return r.json();
+            })
+            .then(function() { closeDialog(deleteDialog); location.reload(); })
+            .catch(function(err) { showError(deleteError, err.message); })
+            .finally(function() { deleteSubmit.disabled = false; });
+        });
+    }
+
+    /* ---- Move Item ---- */
+
+    if (sheetMoveBtn) {
+        sheetMoveBtn.addEventListener('click', function() {
+            if (!currentItemData) return;
+            closeDialog(sheet);
+            moveName.textContent = currentItemData.name;
+            moveUnit.value = '';
+            hideError(moveError);
+            populateMoveUnits(currentItemData.unit_id);
+            moveDialog.showModal();
+        });
+    }
+
+    if (moveCancel) moveCancel.addEventListener('click', function() { closeDialog(moveDialog); });
+    if (moveDialog) moveDialog.addEventListener('click', function(e) { if (e.target === moveDialog) closeDialog(moveDialog); });
+
+    if (moveSubmit) {
+        moveSubmit.addEventListener('click', function() {
+            var unitId = parseInt(moveUnit.value);
+            if (!unitId) { showError(moveError, 'Please select a target unit.'); return; }
+            moveSubmit.disabled = true;
+            apiFetch('/api/item/' + currentItemId + '/move/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ unit_id: unitId }),
+            })
+            .then(function(r) {
+                if (!r.ok) return r.json().then(function(d) { throw new Error(d.error || 'Failed'); });
+                return r.json();
+            })
+            .then(function() { closeDialog(moveDialog); location.reload(); })
+            .catch(function(err) { showError(moveError, err.message); })
+            .finally(function() { moveSubmit.disabled = false; });
+        });
+    }
+});
 </script>
 {% endblock %}

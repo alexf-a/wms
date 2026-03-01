@@ -40,7 +40,7 @@
                             <li><a href="{% url 'getting_started' %}">Getting Started</a></li>
                             <li><a href="{% url 'item_search' %}">Find</a></li>
                             <li><a href="{% url 'list_units' %}">See</a></li>
-                            <li><a href="{% url 'expand_inventory' %}">Add</a></li>
+                            <li><a href="{% url 'add_items_to_unit' %}">Add</a></li>
                         </ul>
                     </details>
                 </li>
@@ -94,7 +94,7 @@
             <span class="m3-nav-label">Find</span>
         </a>
         
-        <a href="{% url 'expand_inventory' %}" class="m3-nav-item {% if active_nav == 'add' %}m3-nav-item-active{% endif %}">
+        <a href="{% url 'add_items_to_unit' %}" class="m3-nav-item {% if active_nav == 'add' %}m3-nav-item-active{% endif %}">
             <div class="m3-nav-icon-container">
                 <svg class="m3-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>

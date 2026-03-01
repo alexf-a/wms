@@ -728,15 +728,8 @@ def getting_started_view(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def expand_inventory_view(request: HttpRequest) -> HttpResponse:
-    """Render the expand inventory page.
-
-    Args:
-        request: The HTTP request object.
-
-    Returns:
-        The rendered expand inventory page.
-    """
-    return render(request, "core/expand_inventory.html", {"active_nav": "add"})
+    """Redirect to the add-items page (expand_inventory landing page removed)."""
+    return redirect("add_items_to_unit")
 
 @login_required
 def create_storage_view(request: HttpRequest) -> HttpResponse:
@@ -773,7 +766,11 @@ def add_items_to_unit_view(request: HttpRequest) -> HttpResponse:
 
     # Get user's units for the template
     units = Unit.objects.filter(user=request.user)
-    return render(request, "core/add_items_to_unit.html", {"form": form, "units": units})
+    return render(request, "core/add_items_to_unit.html", {
+        "form": form,
+        "units": units,
+        "active_nav": "add",
+    })
 
 @login_required
 def list_units(request: HttpRequest) -> HttpResponse:
@@ -822,6 +819,7 @@ def unit_detail(request: HttpRequest, user_id: int, access_token: str) -> HttpRe
     return render(request, "core/unit_detail.html", {
         "unit": _unit,
         "unit_2_name_json": json.dumps(UNIT_2_NAME),
+        "active_nav": "see",
     })
 
 
@@ -1147,6 +1145,142 @@ def update_item_quantity_api(request: HttpRequest, item_id: int) -> JsonResponse
     except Exception:
         logger.exception("[UpdateQuantityAPI] Unexpected error")
         return JsonResponse({"error": "Failed to update quantity"}, status=500)
+
+
+# =============================================================================
+# Item CRUD JSON APIs (Phase 8)
+# =============================================================================
+
+
+@login_required
+def api_item_detail_json(request: HttpRequest, item_id: int) -> JsonResponse:
+    """Return item fields as JSON for the detail bottom sheet.
+
+    Args:
+        request: The HTTP request object.
+        item_id: The database ID of the item.
+
+    Returns:
+        JSON with item name, description, quantity, unit, image URL, and timestamps.
+    """
+    if request.method != "GET":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    item = get_object_or_404(Item, id=item_id, user=request.user)
+
+    return JsonResponse({
+        "id": item.id,
+        "name": item.name,
+        "description": item.description,
+        "image_url": item.image.url if item.image else None,
+        "quantity": float(item.quantity) if item.quantity is not None else None,
+        "quantity_unit": item.quantity_unit or None,
+        "formatted_quantity": item.formatted_quantity,
+        "unit_id": item.unit_id,
+        "unit_name": item.unit.name,
+        "created_on": item.created_on.isoformat(),
+    })
+
+
+@login_required
+def api_update_item(request: HttpRequest, item_id: int) -> JsonResponse:
+    """Update an item's name, description, or quantity via JSON POST.
+
+    Args:
+        request: The HTTP request object.
+        item_id: The database ID of the item.
+
+    Returns:
+        JSON confirmation with updated item fields.
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    item = get_object_or_404(Item, id=item_id, user=request.user)
+
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    name = data.get("name", "").strip()
+    if not name:
+        return JsonResponse({"error": "Name is required"}, status=400)
+
+    item.name = name
+    item.description = data.get("description", "").strip()
+
+    try:
+        item.save()
+    except IntegrityError:
+        return JsonResponse(
+            {"error": f"You already have an item named '{name}'."},
+            status=409,
+        )
+
+    return JsonResponse({
+        "id": item.id,
+        "name": item.name,
+        "description": item.description,
+    })
+
+
+@login_required
+def api_delete_item(request: HttpRequest, item_id: int) -> JsonResponse:
+    """Delete an item via POST.
+
+    Args:
+        request: The HTTP request object.
+        item_id: The database ID of the item.
+
+    Returns:
+        JSON confirmation with the deleted item's name.
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    item = get_object_or_404(Item, id=item_id, user=request.user)
+    item_name = item.name
+    item.delete()
+
+    return JsonResponse({"status": "deleted", "name": item_name})
+
+
+@login_required
+def api_move_item(request: HttpRequest, item_id: int) -> JsonResponse:
+    """Move an item to a different unit via POST.
+
+    Args:
+        request: The HTTP request object.
+        item_id: The database ID of the item.
+
+    Returns:
+        JSON confirmation with the new unit details.
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    item = get_object_or_404(Item, id=item_id, user=request.user)
+
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    target_unit_id = data.get("unit_id")
+    if not target_unit_id:
+        return JsonResponse({"error": "unit_id is required"}, status=400)
+
+    target_unit = get_object_or_404(Unit, id=target_unit_id, user=request.user)
+
+    item.unit = target_unit
+    item.save(update_fields=["unit"])
+
+    return JsonResponse({
+        "id": item.id,
+        "unit_id": target_unit.id,
+        "unit_name": target_unit.name,
+    })
 
 
 def healthcheck_view(_: HttpRequest) -> JsonResponse:  # pragma: no cover - trivial

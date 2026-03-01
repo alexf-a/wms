@@ -60,5 +60,9 @@ urlpatterns = [
     path("api/units/<int:user_id>/<slug:access_token>/update/", views.api_update_unit, name="api_update_unit"),
     path("api/units/<int:user_id>/<slug:access_token>/delete/", views.api_delete_unit, name="api_delete_unit"),
     path("api/container-options/", views.api_container_options, name="api_container_options"),
+    path("api/item/<int:item_id>/detail/", views.api_item_detail_json, name="api_item_detail_json"),
+    path("api/item/<int:item_id>/update/", views.api_update_item, name="api_update_item"),
+    path("api/item/<int:item_id>/delete/", views.api_delete_item, name="api_delete_item"),
+    path("api/item/<int:item_id>/move/", views.api_move_item, name="api_move_item"),
     path("caddy-ca/download/", views.caddy_ca_download_view, name="caddy_ca_download"),
 ]
