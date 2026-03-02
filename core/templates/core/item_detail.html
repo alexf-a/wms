@@ -4,132 +4,131 @@
 {% block title %}{{ item.name }} - WMS{% endblock %}
 
 {% block content %}
-<div class="m3-page-shell">
-    <div class="m3-card m3-card--filled">
-        <div class="m3-card__content">
-            <div class="m3-card__icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M20 6h-2.18c.11-.31.18-.65.18-1 0-1.66-1.34-3-3-3-1.05 0-1.96.54-2.5 1.35l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM9 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm11 15H4v-2h16v2zm0-5H4V8h5.08L7 10.83 8.62 12 11 8.76l1-1.36 1 1.36L15.38 12 17 10.83 14.92 8H20v6z"/>
+<div class="mx-auto max-w-sm">
+    <!-- Header -->
+    <div class="mb-4 flex items-start justify-between">
+        <h1 class="text-xl font-bold text-foreground">{{ item.name }}</h1>
+        <div class="relative">
+            <button type="button" id="item-menu-button"
+                    class="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    aria-label="Item options" aria-haspopup="true" aria-expanded="false">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
                 </svg>
-            </div>
-            
-            <div class="m3-card__header">
-                <h1 class="md-typescale-headline-medium m3-card__title">{{ item.name }}</h1>
-                
-                <!-- Overflow Menu -->
-                <div class="m3-overflow-menu">
-                    <button type="button" class="m3-overflow-menu-button" id="item-menu-button" aria-label="Item options" aria-haspopup="true" aria-expanded="false">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
-                        </svg>
+            </button>
+            <div id="item-menu-dropdown"
+                 class="absolute right-0 top-full z-10 mt-1 hidden w-36 rounded-md border border-border bg-card py-1 shadow-lg">
+                <a href="{% url 'item_edit' item.id %}"
+                   class="flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted">
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                    Edit
+                </a>
+                <form method="POST" action="{% url 'item_delete' item.id %}" id="delete-form" class="m-0">
+                    {% csrf_token %}
+                    <button type="button" id="delete-button"
+                            data-confirm-message="Are you sure you want to delete this item? This action cannot be undone."
+                            class="flex w-full items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10">
+                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                        Delete
                     </button>
-                    
-                    <div class="m3-overflow-menu-dropdown" id="item-menu-dropdown">
-                        <a href="{% url 'item_edit' item.id %}" class="m3-overflow-menu-item">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
-                            </svg>
-                            <span>Edit</span>
-                        </a>
-                        
-                        <form method="POST" action="{% url 'item_delete' item.id %}" style="margin: 0;" id="delete-form">
-                            {% csrf_token %}
-                            <button type="button" class="m3-overflow-menu-item m3-overflow-menu-item--danger" id="delete-button" data-confirm-message="Are you sure you want to delete this item? This action cannot be undone.">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
-                                </svg>
-                                <span>Delete</span>
-                            </button>
-                        </form>
-                    </div>
-                </div>
+                </form>
             </div>
-            
-            {% if item.image %}
-                <div class="image-container" style="margin: var(--wms-space-md) 0;">
-                    <img src="{{ item.image.url }}" alt="{{ item.name }} photo" class="image-preview">
-                </div>
-            {% endif %}
-            
-            <h3 class="md-typescale-title-medium" style="margin-top: var(--wms-space-md); margin-bottom: var(--wms-space-xs);">Description</h3>
-            {% if item.description %}
-                <p class="md-typescale-body-medium m3-card__description">{{ item.description }}</p>
-            {% else %}
-                <p class="md-typescale-body-medium m3-card__description" style="color: var(--md-sys-color-on-surface-variant);"><em>No description available</em></p>
-            {% endif %}
-            
-            {% if item.formatted_quantity %}
-                <h3 class="md-typescale-title-medium" style="margin-top: var(--wms-space-md); margin-bottom: var(--wms-space-xs);">Quantity</h3>
-                <p class="md-typescale-body-medium">{{ item.formatted_quantity }}</p>
-            {% endif %}
-            
-            {% if item.unit %}
-                <div class="m3-card m3-card--tonal" style="margin-top: var(--wms-space-md); padding: var(--wms-space-md);">
-                    <p class="md-typescale-body-medium">
-                        Stored in <a href="{% url 'unit_detail' item.unit.user_id item.unit.access_token %}">{{ item.unit.name }}</a>
-                    </p>
-                </div>
-            {% endif %}
         </div>
     </div>
 
-    <!-- Navigation Buttons -->
-    <div class="m3-button-centered">
-        {% if item.unit %}
-            <a href="{% url 'unit_detail' item.unit.user_id item.unit.access_token %}" class="m3-button m3-button-tonal m3-button-small">
-                <svg class="m3-button-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
-                </svg>
-                <span class="m3-button-label">Back to Unit</span>
-            </a>
+    {% if item.image %}
+    <div class="mb-4 overflow-hidden rounded-lg">
+        <img src="{{ item.image.url }}" alt="{{ item.name }}" class="w-full object-cover">
+    </div>
+    {% endif %}
+
+    <!-- Description -->
+    <div class="mb-4">
+        <h3 class="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Description</h3>
+        {% if item.description %}
+        <p class="text-sm text-foreground">{{ item.description }}</p>
+        {% else %}
+        <p class="text-sm italic text-muted-foreground">No description available</p>
         {% endif %}
-        <a href="{% url 'list_units' %}" class="m3-button m3-button-tonal m3-button-small">
-            <svg class="m3-button-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M4 4H20V20H4V4ZM6 6V18H18V6H6ZM8 8H16V10H8V8ZM8 12H16V14H8V12Z"/>
-            </svg>
-            <span class="m3-button-label">All Units</span>
+    </div>
+
+    {% if item.formatted_quantity %}
+    <div class="mb-4">
+        <h3 class="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Quantity</h3>
+        <p class="text-sm text-foreground">{{ item.formatted_quantity }}</p>
+    </div>
+    {% endif %}
+
+    {% if item.unit %}
+    <div class="mb-6 rounded-lg bg-muted px-4 py-3">
+        <p class="text-sm text-muted-foreground">
+            Stored in
+            <a href="{% url 'unit_detail' item.unit.user_id item.unit.access_token %}" class="font-medium text-primary hover:underline">{{ item.unit.name }}</a>
+        </p>
+    </div>
+    {% endif %}
+
+    <!-- Navigation -->
+    <div class="flex gap-2">
+        {% if item.unit %}
+        <a href="{% url 'unit_detail' item.unit.user_id item.unit.access_token %}"
+           class="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-accent">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+            Back to Unit
+        </a>
+        {% endif %}
+        <a href="{% url 'list_units' %}"
+           class="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-accent">
+            All Units
         </a>
     </div>
 </div>
-
-<nav class="m3-bottom-nav">
-    <a href="{% url 'home_view' %}" class="m3-nav-item">
-        <div class="m3-nav-icon-container">
-            <svg class="m3-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
-            </svg>
-        </div>
-        <span class="m3-nav-label">Home</span>
-    </a>
-
-    <a href="{% url 'list_units' %}" class="m3-nav-item m3-nav-item-active">
-        <div class="m3-nav-icon-container">
-            <svg class="m3-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M20 2H4c-1 0-2 .9-2 2v3.01c0 .72.43 1.34 1 1.69V20c0 1.1 1.1 2 2 2h14c.9 0 2-.9 2-2V8.7c.57-.35 1-.97 1-1.69V4c0-1.1-1-2-2-2zm-5 12H9v-2h6v2zm5-7H4V4h16v3z" />
-            </svg>
-        </div>
-        <span class="m3-nav-label">Inventory</span>
-    </a>
-
-    <a href="{% url 'item_search' %}" class="m3-nav-item">
-        <div class="m3-nav-icon-container">
-            <svg class="m3-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.71.71l.27.28v.79l5 4.99L20.49 19zM9.5 14a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z" />
-            </svg>
-        </div>
-        <span class="m3-nav-label">Search</span>
-    </a>
-</nav>
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'core/js/ui_utils.js' %}"></script>
 <script>
+/**
+ * Item detail page interactions.
+ * Handles overflow menu toggle and delete confirmation.
+ */
 document.addEventListener('DOMContentLoaded', function() {
-    initOverflowMenu('item-menu-button', 'item-menu-dropdown', {
-        deleteButtonId: 'delete-button',
-        deleteFormId: 'delete-form'
-    });
+    var menuBtn = document.getElementById('item-menu-button');
+    var dropdown = document.getElementById('item-menu-dropdown');
+    var deleteBtn = document.getElementById('delete-button');
+    var deleteForm = document.getElementById('delete-form');
+
+    if (menuBtn && dropdown) {
+        /**
+         * Toggle dropdown visibility.
+         * @param {Event} e - Click event.
+         * @returns {void}
+         */
+        menuBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var isHidden = dropdown.classList.contains('hidden');
+            dropdown.classList.toggle('hidden');
+            menuBtn.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+        });
+
+        /** @returns {void} */
+        document.addEventListener('click', function() {
+            dropdown.classList.add('hidden');
+            menuBtn.setAttribute('aria-expanded', 'false');
+        });
+    }
+
+    if (deleteBtn && deleteForm) {
+        /**
+         * Confirm deletion before submitting.
+         * @returns {void}
+         */
+        deleteBtn.addEventListener('click', function() {
+            var msg = this.dataset.confirmMessage || 'Are you sure?';
+            if (confirm(msg)) {
+                deleteForm.submit();
+            }
+        });
+    }
 });
 </script>
 {% endblock %}

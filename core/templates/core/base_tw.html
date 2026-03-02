@@ -9,6 +9,9 @@
     <!-- Tailwind CSS (compiled from core/tailwind/input.css) -->
     <link rel="stylesheet" href="{% static 'core/css/tailwind.css' %}">
 
+    <!-- Theme: apply dark class before first paint to prevent flash -->
+    <script src="{% static 'core/js/theme.js' %}"></script>
+
     {% block extra_head %}{% endblock %}
 </head>
 <body class="flex min-h-screen flex-col bg-background text-foreground">

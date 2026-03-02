@@ -4,164 +4,142 @@
 {% block title %}Edit {{ item.name }} - WMS{% endblock %}
 
 {% block content %}
-<div class="m3-page-shell">
-    
-    <!-- Snackbar for error messages -->
-    <div id="error-snackbar" class="m3-snackbar" role="alert" aria-live="polite">
-        <span id="error-snackbar-text" class="m3-snackbar-text"></span>
-        <button type="button" id="error-snackbar-dismiss" class="m3-snackbar-action" aria-label="Dismiss">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-            </svg>
-        </button>
-    </div>
-    
-    <form method="post" enctype="multipart/form-data" id="item-form" class="m3-form-vertical">
+<div class="mx-auto max-w-sm">
+    <h1 class="mb-4 text-xl font-bold text-foreground">Edit Item</h1>
+
+    <form method="post" enctype="multipart/form-data" id="item-form" class="space-y-4">
         {% csrf_token %}
-        
-        <div class="m3-card m3-card--filled">
-            <div class="m3-card__content">
-                <div class="m3-card__icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
-                    </svg>
-                </div>
-                <h1 class="md-typescale-headline-medium m3-card__title">Edit Item</h1>
-                
-                <!-- Current Image Preview (if exists) -->
-                {% if item.image %}
-                <div class="image-container" style="margin: var(--wms-space-md) 0;">
-                    <img src="{{ item.image.url }}" alt="{{ item.name }} current photo" class="image-preview">
-                    <p class="md-typescale-body-small" style="color: var(--md-sys-color-on-surface-variant); text-align: center; margin-top: var(--wms-space-xs);">Current image</p>
-                </div>
-                {% endif %}
-                
-                <!-- Image Upload Field -->
-                <div class="m3-form-field">
-                    <label for="id_{{ form.image.name }}" class="m3-form-label">
-                        {% if item.image %}Replace Image{% else %}Add Image{% endif %}
+
+        {% if form.non_field_errors %}
+        <div class="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {{ form.non_field_errors.0 }}
+        </div>
+        {% endif %}
+
+        <!-- Current Image Preview -->
+        {% if item.image %}
+        <div class="overflow-hidden rounded-lg">
+            <img src="{{ item.image.url }}" alt="{{ item.name }}" class="w-full object-cover">
+            <p class="mt-1 text-center text-xs text-muted-foreground">Current image</p>
+        </div>
+        {% endif %}
+
+        <!-- Image Upload -->
+        <div>
+            <label for="id_{{ form.image.name }}" class="mb-1.5 block text-xs font-medium text-muted-foreground">
+                {% if item.image %}Replace image{% else %}Add image{% endif %}
+            </label>
+            <input type="file" name="{{ form.image.name }}" id="id_{{ form.image.name }}" accept="image/*"
+                   class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground file:mr-3 file:rounded file:border-0 file:bg-muted file:px-2 file:py-1 file:text-xs file:font-medium file:text-foreground">
+            {% if not item.image %}
+            <p class="mt-1 text-xs text-muted-foreground">Optional &mdash; add a photo of this item</p>
+            {% endif %}
+        </div>
+
+        <!-- Name -->
+        <div>
+            <label for="id_{{ form.name.name }}" class="mb-1.5 block text-xs font-medium text-muted-foreground">Name</label>
+            <input type="text" name="{{ form.name.name }}" id="id_{{ form.name.name }}"
+                   value="{{ form.name.value|default:'' }}"
+                   class="w-full rounded-md border {% if form.name.errors %}border-destructive{% else %}border-input{% endif %} bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                   required>
+            {% if form.name.errors %}
+            <p class="mt-1 text-xs text-destructive">{{ form.name.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <!-- Description -->
+        <div>
+            <label for="id_{{ form.description.name }}" class="mb-1.5 block text-xs font-medium text-muted-foreground">Description</label>
+            <textarea name="{{ form.description.name }}" id="id_{{ form.description.name }}" rows="4"
+                      class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">{{ form.description.value|default:'' }}</textarea>
+        </div>
+
+        <!-- Unit -->
+        <div>
+            <label for="id_{{ form.unit.name }}" class="mb-1.5 block text-xs font-medium text-muted-foreground">Unit</label>
+            <select name="{{ form.unit.name }}" id="id_{{ form.unit.name }}"
+                    class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring" required>
+                <option value="">Select a unit...</option>
+                {% for unit_option in form.unit.field.queryset %}
+                <option value="{{ unit_option.id }}"{% if form.unit.value == unit_option.id or item.unit.id == unit_option.id %} selected{% endif %}>{{ unit_option.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Quantity Section -->
+        <fieldset class="rounded-lg border border-border p-4">
+            <legend class="px-1 text-sm font-medium text-foreground">Quantity <span class="text-xs text-muted-foreground">(optional)</span></legend>
+
+            <!-- Category Radios -->
+            <div class="mb-3">
+                <p class="mb-1.5 text-xs font-medium text-muted-foreground">Measurement type</p>
+                <div class="flex flex-wrap gap-3" role="radiogroup" aria-label="Measurement type">
+                    {% for category in QUANTITY_CATEGORIES %}
+                    <label class="inline-flex items-center gap-1.5 text-sm text-foreground">
+                        <input type="radio" name="quantity_category" value="{{ category }}"
+                               class="accent-primary"{% if form.quantity_category.value == category %} checked{% endif %}>
+                        {{ category|capfirst }}
                     </label>
-                    <input type="file" name="{{ form.image.name }}" id="id_{{ form.image.name }}" accept="image/*" class="m3-text-field" style="padding: var(--wms-space-xs);">
-                    <span class="m3-form-helper-text">
-                        {% if item.image %}
-                        {% else %}
-                        Optional - add a photo of this item
-                        {% endif %}
-                    </span>
+                    {% endfor %}
                 </div>
-                
-                <!-- Name Field -->
-                <div class="m3-form-field{% if form.name.errors %} m3-form-field--error{% endif %}">
-                    <label for="id_{{ form.name.name }}" class="m3-form-label">Name</label>
-                    <input type="text" name="{{ form.name.name }}" id="id_{{ form.name.name }}" class="m3-text-field{% if form.name.errors %} m3-text-field--error{% endif %}" value="{{ form.name.value|default:'' }}" required>
-                    {% if form.name.errors %}
-                    <span class="m3-form-error">{{ form.name.errors.0 }}</span>
-                    {% endif %}
+            </div>
+
+            <!-- Amount + Unit inline -->
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label for="id_quantity" class="mb-1.5 block text-xs font-medium text-muted-foreground">Amount</label>
+                    <input type="number" name="quantity" id="id_quantity" step="0.01" min="0"
+                           value="{{ form.quantity.value|default_if_none:'' }}" placeholder="e.g., 12"
+                           class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
                 </div>
-                
-                <!-- Description Field -->
-                <div class="m3-form-field">
-                    <label for="id_{{ form.description.name }}" class="m3-form-label">Description</label>
-                    <textarea name="{{ form.description.name }}" id="id_{{ form.description.name }}" class="m3-text-field" rows="4">{{ form.description.value|default:'' }}</textarea>
-                </div>
-                
-                <!-- Unit Field -->
-                <div class="m3-form-field">
-                    <label for="id_{{ form.unit.name }}" class="m3-form-label">Unit</label>
-                    <select name="{{ form.unit.name }}" id="id_{{ form.unit.name }}" class="m3-text-field" required>
-                        <option value="">Select a unit...</option>
-                        {% for unit_option in form.unit.field.queryset %}
-                        <option value="{{ unit_option.id }}"{% if form.unit.value == unit_option.id or item.unit.id == unit_option.id %} selected{% endif %}>{{ unit_option.name }}</option>
+                <div>
+                    <label for="id_quantity_unit" class="mb-1.5 block text-xs font-medium text-muted-foreground">Unit</label>
+                    <select name="quantity_unit" id="id_quantity_unit"
+                            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+                        <option value="">Select...</option>
+                        {% for opt in QUANTITY_UNIT_OPTIONS %}
+                        <option value="{{ opt.value }}" data-category="{{ opt.category }}"{% if form.quantity_unit.value == opt.value %} selected{% endif %}>{{ opt.label }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                
-                <!-- Quantity Section (Optional) -->
-                <fieldset class="m3-form-section quantity-section">
-                    <legend class="md-typescale-title-small m3-form-section-title">Quantity <span class="m3-form-optional-text">(optional)</span></legend>
-                    
-                    <!-- Quantity Category Radio Buttons -->
-                    <div class="m3-form-field">
-                        <label class="m3-form-label">Measurement Type</label>
-                        <div class="m3-radio-group" role="radiogroup" aria-label="Measurement type">
-                            {% for category in QUANTITY_CATEGORIES %}
-                            <label class="m3-radio-button">
-                                <input type="radio" name="quantity_category" value="{{ category }}" class="m3-radio-input"{% if form.quantity_category.value == category %} checked{% endif %}>
-                                <span class="m3-radio-label">{{ category|capfirst }}</span>
-                            </label>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    
-                    <!-- Quantity Amount and Unit (inline) -->
-                    <div class="m3-form-row quantity-row">
-                        <div class="m3-form-field m3-form-field--flex">
-                            <label for="id_quantity" class="m3-form-label">Amount</label>
-                            <input type="number" name="quantity" id="id_quantity" class="m3-text-field" step="0.01" min="0" value="{{ form.quantity.value|default_if_none:'' }}" placeholder="e.g., 12">
-                        </div>
-                        <div class="m3-form-field m3-form-field--flex">
-                            <label for="id_quantity_unit" class="m3-form-label">Unit</label>
-                            <select name="quantity_unit" id="id_quantity_unit" class="m3-text-field">
-                                <option value="">Select...</option>
-                                {% for opt in QUANTITY_UNIT_OPTIONS %}
-                                <option value="{{ opt.value }}" data-category="{{ opt.category }}"{% if form.quantity_unit.value == opt.value %} selected{% endif %}>{{ opt.label }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-                </fieldset>
-                
-                <div class="m3-card__actions form-actions-spacing">
-                    <button type="submit" class="m3-button m3-button-filled m3-button-standard">
-                        <svg class="m3-button-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-                        </svg>
-                        <span class="m3-button-label">Save Changes</span>
-                    </button>
-                    <a href="{% url 'item_detail' item.id %}" class="m3-button m3-button-tonal m3-button-standard">
-                        <svg class="m3-button-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
-                        </svg>
-                        <span class="m3-button-label">Cancel</span>
-                    </a>
-                </div>
             </div>
+        </fieldset>
+
+        <!-- Actions -->
+        <div class="flex gap-2 pt-2">
+            <button type="submit"
+                    class="flex-1 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                Save Changes
+            </button>
+            <a href="{% url 'item_detail' item.id %}"
+               class="flex-1 rounded-md border border-border px-4 py-2.5 text-center text-sm font-medium text-foreground hover:bg-accent">
+                Cancel
+            </a>
         </div>
     </form>
 </div>
-
-<nav class="m3-bottom-nav">
-    <a href="{% url 'home_view' %}" class="m3-nav-item">
-        <div class="m3-nav-icon-container">
-            <svg class="m3-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
-            </svg>
-        </div>
-        <span class="m3-nav-label">Home</span>
-    </a>
-
-    <a href="{% url 'list_units' %}" class="m3-nav-item m3-nav-item-active">
-        <div class="m3-nav-icon-container">
-            <svg class="m3-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M20 2H4c-1 0-2 .9-2 2v3.01c0 .72.43 1.34 1 1.69V20c0 1.1 1.1 2 2 2h14c.9 0 2-.9 2-2V8.7c.57-.35 1-.97 1-1.69V4c0-1.1-1-2-2-2zm-5 12H9v-2h6v2zm5-7H4V4h16v3z" />
-            </svg>
-        </div>
-        <span class="m3-nav-label">Inventory</span>
-    </a>
-
-    <a href="{% url 'item_search' %}" class="m3-nav-item">
-        <div class="m3-nav-icon-container">
-            <svg class="m3-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.71.71l.27.28v.79l5 4.99L20.49 19zM9.5 14a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z" />
-            </svg>
-        </div>
-        <span class="m3-nav-label">Search</span>
-    </a>
-</nav>
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'core/js/ui_utils.js' %}"></script>
 <script src="{% static 'core/js/quantity_category_filter.js' %}"></script>
-{% include "core/includes/form_error_snackbar_script.html" with form=form %}
+{% if form.errors %}
+<script>
+/**
+ * Show form validation errors as an inline alert.
+ * @returns {void}
+ */
+document.addEventListener('DOMContentLoaded', function() {
+    {% for field, errors in form.errors.items %}
+    {% for error in errors %}
+    {% if field == '__all__' %}
+    console.warn('Form error: {{ error|escapejs }}');
+    {% else %}
+    console.warn('{{ field|title }}: {{ error|escapejs }}');
+    {% endif %}
+    {% endfor %}
+    {% endfor %}
+});
+</script>
+{% endif %}
 {% endblock %}
