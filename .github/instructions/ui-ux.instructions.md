@@ -19,7 +19,7 @@ New and migrated templates use **Tailwind CSS v4** with the standalone CLI (no N
 
 ### Template Structure
 
-- **New pages** extend `core/templates/core/base_tw.html` and use Tailwind utility classes
+- **New pages** extend `core/templates/core/base.html` and use Tailwind utility classes
 - **Legacy pages** extend `core/templates/core/base.html` and use Material 3 classes from `styles.css`
 - During migration, both base templates coexist. Do not mix them within a single page.
 
