@@ -12,8 +12,8 @@ PLATFORM?=linux/amd64
 ARCH_TAG?=amd64
 
 # Tool versions from .tool-versions (single source of truth)
-POETRY_VERSION ?= $(shell awk '/^poetry / {print $$2}' .tool-versions)
-TW_VERSION ?= v$(shell awk '/^tailwindcss / {print $$2}' .tool-versions)
+export POETRY_VERSION ?= $(shell awk '/^poetry / {print $$2}' .tool-versions)
+export TW_VERSION ?= v$(shell awk '/^tailwindcss / {print $$2}' .tool-versions)
 
 # lightsailctl bug fix: Ensure the patched version is in PATH
 # The official lightsailctl has a bug with "image push response does not contain the image digest"

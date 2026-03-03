@@ -28,8 +28,11 @@ RUN poetry config virtualenvs.create false \
 COPY . /app
 
 # Download Tailwind standalone CLI and build CSS
+# TARGETARCH is set automatically by Docker BuildKit (amd64 or arm64)
 ARG TW_VERSION
-RUN curl -sL https://github.com/tailwindlabs/tailwindcss/releases/download/${TW_VERSION}/tailwindcss-linux-x64 -o /usr/local/bin/tailwindcss \
+ARG TARGETARCH
+RUN if [ "$TARGETARCH" = "arm64" ]; then TW_ARCH="linux-arm64"; else TW_ARCH="linux-x64"; fi \
+ && curl -sL https://github.com/tailwindlabs/tailwindcss/releases/download/${TW_VERSION}/tailwindcss-${TW_ARCH} -o /usr/local/bin/tailwindcss \
  && chmod +x /usr/local/bin/tailwindcss \
  && tailwindcss -i core/tailwind/input.css -o core/static/core/css/tailwind.css --minify
 

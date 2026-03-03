@@ -12,6 +12,9 @@ services:
   web:
     build:
       context: .
+      args:
+        POETRY_VERSION: ${POETRY_VERSION}
+        TW_VERSION: ${TW_VERSION}
     image: wms:amd64
     ports:
       - "8000:8000"
