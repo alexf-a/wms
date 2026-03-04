@@ -1,6 +1,6 @@
 {# Item detail bottom sheet — shows full item info when clicking an item card. #}
 <dialog id="item-detail-sheet"
-        class="fixed inset-x-0 bottom-0 top-auto m-0 w-full max-w-full rounded-t-2xl border-t border-border bg-card p-0 text-card-foreground shadow-xl backdrop:bg-foreground/40
+        class="fixed inset-x-0 bottom-0 top-auto mx-auto mb-0 mt-0 w-full max-w-sm rounded-t-2xl border-t border-border bg-card p-0 text-card-foreground shadow-xl backdrop:bg-foreground/40
                open:animate-[sheet-up_250ms_ease-out]
                [&.dialog--closing]:animate-[sheet-down_200ms_ease-in]">
     <div class="px-6 pb-6 pt-3">
@@ -15,8 +15,8 @@
         <!-- Content (populated by JS) -->
         <div id="item-detail-content" class="hidden">
             <!-- Image -->
-            <div id="item-detail-image-wrap" class="mb-4 hidden">
-                <img id="item-detail-image" src="" alt="" class="h-40 w-full rounded-lg object-cover">
+            <div id="item-detail-image-wrap" class="mb-4 hidden flex justify-center">
+                <img id="item-detail-image" src="" alt="" class="max-h-48 max-w-48 rounded-lg object-cover">
             </div>
 
             <!-- Name + actions row -->
