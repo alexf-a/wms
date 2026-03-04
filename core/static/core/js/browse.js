@@ -1,8 +1,9 @@
 /**
  * Browse page — client-side drill-down navigation.
  *
- * 3-screen state machine: locations → units → items.
- * Screen 1 (locations) is server-rendered; screens 2-3 populated via API.
+ * 2-screen state machine: locations → units.
+ * Screen 1 (locations) is server-rendered; screen 2 populated via API.
+ * Clicking a unit navigates to the unit detail page.
  *
  * When loaded via <script> tag with data-* attributes, auto-initializes.
  * When loaded via require() (tests), exports initBrowse(config) for manual init.
@@ -14,9 +15,8 @@
  * @param {Object} config - URL templates for API endpoints.
  * @param {string} config.browseLocationsUrl - URL for the locations list API.
  * @param {string} config.browseLocationUnitsUrl - URL template for location units API (contains '/0/' placeholder).
- * @param {string} config.browseUnitItemsUrl - URL template for unit items API (contains '/0/' and '/PLACEHOLDER/' placeholders).
- * @param {string} config.unitDetailUrl - URL template for unit detail page.
- * @returns {Object} Public API with navigateToLocationUnits, navigateToUnitItems, navigateBack, refreshCurrentScreen, getCurrentContext, escapeHtml, escapeAttr.
+ * @param {string} config.unitDetailUrl - URL template for unit detail page (contains '/0/' and '/PLACEHOLDER/' placeholders).
+ * @returns {Object} Public API with navigateToLocationUnits, navigateBack, refreshCurrentScreen, getCurrentContext, escapeHtml, escapeAttr.
  */
 function initBrowse(config) {
   'use strict';
@@ -27,14 +27,10 @@ function initBrowse(config) {
   var originalSubtitle = '';
   var currentLocationId = null;
   var currentLocationName = null;
-  var currentUnitUserId = null;
-  var currentUnitAccessToken = null;
-  var currentUnitName = null;
 
   // --- DOM refs ---
   var screenLocations = document.getElementById('screen-locations');
   var screenUnits = document.getElementById('screen-units');
-  var screenItems = document.getElementById('screen-items');
   var browseTitle = document.getElementById('browse-title');
   var browseSubtitle = document.getElementById('browse-subtitle');
   var backBtn = document.getElementById('browse-back-btn');
@@ -86,13 +82,12 @@ function initBrowse(config) {
   /**
    * Show a screen and hide all others. Updates back button and title for locations screen.
    *
-   * @param {string} name - Screen to show: 'locations', 'units', or 'items'.
+   * @param {string} name - Screen to show: 'locations' or 'units'.
    */
   function showScreen(name) {
     currentScreen = name;
     screenLocations.classList.add('hidden');
     screenUnits.classList.add('hidden');
-    screenItems.classList.add('hidden');
 
     if (name === 'locations') {
       screenLocations.classList.remove('hidden');
@@ -101,9 +96,6 @@ function initBrowse(config) {
       browseSubtitle.textContent = originalSubtitle;
     } else if (name === 'units') {
       screenUnits.classList.remove('hidden');
-      backBtn.classList.remove('hidden');
-    } else if (name === 'items') {
-      screenItems.classList.remove('hidden');
       backBtn.classList.remove('hidden');
     }
   }
@@ -153,39 +145,6 @@ function initBrowse(config) {
   }
 
   /**
-   * Render an HTML card for an item with icon, name, and optional quantity.
-   *
-   * @param {Object} item - Item data from the API.
-   * @param {string} item.name - Item display name.
-   * @param {number|null} item.quantity - Item quantity (null if unset).
-   * @param {string} item.quantity_unit - Unit of measurement for quantity.
-   * @returns {string} HTML string for the item card.
-   */
-  function renderItemCard(item) {
-    var qtyText = '';
-    if (item.quantity !== null && item.quantity !== undefined) {
-      qtyText = item.quantity + (item.quantity_unit ? ' ' + escapeHtml(item.quantity_unit) : '');
-    }
-
-    var detailUrl = config.unitDetailUrl;
-    return (
-      '<div class="flex items-center gap-3 rounded-lg border border-border bg-card p-4">' +
-      '<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">' +
-      '<svg class="h-5 w-5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-      '<line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/>' +
-      '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>' +
-      '<polyline points="3.27 6.96 12 12.01 20.73 6.96"/>' +
-      '<line x1="12" y1="22.08" x2="12" y2="12"/>' +
-      '</svg></div>' +
-      '<div class="min-w-0 flex-1">' +
-      '<p class="truncate text-sm font-medium text-foreground">' + escapeHtml(item.name) + '</p>' +
-      (qtyText ? '<p class="text-xs text-muted-foreground">' + escapeHtml(qtyText) + '</p>' : '') +
-      '</div>' +
-      '</div>'
-    );
-  }
-
-  /**
    * Render an empty state placeholder with icon and message.
    *
    * @param {string} message - The message to display.
@@ -221,42 +180,6 @@ function initBrowse(config) {
     screenUnits.innerHTML = html;
   }
 
-  /**
-   * Populate the items screen with child unit cards, item cards, or an empty state.
-   *
-   * @param {Object} data - Unit items response from the API.
-   * @param {Array<Object>} data.child_units - Child/sub-unit objects.
-   * @param {Array<Object>} data.items - Item objects in this unit.
-   */
-  function renderItemsScreen(data) {
-    var html = '';
-
-    // Child units section
-    if (data.child_units.length > 0) {
-      html += '<p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Sub-units</p>';
-      for (var i = 0; i < data.child_units.length; i++) {
-        html += renderUnitCard(data.child_units[i]);
-      }
-    }
-
-    // Items section
-    if (data.items.length > 0) {
-      if (data.child_units.length > 0) {
-        html += '<p class="mt-4 text-xs font-medium uppercase tracking-wide text-muted-foreground">Items</p>';
-      }
-      for (var j = 0; j < data.items.length; j++) {
-        html += renderItemCard(data.items[j]);
-      }
-    }
-
-    // Empty state
-    if (data.child_units.length === 0 && data.items.length === 0) {
-      html = renderEmptyState('This unit is empty');
-    }
-
-    screenItems.innerHTML = html;
-  }
-
   // --- Navigation ---
 
   /**
@@ -285,37 +208,16 @@ function initBrowse(config) {
   }
 
   /**
-   * Fetch items and child units for a unit and navigate to the items screen.
+   * Navigate to a unit's detail page.
    *
    * @param {string} userId - The unit owner's user ID.
    * @param {string} accessToken - The unit's access token.
-   * @param {string} unitName - The unit name to display in the title.
    */
-  function navigateToUnitItems(userId, accessToken, unitName) {
-    navigationStack.push({ screen: currentScreen });
-    currentUnitUserId = userId;
-    currentUnitAccessToken = accessToken;
-    currentUnitName = unitName;
-    browseTitle.textContent = unitName;
-    browseSubtitle.textContent = 'Loading...';
-
-    var url = config.browseUnitItemsUrl
+  function navigateToUnit(userId, accessToken) {
+    var url = config.unitDetailUrl
       .replace('/0/', '/' + userId + '/')
       .replace('/PLACEHOLDER/', '/' + accessToken + '/');
-    apiFetch(url).then(function (res) {
-      return res.json();
-    }).then(function (data) {
-      var parts = [];
-      parts.push(data.items.length + ' ' + pluralize(data.items.length, 'item'));
-      if (data.child_units.length > 0) {
-        parts.push(data.child_units.length + ' ' + pluralize(data.child_units.length, 'sub-unit'));
-      }
-      browseSubtitle.textContent = parts.join(', ');
-      renderItemsScreen(data);
-      showScreen('items');
-    }).catch(function () {
-      browseSubtitle.textContent = 'Failed to load';
-    });
+    window.location.href = url;
   }
 
   /**
@@ -327,13 +229,6 @@ function initBrowse(config) {
     if (prev.screen === 'locations') {
       currentLocationId = null;
       currentLocationName = null;
-      currentUnitUserId = null;
-      currentUnitAccessToken = null;
-      currentUnitName = null;
-    } else if (prev.screen === 'units') {
-      currentUnitUserId = null;
-      currentUnitAccessToken = null;
-      currentUnitName = null;
     }
     showScreen(prev.screen);
   }
@@ -342,7 +237,6 @@ function initBrowse(config) {
    * Re-fetch and re-render the current screen. Used by browse_crud.js after mutations.
    * Screen 1 (locations, server-rendered): triggers a full page reload.
    * Screen 2 (units): re-calls navigateToLocationUnits with stored context.
-   * Screen 3 (items): re-calls navigateToUnitItems with stored context.
    */
   function refreshCurrentScreen() {
     if (currentScreen === 'locations') {
@@ -350,25 +244,19 @@ function initBrowse(config) {
     } else if (currentScreen === 'units' && currentLocationId) {
       navigationStack.pop();
       navigateToLocationUnits(currentLocationId, currentLocationName);
-    } else if (currentScreen === 'items' && currentUnitUserId) {
-      navigationStack.pop();
-      navigateToUnitItems(currentUnitUserId, currentUnitAccessToken, currentUnitName);
     }
   }
 
   /**
    * Return the current navigation context for use by browse_crud.js.
    *
-   * @returns {Object} Context with screen, locationId, locationName, unitUserId, unitAccessToken, unitName.
+   * @returns {Object} Context with screen, locationId, locationName.
    */
   function getCurrentContext() {
     return {
       screen: currentScreen,
       locationId: currentLocationId,
       locationName: currentLocationName,
-      unitUserId: currentUnitUserId,
-      unitAccessToken: currentUnitAccessToken,
-      unitName: currentUnitName,
     };
   }
 
@@ -400,10 +288,9 @@ function initBrowse(config) {
       var unitCard = e.target.closest('.browse-unit-card');
       if (unitCard) {
         e.preventDefault();
-        navigateToUnitItems(
+        navigateToUnit(
           unitCard.dataset.unitUserId,
-          unitCard.dataset.unitAccessToken,
-          unitCard.dataset.unitName
+          unitCard.dataset.unitAccessToken
         );
       }
     });
@@ -413,8 +300,6 @@ function initBrowse(config) {
   handleCardClick(screenLocations);
   // Units screen: JS-rendered cards
   handleCardClick(screenUnits);
-  // Items screen: JS-rendered sub-unit cards
-  handleCardClick(screenItems);
 
   // Back button
   backBtn.addEventListener('click', navigateBack);
@@ -425,7 +310,7 @@ function initBrowse(config) {
   // Return public API for testing
   return {
     navigateToLocationUnits: navigateToLocationUnits,
-    navigateToUnitItems: navigateToUnitItems,
+    navigateToUnit: navigateToUnit,
     navigateBack: navigateBack,
     refreshCurrentScreen: refreshCurrentScreen,
     getCurrentContext: getCurrentContext,
@@ -440,7 +325,6 @@ if (typeof document !== 'undefined' && document.currentScript) {
   var browseApi = initBrowse({
     browseLocationsUrl: scriptTag.getAttribute('data-browse-locations-url'),
     browseLocationUnitsUrl: scriptTag.getAttribute('data-browse-location-units-url'),
-    browseUnitItemsUrl: scriptTag.getAttribute('data-browse-unit-items-url'),
     unitDetailUrl: scriptTag.getAttribute('data-unit-detail-url'),
   });
   var browseApp = document.getElementById('browse-app');

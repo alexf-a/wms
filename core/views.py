@@ -762,7 +762,11 @@ def add_items_to_unit_view(request: HttpRequest) -> HttpResponse:
                     f"You already have an item named '{item.name}'. Please choose a different name."
                 )
     else:
-        form = ItemForm(user=request.user)
+        initial = {}
+        unit_id = request.GET.get("unit")
+        if unit_id:
+            initial["unit"] = unit_id
+        form = ItemForm(user=request.user, initial=initial)
 
     # Get user's units for the template
     units = Unit.objects.filter(user=request.user)

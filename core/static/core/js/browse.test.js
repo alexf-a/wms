@@ -5,8 +5,7 @@ const { initBrowse } = require('./browse');
 var CONFIG = {
   browseLocationsUrl: '/api/browse/',
   browseLocationUnitsUrl: '/api/browse/location/0/',
-  browseUnitItemsUrl: '/api/browse/unit/0/PLACEHOLDER/',
-  unitDetailUrl: '/user/0/units/PLACEHOLDER/',
+  unitDetailUrl: '/unit/0/PLACEHOLDER/',
 };
 
 /**
@@ -23,7 +22,6 @@ function setupDom() {
     '    <a href="#" class="browse-unit-card" data-unit-user-id="1" data-unit-access-token="abc123" data-unit-name="Storage Bin">Storage Bin</a>',
     '  </div>',
     '  <div id="screen-units" class="hidden"></div>',
-    '  <div id="screen-items" class="hidden"></div>',
     '</div>',
   ].join('\n');
 }
@@ -53,21 +51,28 @@ function flushPromises() {
 // --- Tests ---
 
 describe('Browse Page', function () {
+  var originalLocation;
+
   beforeEach(function () {
     setupDom();
     // Default apiFetch mock (returns empty)
-    mockApiFetch({ locations: [], orphan_units: [], units: [], items: [], child_units: [], unit: { id: 1, name: 'Test' }, location: { id: 1, name: 'Test' }, parent_label: '' });
+    mockApiFetch({ locations: [], orphan_units: [], units: [], location: { id: 1, name: 'Test' } });
+
+    // Mock window.location for navigation tests
+    originalLocation = window.location;
+    delete window.location;
+    window.location = { href: '', reload: jest.fn() };
   });
 
   afterEach(function () {
     delete global.apiFetch;
+    window.location = originalLocation;
   });
 
   test('starts on locations screen with back button hidden', function () {
     initBrowse(CONFIG);
     expect(document.getElementById('screen-locations').classList.contains('hidden')).toBe(false);
     expect(document.getElementById('screen-units').classList.contains('hidden')).toBe(true);
-    expect(document.getElementById('screen-items').classList.contains('hidden')).toBe(true);
     expect(document.getElementById('browse-back-btn').classList.contains('hidden')).toBe(true);
   });
 
@@ -92,26 +97,13 @@ describe('Browse Page', function () {
     expect(document.getElementById('browse-back-btn').classList.contains('hidden')).toBe(false);
   });
 
-  test('clicking unit card fetches and shows items screen', async function () {
-    mockApiFetch({
-      unit: { id: 1, name: 'Storage Bin' },
-      parent_label: '',
-      items: [
-        { id: 1, name: 'Hammer', quantity: 1, quantity_unit: 'count' },
-      ],
-      child_units: [],
-    });
-
+  test('clicking unit card navigates to unit detail page', function () {
     initBrowse(CONFIG);
 
     // Click orphan unit card on locations screen
     document.querySelector('.browse-unit-card').click();
-    await flushPromises();
 
-    expect(global.apiFetch).toHaveBeenCalledWith('/api/browse/unit/1/abc123/');
-    expect(document.getElementById('screen-items').classList.contains('hidden')).toBe(false);
-    expect(document.getElementById('screen-locations').classList.contains('hidden')).toBe(true);
-    expect(document.getElementById('browse-title').textContent).toBe('Storage Bin');
+    expect(window.location.href).toBe('/unit/1/abc123/');
   });
 
   test('back button returns to previous screen', async function () {
@@ -135,38 +127,6 @@ describe('Browse Page', function () {
     expect(document.getElementById('screen-units').classList.contains('hidden')).toBe(true);
     expect(document.getElementById('browse-title').textContent).toBe('Browse');
     expect(document.getElementById('browse-back-btn').classList.contains('hidden')).toBe(true);
-  });
-
-  test('back from items returns to units, not locations', async function () {
-    // First navigate to units
-    mockApiFetch({
-      location: { id: 10, name: 'My House' },
-      units: [{ id: 1, name: 'Garage', user_id: 1, access_token: 'tok1', item_count: 0, child_count: 0 }],
-    });
-
-    initBrowse(CONFIG);
-    document.querySelector('.browse-location-card').click();
-    await flushPromises();
-
-    // Now navigate to items from a unit card rendered in units screen
-    mockApiFetch({
-      unit: { id: 1, name: 'Garage' },
-      parent_label: 'My House',
-      items: [],
-      child_units: [],
-    });
-
-    // The units screen has a unit card rendered via JS
-    var unitCard = document.querySelector('#screen-units .browse-unit-card');
-    if (unitCard) {
-      unitCard.click();
-      await flushPromises();
-
-      // Click back should return to units, not locations
-      document.getElementById('browse-back-btn').click();
-      expect(document.getElementById('screen-units').classList.contains('hidden')).toBe(false);
-      expect(document.getElementById('screen-items').classList.contains('hidden')).toBe(true);
-    }
   });
 
   test('empty state shown when no locations or units exist', function () {
@@ -193,21 +153,6 @@ describe('Browse Page', function () {
     expect(document.getElementById('browse-subtitle').textContent).toBe('2 units');
   });
 
-  test('subtitle shows singular form for 1 item', async function () {
-    mockApiFetch({
-      unit: { id: 1, name: 'Storage Bin' },
-      parent_label: '',
-      items: [{ id: 1, name: 'Hammer', quantity: 1, quantity_unit: 'count' }],
-      child_units: [],
-    });
-
-    initBrowse(CONFIG);
-    document.querySelector('.browse-unit-card').click();
-    await flushPromises();
-
-    expect(document.getElementById('browse-subtitle').textContent).toBe('1 item');
-  });
-
   test('escapeHtml prevents XSS in rendered cards', async function () {
     mockApiFetch({
       location: { id: 10, name: 'My House' },
@@ -228,27 +173,23 @@ describe('Browse Page', function () {
     expect(document.getElementById('screen-units').querySelectorAll('script').length).toBe(0);
   });
 
-  test('items screen renders child units and items', async function () {
+  test('clicking unit card on units screen navigates to detail page', async function () {
     mockApiFetch({
-      unit: { id: 1, name: 'Storage Bin' },
-      parent_label: '',
-      items: [
-        { id: 1, name: 'Hammer', quantity: 2, quantity_unit: 'count' },
-        { id: 2, name: 'Nails', quantity: null, quantity_unit: '' },
-      ],
-      child_units: [
-        { id: 3, name: 'Drawer', user_id: 1, access_token: 'drawer1', item_count: 5 },
+      location: { id: 10, name: 'My House' },
+      units: [
+        { id: 1, name: 'Garage', user_id: 1, access_token: 'tok1', item_count: 3, child_count: 0 },
       ],
     });
 
     initBrowse(CONFIG);
-    document.querySelector('.browse-unit-card').click();
+    document.querySelector('.browse-location-card').click();
     await flushPromises();
 
-    var itemsScreen = document.getElementById('screen-items');
-    expect(itemsScreen.innerHTML).toContain('Sub-units');
-    expect(itemsScreen.innerHTML).toContain('Drawer');
-    expect(itemsScreen.innerHTML).toContain('Hammer');
-    expect(itemsScreen.innerHTML).toContain('Nails');
+    // Click the unit card rendered in the units screen
+    var unitCard = document.querySelector('#screen-units .browse-unit-card');
+    expect(unitCard).not.toBeNull();
+    unitCard.click();
+
+    expect(window.location.href).toBe('/unit/1/tok1/');
   });
 });
