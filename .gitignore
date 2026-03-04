@@ -44,3 +44,4 @@ core/static/core/css/tailwind.css
 # E2E test artifacts
 tests/e2e/screenshots/
 tests/e2e/gifs/
+tests/e2e/config.yaml

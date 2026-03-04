@@ -32,6 +32,7 @@ WMS addresses these through a digital inventory system and LLM-powered search (n
 - `schemas/` — Pydantic data schemas
 - `deploy/` — Deployment configuration (containers.json, public-endpoint.json)
 - `tests/` — pytest test suite
+- `tests/e2e/` — Browser-Use E2E tests (AI-driven browser automation)
 
 ## Common Commands
 
@@ -42,8 +43,10 @@ make tw-watch                                # Tailwind watch mode
 make tw-build                                # One-shot Tailwind build
 
 # Testing
-poetry run pytest                            # Run all Python tests
+poetry run pytest                            # Run all Python tests (excludes E2E)
 make test-js                                 # Run all JavaScript tests
+make test-e2e                                # Run E2E browser tests (headless)
+make test-e2e-headed                         # Run E2E tests with visible browser
 
 # Deployment
 make local-up                                # Local HTTP dev server (Docker)
@@ -61,6 +64,7 @@ poetry run python manage.py collectstatic    # Collect static files
 - **Templates:** Extend `base.html`. Use Tailwind utility classes with semantic tokens. No inline styles.
 - **Dependencies:** Update `pyproject.toml` via Poetry. Run all commands with `poetry run`.
 - **Testing:** pytest with `test_*.py` naming. All features and bug fixes need test coverage.
+- **E2E Testing:** Browser-Use with AWS Bedrock. Tests live in `tests/e2e/`. Config in `tests/e2e/config.yaml` (git-ignored; copy `config.yaml.example` to get started). Requires `make install-e2e` for first-time setup. WMS internal LLM calls are mocked; only the Browser-Use agent uses a real LLM.
 - **Tailwind CSS:** Theme defined in `core/tailwind/input.css`. Use `make tw-build` or `make tw-watch`.
 - **Tool versions:** Update `.tool-versions` — Makefile and Dockerfile propagate automatically.
 

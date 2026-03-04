@@ -14,6 +14,7 @@ from unittest.mock import MagicMock
 
 import pytest
 import pytest_asyncio
+import yaml
 from browser_use import Agent, Browser
 from langchain_aws.chat_models.bedrock import ChatBedrock
 
@@ -31,6 +32,29 @@ pytestmark = pytest.mark.e2e
 
 E2E_DIR = Path(__file__).parent
 SCREENSHOTS_DIR = E2E_DIR / "screenshots"
+_CONFIG_PATH = E2E_DIR / "config.yaml"
+
+
+def _load_e2e_config() -> dict:
+    """Load E2E test configuration from config.yaml.
+
+    Returns:
+        dict: Parsed YAML config.
+
+    Raises:
+        FileNotFoundError: If config.yaml does not exist, with instructions
+            to copy config.yaml.example.
+    """
+    if not _CONFIG_PATH.exists():
+        msg = (
+            f"E2E config file not found: {_CONFIG_PATH}\n"
+            f"Copy the example to get started:\n"
+            f"  cp {_CONFIG_PATH.with_suffix('.yaml.example')} {_CONFIG_PATH}"
+        )
+        raise FileNotFoundError(msg)
+    with _CONFIG_PATH.open() as f:
+        return yaml.safe_load(f)
+
 
 # ---------------------------------------------------------------------------
 # LLM for Browser-Use agent (real — drives the browser)
@@ -44,9 +68,11 @@ def browser_use_llm() -> ChatBedrock:
     This LLM drives the browser agent. It is NOT the same as the WMS app's
     internal LLM calls (those are mocked via ``mock_wms_llm``).
     """
+    config = _load_e2e_config()
+    bedrock_config = config["bedrock"]
     return ChatBedrock(
-        model="anthropic.claude-opus-4-6-v1",
-        region_name=os.environ.get("AWS_BEDROCK_REGION_NAME", "us-west-2"),
+        model=bedrock_config["model"],
+        region_name=bedrock_config["region"],
     )
 
 
