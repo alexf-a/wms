@@ -40,3 +40,7 @@ staticfiles/*
 # Tailwind CSS
 bin/tailwindcss
 core/static/core/css/tailwind.css
+
+# E2E test artifacts
+tests/e2e/screenshots/
+tests/e2e/gifs/
