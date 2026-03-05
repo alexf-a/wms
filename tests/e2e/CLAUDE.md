@@ -119,7 +119,7 @@ All shared test data — seeded inventory names, step limits, directory paths �
 
 | Constant | Value | Purpose |
 |----------|-------|---------|
-| `DEFAULT_DEFAULT_MAX_STEPS` | `25` | Default step limit for all tests |
+| `DEFAULT_MAX_STEPS` | `25` | Default step limit for all tests |
 | `SCREENSHOTS_DIR` | `tests/e2e/screenshots/` | Screenshot output directory |
 | `LOCATION_HOUSE` | `"My House"` | Seeded location name |
 | `LOCATION_OFFICE` | `"Office"` | Seeded location name |
@@ -134,7 +134,7 @@ All shared test data — seeded inventory names, step limits, directory paths �
 
 **Good** — import and use constants:
 ```python
-from .conftest import DEFAULT_DEFAULT_MAX_STEPS, ITEM_RED_JACKET, LOCATION_HOUSE, UNIT_GARAGE
+from .conftest import DEFAULT_MAX_STEPS, ITEM_RED_JACKET, LOCATION_HOUSE, UNIT_GARAGE
 
 agent = authenticated_agent_factory(
     task=(
@@ -142,7 +142,7 @@ agent = authenticated_agent_factory(
         f"Find the item called '{ITEM_RED_JACKET}'."
     ),
 )
-result = await agent.run(max_steps=DEFAULT_DEFAULT_MAX_STEPS)
+result = await agent.run(max_steps=DEFAULT_MAX_STEPS)
 ```
 
 **Avoid** — hardcoding values in test files:
