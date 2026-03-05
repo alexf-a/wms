@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from .conftest import DEFAULT_DEFAULT_MAX_STEPS
+from .conftest import DEFAULT_MAX_STEPS
 
 if TYPE_CHECKING:
     from collections.abc import Callable
