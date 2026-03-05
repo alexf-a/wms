@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+from decimal import Decimal
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock
@@ -53,6 +54,8 @@ def _use_plain_staticfiles_storage(django_test_environment: None) -> None:  # no
 
 E2E_DIR = Path(__file__).parent
 SCREENSHOTS_DIR = E2E_DIR / "screenshots"
+E2E_FIXTURES_DIR = E2E_DIR / "fixtures"
+TEST_IMAGE_PATH = E2E_FIXTURES_DIR / "test_item.jpg"
 _CONFIG_PATH = E2E_DIR / "config.yaml"
 
 # ---------------------------------------------------------------------------
@@ -75,6 +78,15 @@ ITEM_SCREWDRIVER = "Screwdriver Set"
 ITEM_BOOTS = "Winter Boots"
 ITEM_CHARGER = "Laptop Charger"
 ITEM_HEADPHONES = "Headphones"
+
+# Item creation test values
+NEW_ITEM_MANUAL = "Camping Tent"
+NEW_ITEM_MANUAL_DESC = "Two-person tent, green"
+NEW_ITEM_AI = "Test Item"  # matches mock_wms_llm return value
+
+# Quantity test values
+QUANTITY_INITIAL = 5
+QUANTITY_UNIT_COUNT = "count"
 
 
 def _load_e2e_config() -> dict:
@@ -289,6 +301,7 @@ def agent_factory(
         max_actions_per_step: int = 4,
         use_vision: str = "auto",
         generate_gif: bool = False,
+        available_file_paths: list[str] | None = None,
     ) -> Agent:
         return Agent(
             task=task,
@@ -298,6 +311,7 @@ def agent_factory(
             max_actions_per_step=max_actions_per_step,
             use_vision=use_vision,
             generate_gif=generate_gif,
+            available_file_paths=available_file_paths,
             enable_planning=False,
             flash_mode=True,
             extend_system_message=(
@@ -437,9 +451,70 @@ def seeded_inventory(e2e_test_user: WMSUser) -> dict:
     }
 
 
-# ---------------------------------------------------------------------------
-# Mock WMS internal LLM calls (prevent real Bedrock calls from the app)
-# ---------------------------------------------------------------------------
+@pytest.fixture
+def seeded_inventory_with_quantities(e2e_test_user: WMSUser) -> dict:
+    """Create inventory with quantity-tracked items for quantity tests.
+
+    Same structure as ``seeded_inventory`` but Red Jacket and Screwdriver
+    Set include quantity fields so that quantity controls render.
+    """
+    house = Location.objects.create(
+        user=e2e_test_user, name=LOCATION_HOUSE, address=LOCATION_HOUSE_ADDRESS,
+    )
+    office = Location.objects.create(user=e2e_test_user, name=LOCATION_OFFICE)
+
+    garage = Unit.objects.create(
+        user=e2e_test_user, name=UNIT_GARAGE, location=house,
+    )
+    closet = Unit.objects.create(
+        user=e2e_test_user, name=UNIT_CLOSET, location=house,
+    )
+    desk = Unit.objects.create(
+        user=e2e_test_user, name=UNIT_DESK, location=office,
+    )
+
+    items = [
+        Item.objects.create(
+            user=e2e_test_user,
+            name=ITEM_RED_JACKET,
+            description="Winter jacket, bright red",
+            unit=garage,
+            quantity=Decimal(str(QUANTITY_INITIAL)),
+            quantity_unit=QUANTITY_UNIT_COUNT,
+        ),
+        Item.objects.create(
+            user=e2e_test_user,
+            name=ITEM_SCREWDRIVER,
+            description="Phillips and flathead set",
+            unit=garage,
+            quantity=Decimal("1"),
+            quantity_unit=QUANTITY_UNIT_COUNT,
+        ),
+        Item.objects.create(
+            user=e2e_test_user,
+            name=ITEM_BOOTS,
+            description="Black snow boots",
+            unit=closet,
+        ),
+        Item.objects.create(
+            user=e2e_test_user,
+            name=ITEM_CHARGER,
+            description="USB-C 65W charger",
+            unit=desk,
+        ),
+        Item.objects.create(
+            user=e2e_test_user,
+            name=ITEM_HEADPHONES,
+            description="Over-ear noise cancelling",
+            unit=desk,
+        ),
+    ]
+
+    return {
+        "locations": [house, office],
+        "units": [garage, closet, desk],
+        "items": items,
+    }
 
 
 @pytest.fixture(autouse=True)
