@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from asgiref.sync import sync_to_async
 
 from core.models import Item
 
@@ -38,7 +39,7 @@ async def test_edit_item(
         ),
     )
     await agent.run(max_steps=MAX_STEPS)
-    item.refresh_from_db()
+    await sync_to_async(item.refresh_from_db)()
     assert item.name == "Blue Jacket"
 
 
@@ -62,4 +63,4 @@ async def test_delete_item(
         ),
     )
     await agent.run(max_steps=MAX_STEPS)
-    assert not Item.objects.filter(id=item_id).exists()
+    assert not await sync_to_async(Item.objects.filter(id=item_id).exists)()

@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from asgiref.sync import sync_to_async
 
 from core.models import Location
 
@@ -35,7 +36,7 @@ async def test_create_location(
     )
     await agent.run(max_steps=MAX_STEPS)
     # Verify in database
-    assert Location.objects.filter(name="Test Garage").exists()
+    assert await sync_to_async(Location.objects.filter(name="Test Garage").exists)()
 
 
 async def test_edit_location(
@@ -55,7 +56,7 @@ async def test_edit_location(
     )
     await agent.run(max_steps=MAX_STEPS)
     office = seeded_inventory["locations"][1]
-    office.refresh_from_db()
+    await sync_to_async(office.refresh_from_db)()
     assert office.name == "Main Office"
 
 
@@ -77,4 +78,4 @@ async def test_delete_location(
         ),
     )
     await agent.run(max_steps=MAX_STEPS)
-    assert not Location.objects.filter(id=office_id).exists()
+    assert not await sync_to_async(Location.objects.filter(id=office_id).exists)()

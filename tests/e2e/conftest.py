@@ -16,7 +16,8 @@ import pytest
 import pytest_asyncio
 import yaml
 from browser_use import Agent, Browser
-from langchain_aws.chat_models.bedrock import ChatBedrock
+from browser_use.llm.aws.chat_bedrock import ChatAWSBedrock
+from pydantic import BaseModel
 
 from core.models import Item, Location, Unit, WMSUser
 from schemas.item_generation import GeneratedItem
@@ -29,6 +30,26 @@ if TYPE_CHECKING:
 
 # All tests in this directory get the e2e marker automatically.
 pytestmark = pytest.mark.e2e
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _use_plain_staticfiles_storage(django_test_environment: None) -> None:  # noqa: ARG001, PT005
+    """Swap CompressedManifestStaticFilesStorage for plain StaticFilesStorage.
+
+    The manifest backend hashes filenames (e.g. tailwind.abc123.css).
+    The live_server's StaticFilesHandler resolves URLs via finders, which
+    only know the *original* filename — so it 404s on the hashed name.
+    Switching to StaticFilesStorage produces unhashed URLs that the
+    finders can resolve directly.
+    """
+    from django.conf import settings
+
+    settings.STORAGES = {
+        **settings.STORAGES,
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
 
 E2E_DIR = Path(__file__).parent
 SCREENSHOTS_DIR = E2E_DIR / "screenshots"
@@ -61,18 +82,152 @@ def _load_e2e_config() -> dict:
 # ---------------------------------------------------------------------------
 
 
+def _resolve_schema_refs(schema: dict) -> dict:
+    """Resolve ``$ref`` references in a JSON schema, inlining ``$defs``.
+
+    Bedrock's ``converse`` API does not support ``$ref``/``$defs`` or
+    ``anyOf``. This function walks the schema recursively, replaces
+    ``$ref`` pointers with the referenced definition, and converts
+    ``anyOf`` unions into Bedrock-compatible representations:
+
+    - **Nullable types** (``anyOf`` with a ``null`` branch): picks the
+      non-null branch.
+    - **Discriminated unions** (``anyOf`` with multiple object branches
+      that each have a unique ``required`` field): merges all branches
+      into a single object with all properties optional and a
+      description listing available action types.
+    """
+    defs = schema.pop("$defs", {})
+
+    def _resolve(node: Any) -> Any:  # noqa: ANN401
+        if isinstance(node, dict):
+            # Replace $ref with the referenced definition
+            if "$ref" in node:
+                ref_path = node["$ref"]  # e.g. "#/$defs/ActionModel"
+                ref_name = ref_path.rsplit("/", 1)[-1]
+                if ref_name in defs:
+                    return _resolve(defs[ref_name].copy())
+                return {"type": "object"}
+
+            if "anyOf" in node:
+                branches = node["anyOf"]
+                non_null = [b for b in branches if b.get("type") != "null"]
+
+                if not non_null:
+                    return {"type": "string"}
+
+                # Nullable type: anyOf with exactly one non-null branch
+                if len(non_null) == 1:
+                    resolved = _resolve(non_null[0].copy())
+                    if "default" in node:
+                        resolved["default"] = node["default"]
+                    return resolved
+
+                # Discriminated union: multiple object branches, each with
+                # a unique required field (e.g. action types).
+                # Merge all branches into one object with all props optional.
+                resolved_branches = [_resolve(b.copy()) for b in non_null]
+                all_objects = all(
+                    b.get("type") == "object" for b in resolved_branches
+                )
+                if all_objects:
+                    merged_props: dict[str, Any] = {}
+                    action_names: list[str] = []
+                    for branch in resolved_branches:
+                        props = branch.get("properties", {})
+                        for prop_name, prop_schema in props.items():
+                            if prop_name not in merged_props:
+                                merged_props[prop_name] = prop_schema
+                                action_names.append(prop_name)
+                    return {
+                        "type": "object",
+                        "properties": merged_props,
+                        "description": (
+                            "Provide exactly ONE of: "
+                            + ", ".join(action_names)
+                        ),
+                    }
+
+                # Fallback: pick first non-null branch
+                resolved = _resolve(non_null[0].copy())
+                if "default" in node:
+                    resolved["default"] = node["default"]
+                return resolved
+
+            return {k: _resolve(v) for k, v in node.items()}
+        if isinstance(node, list):
+            return [_resolve(item) for item in node]
+        return node
+
+    return _resolve(schema)
+
+
+class _FullSchemaChatBedrock(ChatAWSBedrock):
+    """``ChatAWSBedrock`` with proper JSON schema conversion for Bedrock.
+
+    The base ``_format_tools_for_request`` flattens the Pydantic schema to
+    only top-level ``{type, description}`` pairs, losing all nested
+    structure. This causes the model to generate invalid action names
+    (e.g. ``scroll_down`` instead of ``scroll``) because the tool schema
+    doesn't describe the action discriminated union.
+
+    This subclass resolves ``$ref``/``$defs``, simplifies ``anyOf``, and
+    passes the full nested schema to Bedrock's ``converse`` API.
+    """
+
+    def _format_tools_for_request(
+        self, output_format: type[BaseModel],
+    ) -> list[dict[str, Any]]:
+        schema = output_format.model_json_schema()
+        resolved = _resolve_schema_refs(schema)
+
+        # Remove Pydantic metadata that Bedrock doesn't accept
+        _strip_unsupported_keys(resolved)
+
+        return [
+            {
+                "toolSpec": {
+                    "name": f"extract_{output_format.__name__.lower()}",
+                    "description": (
+                        f"Extract information in the format of "
+                        f"{output_format.__name__}"
+                    ),
+                    "inputSchema": {"json": resolved},
+                },
+            },
+        ]
+
+
+def _strip_unsupported_keys(node: Any) -> None:  # noqa: ANN401
+    """Recursively remove JSON schema keys that Bedrock doesn't support."""
+    unsupported = {"title", "additionalProperties", "default"}
+    if isinstance(node, dict):
+        for key in unsupported & node.keys():
+            del node[key]
+        for v in node.values():
+            _strip_unsupported_keys(v)
+    elif isinstance(node, list):
+        for item in node:
+            _strip_unsupported_keys(item)
+
+
 @pytest.fixture(scope="session")
-def browser_use_llm() -> ChatBedrock:
+def browser_use_llm() -> _FullSchemaChatBedrock:
     """Create the LLM instance for Browser-Use agent (AWS Bedrock).
+
+    Uses a subclass of Browser-Use's ``ChatAWSBedrock`` that passes the
+    full resolved JSON schema to Bedrock's ``converse`` API, giving the
+    model proper information about available actions and their parameters.
 
     This LLM drives the browser agent. It is NOT the same as the WMS app's
     internal LLM calls (those are mocked via ``mock_wms_llm``).
     """
     config = _load_e2e_config()
     bedrock_config = config["bedrock"]
-    return ChatBedrock(
+    return _FullSchemaChatBedrock(
         model=bedrock_config["model"],
-        region_name=bedrock_config["region"],
+        aws_region=bedrock_config["region"],
+        aws_sso_auth=True,
     )
 
 
@@ -90,7 +245,7 @@ async def browser_instance() -> AsyncGenerator[Browser, None]:
         window_size={"width": 390, "height": 844},  # iPhone 14 Pro
     )
     yield browser
-    await browser.close()
+    await browser.stop()
 
 
 # ---------------------------------------------------------------------------
@@ -100,7 +255,7 @@ async def browser_instance() -> AsyncGenerator[Browser, None]:
 
 @pytest.fixture
 def agent_factory(
-    browser_use_llm: ChatBedrock,
+    browser_use_llm: _FullSchemaChatBedrock,
     browser_instance: Browser,
     live_server: LiveServer,
 ) -> Callable[..., Agent]:
@@ -122,6 +277,8 @@ def agent_factory(
             max_actions_per_step=max_actions_per_step,
             use_vision=use_vision,
             generate_gif=generate_gif,
+            enable_planning=False,
+            flash_mode=True,
             extend_system_message=(
                 f"The app is running at {live_server.url}. "
                 "This is a mobile-first web app with bottom tab navigation "
@@ -158,7 +315,7 @@ def e2e_test_user(db: None, test_user_credentials: dict[str, str]) -> WMSUser:  
 
 
 # ---------------------------------------------------------------------------
-# Authenticated agent factory (deterministic login via initial_actions)
+# Authenticated agent factory (login via task instructions)
 # ---------------------------------------------------------------------------
 
 
@@ -168,27 +325,25 @@ def authenticated_agent_factory(
     live_server: LiveServer,
     test_user_credentials: dict[str, str],
 ) -> Callable[..., Agent]:
-    """Create agents that are already logged in.
+    """Create agents that log in before performing their main task.
 
-    Uses ``initial_actions`` to navigate to the login page and submit
-    credentials before the main task begins. This avoids spending LLM
-    tokens on the authentication step.
+    Prepends login instructions to the task description so the agent
+    navigates to the login page, enters credentials, and submits the
+    form before proceeding. This approach is necessary because
+    Browser-Use's ``navigate`` action terminates ``initial_actions``
+    sequences (to protect against stale DOM), preventing subsequent
+    form-filling actions from executing.
     """
 
     def _create_authenticated_agent(task: str, **kwargs: Any) -> Agent:  # noqa: ANN401
         login_url = f"{live_server.url}/login/"
-        login_actions = [
-            {"open_url": login_url},
-            {"input_text": {"index": 0, "text": test_user_credentials["email"]}},
-            {"input_text": {"index": 1, "text": test_user_credentials["password"]}},
-            {"click_element": {"index": 2}},  # Login button
-        ]
-        existing_actions = kwargs.pop("initial_actions", None) or []
-        return agent_factory(
-            task=task,
-            initial_actions=login_actions + existing_actions,
-            **kwargs,
+        authenticated_task = (
+            f"First, go to {login_url} and log in with "
+            f"email '{test_user_credentials['email']}' "
+            f"and password '{test_user_credentials['password']}'. "
+            f"After logging in successfully, do the following: {task}"
         )
+        return agent_factory(task=authenticated_task, **kwargs)
 
     return _create_authenticated_agent
 
