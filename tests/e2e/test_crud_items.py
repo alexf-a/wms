@@ -9,6 +9,8 @@ from asgiref.sync import sync_to_async
 
 from core.models import Item
 
+from .conftest import DEFAULT_MAX_STEPS, ITEM_RED_JACKET, LOCATION_HOUSE, UNIT_GARAGE
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 
@@ -16,8 +18,6 @@ if TYPE_CHECKING:
     from django.test.utils import LiveServer
 
 pytestmark = [pytest.mark.e2e, pytest.mark.django_db(transaction=True)]
-
-MAX_STEPS = 25
 
 
 async def test_edit_item(
@@ -32,13 +32,13 @@ async def test_edit_item(
         task=(
             f"Go to {live_server.url} and navigate to the browse page "
             "(click 'See' in the bottom navigation). "
-            "Click on 'My House', then click on 'Garage Shelf'. "
-            "Find the item called 'Red Jacket' and click on it to open "
+            f"Click on '{LOCATION_HOUSE}', then click on '{UNIT_GARAGE}'. "
+            f"Find the item called '{ITEM_RED_JACKET}' and click on it to open "
             "its detail view. Edit its name to 'Blue Jacket' and save. "
             "Confirm the name has been updated."
         ),
     )
-    await agent.run(max_steps=MAX_STEPS)
+    await agent.run(max_steps=DEFAULT_MAX_STEPS)
     await sync_to_async(item.refresh_from_db)()
     assert item.name == "Blue Jacket"
 
@@ -56,11 +56,11 @@ async def test_delete_item(
         task=(
             f"Go to {live_server.url} and navigate to the browse page "
             "(click 'See' in the bottom navigation). "
-            "Click on 'My House', then click on 'Garage Shelf'. "
-            "Find the item called 'Red Jacket' and click on it. "
+            f"Click on '{LOCATION_HOUSE}', then click on '{UNIT_GARAGE}'. "
+            f"Find the item called '{ITEM_RED_JACKET}' and click on it. "
             "Delete the item and confirm the deletion when prompted. "
             "Confirm it is no longer shown in the list."
         ),
     )
-    await agent.run(max_steps=MAX_STEPS)
+    await agent.run(max_steps=DEFAULT_MAX_STEPS)
     assert not await sync_to_async(Item.objects.filter(id=item_id).exists)()

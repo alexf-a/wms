@@ -55,6 +55,27 @@ E2E_DIR = Path(__file__).parent
 SCREENSHOTS_DIR = E2E_DIR / "screenshots"
 _CONFIG_PATH = E2E_DIR / "config.yaml"
 
+# ---------------------------------------------------------------------------
+# Shared constants — import these in test files instead of using literals
+# ---------------------------------------------------------------------------
+
+DEFAULT_MAX_STEPS = 25
+
+# Seeded inventory names (used by seeded_inventory fixture and tests)
+LOCATION_HOUSE = "My House"
+LOCATION_HOUSE_ADDRESS = "123 Main St"
+LOCATION_OFFICE = "Office"
+
+UNIT_GARAGE = "Garage Shelf"
+UNIT_CLOSET = "Bedroom Closet"
+UNIT_DESK = "Desk Drawer"
+
+ITEM_RED_JACKET = "Red Jacket"
+ITEM_SCREWDRIVER = "Screwdriver Set"
+ITEM_BOOTS = "Winter Boots"
+ITEM_CHARGER = "Laptop Charger"
+ITEM_HEADPHONES = "Headphones"
+
 
 def _load_e2e_config() -> dict:
     """Load E2E test configuration from config.yaml.
@@ -358,50 +379,52 @@ def seeded_inventory(e2e_test_user: WMSUser) -> dict:
     """Create a realistic inventory for browse/search testing.
 
     Creates 2 locations, 3 units, and 5 items distributed across units.
+    Names come from the module-level constants (``LOCATION_*``, ``UNIT_*``,
+    ``ITEM_*``) so tests can reference the same values.
     """
     house = Location.objects.create(
-        user=e2e_test_user, name="My House", address="123 Main St",
+        user=e2e_test_user, name=LOCATION_HOUSE, address=LOCATION_HOUSE_ADDRESS,
     )
-    office = Location.objects.create(user=e2e_test_user, name="Office")
+    office = Location.objects.create(user=e2e_test_user, name=LOCATION_OFFICE)
 
     garage = Unit.objects.create(
-        user=e2e_test_user, name="Garage Shelf", location=house,
+        user=e2e_test_user, name=UNIT_GARAGE, location=house,
     )
     closet = Unit.objects.create(
-        user=e2e_test_user, name="Bedroom Closet", location=house,
+        user=e2e_test_user, name=UNIT_CLOSET, location=house,
     )
     desk = Unit.objects.create(
-        user=e2e_test_user, name="Desk Drawer", location=office,
+        user=e2e_test_user, name=UNIT_DESK, location=office,
     )
 
     items = [
         Item.objects.create(
             user=e2e_test_user,
-            name="Red Jacket",
+            name=ITEM_RED_JACKET,
             description="Winter jacket, bright red",
             unit=garage,
         ),
         Item.objects.create(
             user=e2e_test_user,
-            name="Screwdriver Set",
+            name=ITEM_SCREWDRIVER,
             description="Phillips and flathead set",
             unit=garage,
         ),
         Item.objects.create(
             user=e2e_test_user,
-            name="Winter Boots",
+            name=ITEM_BOOTS,
             description="Black snow boots",
             unit=closet,
         ),
         Item.objects.create(
             user=e2e_test_user,
-            name="Laptop Charger",
+            name=ITEM_CHARGER,
             description="USB-C 65W charger",
             unit=desk,
         ),
         Item.objects.create(
             user=e2e_test_user,
-            name="Headphones",
+            name=ITEM_HEADPHONES,
             description="Over-ear noise cancelling",
             unit=desk,
         ),
@@ -432,8 +455,8 @@ def mock_wms_llm(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
     mock_item_location = ItemLocation(
-        item_name="Red Jacket",
-        unit_name="Garage Shelf",
+        item_name=ITEM_RED_JACKET,
+        unit_name=UNIT_GARAGE,
         confidence="High",
         additional_info="Found with high confidence (mocked)",
     )

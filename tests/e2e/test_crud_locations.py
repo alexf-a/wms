@@ -9,6 +9,8 @@ from asgiref.sync import sync_to_async
 
 from core.models import Location
 
+from .conftest import DEFAULT_MAX_STEPS, LOCATION_OFFICE
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 
@@ -16,8 +18,6 @@ if TYPE_CHECKING:
     from django.test.utils import LiveServer
 
 pytestmark = [pytest.mark.e2e, pytest.mark.django_db(transaction=True)]
-
-MAX_STEPS = 25
 
 
 async def test_create_location(
@@ -34,7 +34,7 @@ async def test_create_location(
             "Confirm that 'Test Garage' now appears in the locations list."
         ),
     )
-    await agent.run(max_steps=MAX_STEPS)
+    await agent.run(max_steps=DEFAULT_MAX_STEPS)
     # Verify in database
     assert await sync_to_async(Location.objects.filter(name="Test Garage").exists)()
 
@@ -49,12 +49,12 @@ async def test_edit_location(
         task=(
             f"Go to {live_server.url} and navigate to the browse page "
             "(click 'See' in the bottom navigation). "
-            "Find the location called 'Office'. Open its menu (look for "
+            f"Find the location called '{LOCATION_OFFICE}'. Open its menu (look for "
             "a three-dot or edit icon) and edit it. Change the name to "
             "'Main Office' and save. Confirm the updated name is shown."
         ),
     )
-    await agent.run(max_steps=MAX_STEPS)
+    await agent.run(max_steps=DEFAULT_MAX_STEPS)
     office = seeded_inventory["locations"][1]
     await sync_to_async(office.refresh_from_db)()
     assert office.name == "Main Office"
@@ -72,10 +72,10 @@ async def test_delete_location(
         task=(
             f"Go to {live_server.url} and navigate to the browse page "
             "(click 'See' in the bottom navigation). "
-            "Find the location called 'Office'. Open its menu and delete it. "
+            f"Find the location called '{LOCATION_OFFICE}'. Open its menu and delete it. "
             "Confirm the deletion when prompted. "
-            "Confirm that 'Office' is no longer in the list."
+            f"Confirm that '{LOCATION_OFFICE}' is no longer in the list."
         ),
     )
-    await agent.run(max_steps=MAX_STEPS)
+    await agent.run(max_steps=DEFAULT_MAX_STEPS)
     assert not await sync_to_async(Location.objects.filter(id=office_id).exists)()

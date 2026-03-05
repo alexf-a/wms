@@ -6,6 +6,15 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from .conftest import (
+    DEFAULT_MAX_STEPS,
+    ITEM_RED_JACKET,
+    ITEM_SCREWDRIVER,
+    LOCATION_HOUSE,
+    LOCATION_OFFICE,
+    UNIT_GARAGE,
+)
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 
@@ -13,8 +22,6 @@ if TYPE_CHECKING:
     from django.test.utils import LiveServer
 
 pytestmark = [pytest.mark.e2e, pytest.mark.django_db(transaction=True)]
-
-MAX_STEPS = 25
 
 
 async def test_browse_locations_list(
@@ -30,11 +37,11 @@ async def test_browse_locations_list(
             "List all the locations you see and how many units each has."
         ),
     )
-    result = await agent.run(max_steps=MAX_STEPS)
+    result = await agent.run(max_steps=DEFAULT_MAX_STEPS)
     final_text = result.final_result().lower() if result.final_result() else ""
     # Should see both seeded locations
-    assert "my house" in final_text
-    assert "office" in final_text
+    assert LOCATION_HOUSE.lower() in final_text
+    assert LOCATION_OFFICE.lower() in final_text
 
 
 async def test_browse_drill_down(
@@ -47,11 +54,11 @@ async def test_browse_drill_down(
         task=(
             f"Go to {live_server.url} and navigate to the browse page "
             "(click 'See' in the bottom navigation). "
-            "Click on 'My House', then click on 'Garage Shelf'. "
+            f"Click on '{LOCATION_HOUSE}', then click on '{UNIT_GARAGE}'. "
             "List all items you see inside that unit."
         ),
     )
-    result = await agent.run(max_steps=MAX_STEPS)
+    result = await agent.run(max_steps=DEFAULT_MAX_STEPS)
     final_text = result.final_result().lower() if result.final_result() else ""
     # Should see items in the Garage Shelf unit
-    assert "red jacket" in final_text or "screwdriver" in final_text
+    assert ITEM_RED_JACKET.lower() in final_text or ITEM_SCREWDRIVER.lower() in final_text

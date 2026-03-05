@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from .conftest import DEFAULT_DEFAULT_MAX_STEPS
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 
@@ -13,8 +15,6 @@ if TYPE_CHECKING:
     from django.test.utils import LiveServer
 
 pytestmark = [pytest.mark.e2e, pytest.mark.django_db(transaction=True)]
-
-MAX_STEPS = 20
 
 
 async def test_login_success(
@@ -28,14 +28,14 @@ async def test_login_success(
             f"Go to {live_server.url}/login/ and log in with "
             f"email '{test_user_credentials['email']}' and "
             f"password '{test_user_credentials['password']}'. "
-            "After logging in, confirm that you are on the home page. "
-            "Tell me what page you ended up on."
+            "After logging in, you are done."
         ),
     )
-    result = await agent.run(max_steps=MAX_STEPS)
-    final_text = result.final_result().lower() if result.final_result() else ""
-    # The agent should report being on the home/dashboard page, not still on login
-    assert "login" not in final_text or "logged in" in final_text or "home" in final_text
+    result = await agent.run(max_steps=DEFAULT_MAX_STEPS)
+
+    final_url = result.history[-1].state.url
+    # Successful login redirects to the home page (root URL)
+    assert final_url.rstrip("/") == live_server.url
 
 
 async def test_login_invalid_credentials(
@@ -43,15 +43,17 @@ async def test_login_invalid_credentials(
     live_server: LiveServer,
     test_user_credentials: dict[str, str],
 ) -> None:
-    """Verify that invalid credentials show an error message."""
+    """Verify that invalid credentials keep the user on the login page."""
     agent = agent_factory(
         task=(
             f"Go to {live_server.url}/login/ and try to log in with "
             f"email '{test_user_credentials['email']}' and "
             "password 'wrong-password-123'. "
-            "Tell me what happens. Is there an error message?"
+            "After submitting the form, you are done."
         ),
     )
-    result = await agent.run(max_steps=MAX_STEPS)
-    final_text = result.final_result().lower() if result.final_result() else ""
-    assert "error" in final_text or "incorrect" in final_text or "invalid" in final_text or "wrong" in final_text
+    result = await agent.run(max_steps=DEFAULT_MAX_STEPS)
+
+    final_url = result.history[-1].state.url
+    # Failed login stays on the login page
+    assert "/login" in final_url

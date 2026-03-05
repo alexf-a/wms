@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+
+from .conftest import DEFAULT_DEFAULT_MAX_STEPS, SCREENSHOTS_DIR
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -14,9 +15,6 @@ if TYPE_CHECKING:
     from django.test.utils import LiveServer
 
 pytestmark = [pytest.mark.e2e, pytest.mark.django_db(transaction=True)]
-
-SCREENSHOTS_DIR = Path(__file__).parent / "screenshots"
-MAX_STEPS = 30
 
 
 async def test_screenshot_all_pages(
@@ -40,7 +38,7 @@ async def test_screenshot_all_pages(
             "you see. Also tell me if any page shows an error."
         ),
     )
-    result = await agent.run(max_steps=MAX_STEPS)
+    result = await agent.run(max_steps=DEFAULT_MAX_STEPS)
     final_text = result.final_result().lower() if result.final_result() else ""
     # Should not encounter server errors
     assert "500" not in final_text
@@ -69,7 +67,7 @@ async def test_no_broken_internal_links(
             "say 'All pages loaded successfully'."
         ),
     )
-    result = await agent.run(max_steps=MAX_STEPS)
+    result = await agent.run(max_steps=DEFAULT_MAX_STEPS)
     final_text = result.final_result().lower() if result.final_result() else ""
     assert "404" not in final_text or "no 404" in final_text
     assert "500" not in final_text or "no 500" in final_text
@@ -89,7 +87,7 @@ async def test_form_labels_present(
             "Report whether labels are present for each field."
         ),
     )
-    result = await agent.run(max_steps=MAX_STEPS)
+    result = await agent.run(max_steps=DEFAULT_MAX_STEPS)
     final_text = result.final_result().lower() if result.final_result() else ""
     # The agent should confirm labels/placeholders exist
     assert "label" in final_text or "placeholder" in final_text
