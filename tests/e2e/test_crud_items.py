@@ -186,10 +186,11 @@ async def test_create_item_manual(
     assert await sync_to_async(Item.objects.filter(name=NEW_ITEM_MANUAL).exists)()
 
 
+@pytest.mark.real_llm
 async def test_create_item_with_image(
     authenticated_agent_factory: Callable[..., Agent],
     live_server: LiveServer,
-    seeded_inventory: dict,  # noqa: ARG001
+    seeded_inventory: dict,
 ) -> None:
     """Verify creating an item with image upload and AI auto-fill."""
     agent = authenticated_agent_factory(
@@ -205,7 +206,16 @@ async def test_create_item_with_image(
         available_file_paths=[str(TEST_IMAGE_PATH)],
     )
     await agent.run(max_steps=DEFAULT_MAX_STEPS)
-    assert await sync_to_async(Item.objects.filter(name=NEW_ITEM_AI).exists)()
+
+    # Real LLM generates the name — verify any new item was created in the unit
+    garage = seeded_inventory["units"][0]
+
+    @sync_to_async
+    def _new_item_exists() -> bool:
+        seeded_names = {i.name for i in seeded_inventory["items"]}
+        return Item.objects.filter(unit=garage).exclude(name__in=seeded_names).exists()
+
+    assert await _new_item_exists(), "No new item was created in the Garage Shelf unit"
 
 
 async def test_create_item_with_quantity(
