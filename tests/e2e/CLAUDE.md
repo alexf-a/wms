@@ -91,6 +91,12 @@ assert not await sync_to_async(Item.objects.filter(id=item_id).exists)()
 - `flash_mode=True` — strips plan-related fields from the output schema
 - `_FullSchemaChatBedrock` — custom subclass that resolves `$ref`/`$defs` and merges `anyOf` discriminated unions into Bedrock-compatible schemas
 
+### AWS Authentication
+
+The Browser-Use agent authenticates to Bedrock via **AWS SSO** (`aws_sso_auth=True` on `_FullSchemaChatBedrock`). It picks up credentials from your local `~/.aws/` config, cached by `aws sso login`. No access keys or environment variables are required — just an active SSO session.
+
+Tests marked `@pytest.mark.real_llm` also need valid AWS credentials because the WMS app's own LLM calls are unpatched.
+
 ### Database
 
 pytest-django creates an ephemeral `test_` database on the local PostgreSQL server. All tests use `transaction=True` (required for `live_server` since the browser hits the server from a separate thread that needs committed data). Tables are flushed between tests.
