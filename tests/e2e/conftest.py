@@ -84,6 +84,10 @@ NEW_ITEM_MANUAL = "Camping Tent"
 NEW_ITEM_MANUAL_DESC = "Two-person tent, green"
 NEW_ITEM_AI = "Test Item"  # matches mock_wms_llm return value
 
+# Unit creation test values
+NEW_UNIT_NAME = "Storage Bin"
+NEW_UNIT_DESCRIPTION = "Large plastic storage bin"
+
 # Quantity test values
 QUANTITY_INITIAL = 5
 QUANTITY_UNIT_COUNT = "count"
