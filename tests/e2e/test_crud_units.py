@@ -21,8 +21,9 @@ from .conftest import (
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from pathlib import Path
 
-    from browser_use import Agent
+    from browser_use import Agent, Browser
     from django.test.utils import LiveServer
 
 pytestmark = [pytest.mark.e2e, pytest.mark.django_db(transaction=True)]
@@ -272,3 +273,86 @@ async def test_duplicate_unit_name_rejected(
     # Should still be exactly 1 unit named "Garage Shelf"
     count = await sync_to_async(Unit.objects.filter(name=UNIT_GARAGE).count)()
     assert count == 1
+
+
+# ---------------------------------------------------------------------------
+# QR code access flow
+# ---------------------------------------------------------------------------
+
+
+async def test_qr_code_deep_link_redirects_to_unit(
+    agent_factory: Callable[..., Agent],
+    live_server: LiveServer,
+    test_user_credentials: dict[str, str],
+    seeded_inventory: dict,
+) -> None:
+    """Verify the QR code flow: unauthenticated deep link → login → unit detail.
+
+    Simulates scanning a unit's QR code by navigating directly to its
+    token-based URL while unauthenticated. Django's ``@login_required``
+    redirects to the login page with a ``?next`` parameter. After login,
+    the user should land on the unit detail page.
+    """
+    garage = seeded_inventory["units"][0]  # Garage Shelf
+    unit_url = f"{live_server.url}/user/{garage.user_id}/units/{garage.access_token}/"
+
+    agent = agent_factory(
+        task=(
+            f"Navigate to this URL: {unit_url} . "
+            "You will be redirected to a login page. "
+            f"Log in with email '{test_user_credentials['email']}' "
+            f"and password '{test_user_credentials['password']}'. "
+            "After logging in, you should arrive at a unit detail page "
+            f"showing '{UNIT_GARAGE}'."
+        ),
+    )
+    result = await agent.run(max_steps=DEFAULT_MAX_STEPS)
+
+    # Assert: final URL is the unit detail page
+    final_url = result.history[-1].state.url
+    assert f"/user/{garage.user_id}/units/{garage.access_token}" in final_url
+
+
+async def test_qr_code_download(
+    authenticated_agent_factory: Callable[..., Agent],
+    browser_instance: Browser,
+    live_server: LiveServer,
+    seeded_inventory: dict,  # noqa: ARG001
+    tmp_path: Path,
+) -> None:
+    """Verify downloading a unit's QR code PNG from the detail page.
+
+    Uses the agent to navigate to the unit detail page, then Playwright
+    directly to trigger the download and verify the file. ``tmp_path``
+    provides automatic cleanup of the downloaded file.
+    """
+    agent = authenticated_agent_factory(
+        task=(
+            f"Go to {live_server.url} and navigate to the browse page "
+            "(click 'See' in the bottom navigation). "
+            f"Click on '{LOCATION_HOUSE}', then click on '{UNIT_GARAGE}' "
+            "to go to its detail page. "
+            "Once you see the unit detail page, report 'done'."
+        ),
+    )
+    await agent.run(max_steps=DEFAULT_MAX_STEPS)
+
+    # Use Playwright directly to trigger the QR code download
+    page = browser_instance.page
+    assert page is not None, "Browser page not available after agent run"
+
+    async with page.expect_download() as download_info:
+        await page.click('a[aria-label="Download QR code"]')
+    download = await download_info.value
+
+    # Save to tmp_path (automatically cleaned up by pytest)
+    download_path = tmp_path / "qr_code.png"
+    await download.save_as(str(download_path))
+
+    assert download_path.exists(), "QR code file was not downloaded"
+    assert download_path.stat().st_size > 0, "QR code file is empty"
+
+    # Verify PNG magic bytes
+    with download_path.open("rb") as f:
+        header = f.read(4)
+    assert header == b"\x89PNG", f"Downloaded file is not a valid PNG (header: {header!r})"
