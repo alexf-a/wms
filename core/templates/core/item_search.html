@@ -72,7 +72,7 @@
             </svg>
             Result
         </p>
-        <div class="rounded-lg border border-border bg-card p-4">
+        <a href="{% url 'unit_detail' found_item.unit.user_id found_item.unit.access_token %}" class="block rounded-lg border border-border bg-card p-4 hover:border-primary transition-colors">
             <div class="flex gap-3">
                 {% if found_item and found_item.image %}
                 <div class="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-muted">
@@ -87,16 +87,26 @@
                     </svg>
                 </div>
                 {% endif %}
-                <div class="flex-1 min-w-0 text-sm text-foreground leading-relaxed">
-                    {{ result|linebreaksbr }}
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-foreground truncate">{{ found_item.name }}</p>
+                    <p class="mt-1 text-xs text-muted-foreground truncate">{{ found_item.unit.get_full_path }}</p>
                 </div>
             </div>
-        </div>
+        </a>
     </section>
     {% elif not result and form.query.value %}
     <!-- Empty state after search -->
     <div class="flex flex-col items-center justify-center py-12 text-center">
-        <p class="text-sm text-muted-foreground">No results for "{{ form.query.value }}"</p>
+        <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-muted">
+            <svg class="h-6 w-6 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                <line x1="8" y1="8" x2="14" y2="14"/>
+                <line x1="14" y1="8" x2="8" y2="14"/>
+            </svg>
+        </div>
+        <p class="text-sm font-medium text-foreground mb-1">No items found</p>
+        <p class="text-sm text-muted-foreground">Try a different search term or check your spelling</p>
     </div>
     {% else %}
     <!-- Empty state before search -->

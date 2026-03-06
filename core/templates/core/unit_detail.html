@@ -26,6 +26,9 @@
                 </svg>
             </div>
             <div>
+                {% if unit.get_ancestor_path %}
+                <p class="text-xs text-muted-foreground">{{ unit.get_ancestor_path }}</p>
+                {% endif %}
                 <h1 class="text-xl font-semibold text-foreground">{{ unit.name }}</h1>
                 {% if unit.description %}
                 <p class="mt-0.5 text-sm text-muted-foreground">{{ unit.description }}</p>

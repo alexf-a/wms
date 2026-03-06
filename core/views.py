@@ -1003,12 +1003,13 @@ def item_search_view(request: HttpRequest) -> HttpResponse:
         if form.is_valid():
             query = form.cleaned_data["query"]
             item_location = find_item_location(query, request.user.id)
-            result = str(item_location)
-            # Try to fetch the actual Item object for displaying its image
+            # Only show results when the item actually exists in the user's inventory
             found_item = Item.objects.filter(
                 user=request.user,
                 name=item_location.item_name,
             ).first()
+            if found_item:
+                result = str(item_location)
     else:
         form = ItemSearchForm()
 

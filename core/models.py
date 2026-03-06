@@ -417,6 +417,26 @@ class Unit(StorageSpace):
 
         return " > ".join(parts)
 
+    def get_ancestor_path(self) -> str:
+        """Return hierarchical path from root to this unit's parent (excludes self).
+
+        Useful when the unit name is already displayed separately (e.g., as a heading)
+        and only the ancestor context is needed.
+
+        Examples:
+            - "Garage > Workbench" (for a unit nested under Workbench)
+            - "Garage" (for a top-level unit in a location)
+            - "" (standalone unit with no parent)
+
+        Returns:
+            str: Ancestor path with " > " separators, or empty string if no parent.
+        """
+        full = self.get_full_path()
+        # Remove the last segment (self.name)
+        sep = " > "
+        idx = full.rfind(sep)
+        return full[:idx] if idx != -1 else ""
+
     def get_root_unit(self) -> Unit:
         """Return the top-level Unit in this hierarchy.
         
