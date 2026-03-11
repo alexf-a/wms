@@ -55,9 +55,11 @@ async def test_search_finds_existing_item(
     )
     await agent.run(max_steps=DEFAULT_MAX_STEPS)
 
-    page = browser_instance.page
-    result_section = await page.query_selector("section[aria-live='polite']")
-    assert result_section is not None, "Search results section not found on page"
+    page = await browser_instance.get_current_page()
+    has_results = await page.evaluate(
+        "() => String(document.querySelector(\"section[aria-live='polite']\") !== null)",
+    )
+    assert has_results == "true", "Search results section not found on page"
 
 
 async def test_search_result_shows_name_and_breadcrumb(
@@ -76,19 +78,21 @@ async def test_search_result_shows_name_and_breadcrumb(
     )
     await agent.run(max_steps=DEFAULT_MAX_STEPS)
 
-    page = browser_instance.page
-    result_card = await page.query_selector("section[aria-live='polite'] a")
-    assert result_card is not None, "Result card link not found"
+    page = await browser_instance.get_current_page()
 
-    card_text = await result_card.inner_text()
+    card_text = await page.evaluate(
+        "() => document.querySelector(\"section[aria-live='polite'] a\")?.innerText || ''",
+    )
     assert ITEM_RED_JACKET in card_text, f"Item name not in card: {card_text}"
 
     breadcrumb = f"{LOCATION_HOUSE} > {UNIT_GARAGE}"
     assert breadcrumb in card_text, f"Breadcrumb '{breadcrumb}' not in card: {card_text}"
 
     # Seeded items have no image — verify placeholder SVG is rendered
-    placeholder = await result_card.query_selector("svg")
-    assert placeholder is not None, "Placeholder image icon not found in result card"
+    has_placeholder = await page.evaluate(
+        "() => String(document.querySelector(\"section[aria-live='polite'] a svg\") !== null)",
+    )
+    assert has_placeholder == "true", "Placeholder image icon not found in result card"
 
 
 # ---------------------------------------------------------------------------
@@ -115,8 +119,8 @@ async def test_search_no_results_for_nonexistent_item(
     )
     await agent.run(max_steps=DEFAULT_MAX_STEPS)
 
-    page = browser_instance.page
-    body_text = await page.inner_text("body")
+    page = await browser_instance.get_current_page()
+    body_text = await page.evaluate("() => document.body.innerText")
     assert "No items found" in body_text
 
 

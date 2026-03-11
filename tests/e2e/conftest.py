@@ -280,6 +280,7 @@ async def browser_instance() -> AsyncGenerator[Browser, None]:
     browser = Browser(
         headless=headless,
         window_size={"width": 390, "height": 844},  # iPhone 14 Pro
+        keep_alive=True,
     )
     yield browser
     await browser.stop()

@@ -260,6 +260,7 @@ function initBrowseCrud(config) {
     var container = parseContainerValue(containerValue);
     var body = { name: name };
     if (container.location_id) body.location_id = container.location_id;
+    if (container.parent_unit_id) body.parent_unit_id = container.parent_unit_id;
 
     apiFetch(config.createUnitUrl, {
       method: 'POST',

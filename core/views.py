@@ -318,7 +318,8 @@ def api_create_unit(request: HttpRequest) -> JsonResponse:
     """Create a new unit via JSON API.
 
     Args:
-        request: The HTTP request with JSON body containing 'name' and optional 'location_id'.
+        request: The HTTP request with JSON body containing 'name' and optional
+            'location_id' or 'parent_unit_id' (mutually exclusive).
 
     Returns:
         JsonResponse with created unit's id, name, and access_token (201), or error.
@@ -335,13 +336,22 @@ def api_create_unit(request: HttpRequest) -> JsonResponse:
         return JsonResponse({"error": "Name is required"}, status=400)
 
     location_id = data.get("location_id")
+    parent_unit_id = data.get("parent_unit_id")
     location = None
+    parent_unit = None
+    if location_id and parent_unit_id:
+        return JsonResponse(
+            {"error": "A unit cannot have both a location and a parent unit."},
+            status=400,
+        )
     if location_id:
         location = get_object_or_404(Location, id=location_id, user=request.user)
+    if parent_unit_id:
+        parent_unit = get_object_or_404(Unit, id=parent_unit_id, user=request.user)
 
     try:
         unit = Unit.objects.create(
-            user=request.user, name=name, location=location
+            user=request.user, name=name, location=location, parent_unit=parent_unit,
         )
     except IntegrityError:
         return JsonResponse(
