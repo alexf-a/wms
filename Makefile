@@ -178,10 +178,10 @@ install-e2e:  ## Install E2E test dependencies (browser-use + chromium via cdp-u
 	poetry install --with e2e
 
 test-e2e:  ## Run E2E browser tests (headless)
-	poetry run pytest tests/e2e/ -v --tb=short -x
+	poetry run pytest tests/e2e/ -vvv --tb=short -x
 
 test-e2e-headed:  ## Run E2E browser tests with visible browser (for debugging)
-	BROWSER_USE_HEADLESS=false poetry run pytest tests/e2e/ -v --tb=short -x
+	BROWSER_USE_HEADLESS=false poetry run pytest tests/e2e/ -vvv --tb=short -x
 
 # Help target to document the bug fix
 help:
