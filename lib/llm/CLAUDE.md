@@ -12,7 +12,7 @@ All LLM functionality uses a centralized handler pattern with declarative call d
 
 ## LLM Call Definitions
 
-LLM calls are defined declaratively as JSON files in `core/llm_calls/`:
+LLM calls are defined declaratively as JSON files in `llm_calls/`:
 
 - `item_generation.json` — Prompts for generating item text features from images
 - `item_candidates_search.json` — Prompts for text-based item candidate search
@@ -20,5 +20,5 @@ LLM calls are defined declaratively as JSON files in `core/llm_calls/`:
 
 ## Modules
 
-- `llm/item_generation.py` — Item feature extraction from images (used during item addition)
-- `llm/llm_search.py` — Two-step item search (candidate generation → location disambiguation)
+- `lib/llm/item_generation.py` — Item feature extraction from images (used during item addition)
+- `lib/llm/llm_search.py` — Two-step item search (candidate generation → location disambiguation)
