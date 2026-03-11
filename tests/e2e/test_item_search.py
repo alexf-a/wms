@@ -1,4 +1,12 @@
-"""E2E tests for item search functionality."""
+"""E2E tests for item search functionality.
+
+Uses real LLM calls (``@pytest.mark.real_llm``) against a small 5-item
+corpus so the full search pipeline is exercised end-to-end.  Searches use
+exact item names to avoid testing LLM search quality — the goal is to
+verify the pipeline, not the model's ranking ability.  With an exact name
+and a small corpus, the candidate search (Haiku) finds a single
+high-confidence match and skips the expensive Sonnet follow-up.
+"""
 
 from __future__ import annotations
 
@@ -19,7 +27,11 @@ if TYPE_CHECKING:
     from browser_use import Agent, Browser
     from django.test.utils import LiveServer
 
-pytestmark = [pytest.mark.e2e, pytest.mark.django_db(transaction=True)]
+pytestmark = [
+    pytest.mark.e2e,
+    pytest.mark.django_db(transaction=True),
+    pytest.mark.real_llm,
+]
 
 
 # ---------------------------------------------------------------------------
@@ -89,7 +101,9 @@ async def test_search_no_results_for_nonexistent_item(
     live_server: LiveServer,
     browser_instance: Browser,
     # No seeded_inventory — DB has user but zero items.
-    # The mock returns ITEM_RED_JACKET, but the view's DB check finds nothing.
+    # The LLM receives an empty corpus and may return a hallucinated name,
+    # but the view's DB verification (Item.objects.filter) finds nothing,
+    # so the template renders the "No items found" empty state regardless.
 ) -> None:
     """Verify that searching when no items exist shows 'No items found'."""
     agent = authenticated_agent_factory(
