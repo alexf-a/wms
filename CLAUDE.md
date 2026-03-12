@@ -24,7 +24,7 @@ WMS addresses these through a digital inventory system and LLM-powered search (n
 
 - `core/` — Django app: models, views, forms, templates, static assets, management commands
 - `core/tailwind/input.css` — Tailwind v4 theme tokens and design system (`@theme` block)
-- `core/llm_calls/` — JSON files defining LLM call parameters (system prompts, human prompts)
+- `llm_calls/` — JSON files defining LLM call parameters (system prompts, human prompts)
 - `core/templates/core/` — Django templates (all extend `base.html`)
 - `core/static/core/js/` — Client-side JavaScript modules
 - `llm/` — LLM functionality (search, item generation, handler)
