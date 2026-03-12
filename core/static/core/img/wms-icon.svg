@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Box body -->
+  <path d="M14 30 L32 40 L50 30 L50 48 L32 58 L14 48 Z" fill="#50a46c"/>
+  <!-- Box front-left face (slightly darker) -->
+  <path d="M14 30 L32 40 L32 58 L14 48 Z" fill="#479960"/>
+  <!-- Box interior -->
+  <path d="M18 28 L32 36 L46 28 L32 20 Z" fill="#3D8A8A"/>
+  <!-- Box flap left -->
+  <path d="M14 30 L22 24 L32 30 L32 36 L18 28 Z" fill="#5cb878" opacity="0.9"/>
+  <!-- Box flap right -->
+  <path d="M50 30 L42 24 L32 30 L32 36 L46 28 Z" fill="#50a46c" opacity="0.85"/>
+  <!-- Box flap back-left -->
+  <path d="M18 28 L26 22 L32 26 L22 24 Z" fill="#68c484"/>
+  <!-- Box flap back-right -->
+  <path d="M46 28 L38 22 L32 26 L42 24 Z" fill="#5cb878"/>
+  <!-- Location pin -->
+  <path d="M32 8 C26.5 8 22 12.5 22 18 C22 25 32 34 32 34 C32 34 42 25 42 18 C42 12.5 37.5 8 32 8 Z" fill="#50a46c"/>
+  <!-- Pin hole -->
+  <circle cx="32" cy="18" r="4" fill="white"/>
+</svg>
