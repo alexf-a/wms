@@ -10,19 +10,11 @@
                open:animate-[dialog-in_200ms_ease-out]
                [&.dialog--closing]:animate-[dialog-out_150ms_ease-in]
                [&.dialog--bottom-sheet]:mt-auto [&.dialog--bottom-sheet]:mb-0 [&.dialog--bottom-sheet]:max-w-full [&.dialog--bottom-sheet]:rounded-b-none [&.dialog--bottom-sheet]:rounded-t-2xl
-               [&.dialog--bottom-sheet]:open:animate-[sheet-in_250ms_ease-out]
-               [&.dialog--bottom-sheet.dialog--closing]:animate-[sheet-out_200ms_ease-in]">
+               [&.dialog--bottom-sheet]:open:animate-[sheet-up_250ms_ease-out]
+               [&.dialog--bottom-sheet.dialog--closing]:animate-[sheet-down_200ms_ease-in]">
     <div class="px-6 py-5">
         {% block dialog_body %}
         {# Override this block when extending the pattern #}
         {% endblock %}
     </div>
 </dialog>
-
-{# Keyframe definitions — add once in input.css or inline here: #}
-<style>
-@keyframes dialog-in  { from { opacity: 0; transform: scale(.95); } to { opacity: 1; transform: scale(1); } }
-@keyframes dialog-out { from { opacity: 1; transform: scale(1); }   to { opacity: 0; transform: scale(.95); } }
-@keyframes sheet-in   { from { transform: translateY(100%); }       to { transform: translateY(0); } }
-@keyframes sheet-out  { from { transform: translateY(0); }          to { transform: translateY(100%); } }
-</style>
