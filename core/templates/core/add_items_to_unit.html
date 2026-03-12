@@ -3,6 +3,9 @@
 
 {% block title %}Add Item - WMS{% endblock %}
 
+{% block page_title %}Add Item{% endblock %}
+{% block page_subtitle %}<p class="text-sm text-muted-foreground">How would you like to describe it?</p>{% endblock %}
+
 {% block content %}
 <!-- Error toast (fixed above bottom nav) -->
 <div id="error-snackbar" class="fixed inset-x-6 bottom-20 z-50 mx-auto hidden max-w-sm rounded-lg bg-destructive px-4 py-3 text-sm text-white shadow-lg" role="alert">
@@ -19,23 +22,79 @@
 <form method="post" enctype="multipart/form-data" id="item-form">
     {% csrf_token %}
 
-    <!-- Hero Upload Section -->
+    <!-- Hero: Choose Input Method -->
     <section class="mx-auto max-w-sm">
-        <div class="flex flex-col items-center gap-6 py-8">
+        <div class="space-y-3 py-4">
+            <input type="file" id="hero-image-input" name="image" accept="image/*" capture="environment" class="hidden" aria-label="Upload item image for AI analysis">
 
-            <!-- Camera Upload Button -->
-            <div class="flex flex-col items-center gap-3">
-                <input type="file" id="hero-image-input" name="image" accept="image/*" class="hidden" aria-label="Upload item image for AI analysis">
-                <label for="hero-image-input"
-                       class="flex cursor-pointer flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-border bg-card px-12 py-10 text-center transition-colors hover:border-primary hover:bg-primary/5"
-                       role="button" tabindex="0" aria-label="Upload item image">
-                    <svg class="h-16 w-16 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <!-- Take a Photo -->
+            <label for="hero-image-input"
+                   class="flex cursor-pointer items-center gap-4 rounded-lg border-2 border-border bg-card p-5 transition-colors hover:border-primary/50"
+                   role="button" tabindex="0">
+                <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                    <svg class="h-6 w-6 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                         <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
                         <circle cx="12" cy="13" r="4"/>
                     </svg>
-                    <span class="text-lg font-semibold text-foreground">Take Photo or Upload</span>
-                    <span class="text-sm text-muted-foreground">AI will auto-fill details</span>
-                </label>
+                </div>
+                <div class="flex-1">
+                    <p class="font-semibold text-foreground">Take a Photo</p>
+                    <p class="text-sm text-muted-foreground">AI will identify the item for you</p>
+                </div>
+                <svg class="h-5 w-5 shrink-0 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 18l6-6-6-6"/>
+                </svg>
+            </label>
+
+            <!-- Upload Photo -->
+            <label for="hero-image-input"
+                   class="flex cursor-pointer items-center gap-4 rounded-lg border-2 border-border bg-card p-5 transition-colors hover:border-primary/50"
+                   role="button" tabindex="0">
+                <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                    <svg class="h-6 w-6 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                </div>
+                <div class="flex-1">
+                    <p class="font-semibold text-foreground">Upload Photo</p>
+                    <p class="text-sm text-muted-foreground">Choose from gallery &middot; AI will identify it</p>
+                </div>
+                <svg class="h-5 w-5 shrink-0 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 18l6-6-6-6"/>
+                </svg>
+            </label>
+
+            <!-- Divider -->
+            <div class="relative py-3">
+                <div class="absolute inset-0 flex items-center">
+                    <div class="w-full border-t border-border"></div>
+                </div>
+                <div class="relative flex justify-center">
+                    <span class="bg-background px-3 text-xs text-muted-foreground">or</span>
+                </div>
+            </div>
+
+            <!-- Enter Manually -->
+            <button type="button" id="skip-to-manual"
+                    class="flex w-full items-center gap-4 rounded-lg border-2 border-border bg-card p-5 text-left transition-colors hover:border-primary/50">
+                <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted">
+                    <svg class="h-6 w-6 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5z"/>
+                    </svg>
+                </div>
+                <div class="flex-1">
+                    <p class="font-semibold text-foreground">Enter Manually</p>
+                    <p class="text-sm text-muted-foreground">Type the details yourself</p>
+                </div>
+                <svg class="h-5 w-5 shrink-0 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 18l6-6-6-6"/>
+                </svg>
+            </button>
+
+            <!-- How does AI auto-fill work? -->
+            <div class="pt-2 text-center">
                 <a href="{% url 'getting_started' %}#adding-items"
                    class="inline-flex items-center gap-1 text-xs text-accent hover:underline"
                    target="_blank" rel="noopener noreferrer"
@@ -46,15 +105,6 @@
                     How does AI auto-fill work?
                 </a>
             </div>
-
-            <!-- Skip to Manual -->
-            <button type="button" id="skip-to-manual"
-                    class="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-                Skip and enter manually
-                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
-                </svg>
-            </button>
         </div>
     </section>
 

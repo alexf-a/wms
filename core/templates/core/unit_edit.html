@@ -3,10 +3,11 @@
 
 {% block title %}Edit {{ unit.name }} - WMS{% endblock %}
 
+{% block page_title %}Edit Unit{% endblock %}
+{% block page_subtitle %}{% endblock %}
+
 {% block content %}
 <div class="mx-auto max-w-sm">
-    <h1 class="mb-4 text-xl font-bold text-foreground">Edit Unit</h1>
-
     <form method="post" id="unit-form" class="space-y-4">
         {% csrf_token %}
 

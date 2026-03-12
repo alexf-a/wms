@@ -3,6 +3,9 @@
 
 {% block title %}{{ unit.name }} - WMS{% endblock %}
 
+{% block page_title %}{{ unit.name }}{% endblock %}
+{% block page_subtitle %}<p class="text-sm text-muted-foreground">{{ unit.get_full_path }}</p>{% endblock %}
+
 {% block content %}
 <!-- Error toast -->
 <div id="error-snackbar" class="fixed inset-x-6 bottom-20 z-50 mx-auto hidden max-w-sm rounded-lg bg-destructive px-4 py-3 text-sm text-white shadow-lg" role="alert">

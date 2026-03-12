@@ -6,6 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>{% block title %}WMS — Know where it is{% endblock %}</title>
 
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="{% static 'core/img/wms-icon.svg' %}">
+
     <!-- Tailwind CSS (compiled from core/tailwind/input.css) -->
     <link rel="stylesheet" href="{% static 'core/css/tailwind.css' %}">
 
@@ -16,16 +19,22 @@
 </head>
 <body class="flex min-h-screen flex-col bg-background text-foreground">
     <!-- Top bar -->
-    <header class="flex items-center justify-between border-b border-border px-6 py-3">
-        <a href="{% url 'home_view' %}" class="text-lg font-bold text-foreground no-underline">WMS</a>
-        {% if user.is_authenticated %}
+    {% if user.is_authenticated %}
+    <header class="flex items-center justify-between px-6 py-4">
+        <div>
+            <h1 class="text-xl font-bold text-foreground">{% block page_title %}Home{% endblock %}</h1>
+            {% block page_subtitle %}<p class="text-sm text-muted-foreground">Your inventory at a glance</p>{% endblock %}
+        </div>
+        {% block header_action %}
         <a href="{% url 'account' %}" class="text-muted-foreground hover:text-foreground" aria-label="Settings">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                <circle cx="12" cy="12" r="3"/>
             </svg>
         </a>
-        {% endif %}
+        {% endblock %}
     </header>
+    {% endif %}
 
     <!-- Main content -->
     <main class="flex-1 overflow-y-auto px-6 pb-24 pt-6">

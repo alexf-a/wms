@@ -3,11 +3,11 @@
 
 {% block title %}Find - WMS{% endblock %}
 
+{% block page_title %}Find{% endblock %}
+{% block page_subtitle %}<p class="text-sm text-muted-foreground">Search your inventory</p>{% endblock %}
+
 {% block content %}
 <div class="mx-auto max-w-sm">
-    <h1 class="text-xl font-bold text-foreground mb-1">Find</h1>
-    <p class="text-sm text-muted-foreground mb-4">Search your inventory</p>
-
     <!-- Search Form -->
     <form method="post" novalidate>
         {% csrf_token %}

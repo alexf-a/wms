@@ -3,10 +3,11 @@
 
 {% block title %}Edit {{ item.name }} - WMS{% endblock %}
 
+{% block page_title %}Edit Item{% endblock %}
+{% block page_subtitle %}{% endblock %}
+
 {% block content %}
 <div class="mx-auto max-w-sm">
-    <h1 class="mb-4 text-xl font-bold text-foreground">Edit Item</h1>
-
     <form method="post" enctype="multipart/form-data" id="item-form" class="space-y-4">
         {% csrf_token %}
 

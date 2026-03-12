@@ -7,12 +7,6 @@
 {% if is_authenticated %}
   <!-- Dashboard for authenticated users -->
   <div class="flex flex-col">
-    <!-- Header -->
-    <div class="mb-6">
-      <h1 class="text-xl font-bold text-foreground">Home</h1>
-      <p class="text-sm text-muted-foreground">Your inventory at a glance</p>
-    </div>
-
     <!-- Getting Started banner -->
     <a href="{% url 'getting_started' %}"
        class="mb-6 flex w-full items-center gap-3 rounded-lg border border-border bg-primary/5 p-3 text-left no-underline hover:bg-primary/10 transition-colors">

@@ -3,6 +3,30 @@
 
 {% block title %}Browse - WMS{% endblock %}
 
+{% block page_title %}My Storage{% endblock %}
+{% block page_subtitle %}{% endblock %}
+
+{% block header_action %}
+<div class="flex items-center gap-2">
+    <button type="button" id="browse-create-location-btn"
+            class="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent transition-colors"
+            aria-label="Add location">
+      + Location
+    </button>
+    <button type="button" id="browse-create-unit-btn"
+            class="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+            aria-label="Add unit">
+      + Unit
+    </button>
+    <a href="{% url 'account' %}" class="text-muted-foreground hover:text-foreground" aria-label="Settings">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+            <circle cx="12" cy="12" r="3"/>
+        </svg>
+    </a>
+</div>
+{% endblock %}
+
 {% block content %}
 <div id="browse-app" class="flex flex-col">
 
@@ -14,22 +38,8 @@
       </svg>
     </button>
     <div class="flex-1">
-      <h1 id="browse-title" class="text-xl font-bold text-foreground">Browse</h1>
-      <p id="browse-subtitle" class="text-sm text-muted-foreground">
-        {{ locations|length }} location{{ locations|length|pluralize:",s" }}{% if orphan_units %}, {{ orphan_units|length }} ungrouped unit{{ orphan_units|length|pluralize:",s" }}{% endif %}
-      </p>
-    </div>
-    <div class="flex gap-2">
-      <button type="button" id="browse-create-location-btn"
-              class="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent transition-colors"
-              aria-label="Add location">
-        + Location
-      </button>
-      <button type="button" id="browse-create-unit-btn"
-              class="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-              aria-label="Add unit">
-        + Unit
-      </button>
+      <h2 id="browse-title" class="text-lg font-semibold text-foreground"></h2>
+      <p id="browse-subtitle" class="text-sm text-muted-foreground"></p>
     </div>
   </div>
 
@@ -68,7 +78,6 @@
     {% endfor %}
 
     {% if orphan_units %}
-    <p class="mt-4 mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Ungrouped Units</p>
     {% for unit in orphan_units %}
     <a href="#" class="browse-unit-card relative flex items-center gap-3 rounded-lg border border-border bg-card p-4 no-underline hover:border-primary/50 transition-colors"
        data-unit-user-id="{{ unit.user_id }}" data-unit-access-token="{{ unit.access_token }}" data-unit-name="{{ unit.name }}">

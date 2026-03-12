@@ -1,13 +1,15 @@
 {% extends "core/base.html" %}
+{% load static %}
 
 {% block title %}Login - WMS{% endblock %}
 
 {% block content %}
 <div class="flex flex-1 flex-col items-center justify-center px-6">
     <div class="w-full max-w-sm space-y-6">
-        <div class="text-center">
-            <h1 class="text-2xl font-bold text-foreground">Welcome Back</h1>
-            <p class="mt-1 text-sm text-muted-foreground">Sign in to your account</p>
+        <div class="flex flex-col items-center text-center">
+            <img src="{% static 'core/img/wms-icon.svg' %}" alt="WMS" class="mb-4 h-16 w-16">
+            <h1 class="text-2xl font-bold text-foreground">WMS</h1>
+            <p class="mt-1 text-sm text-muted-foreground">Know where it is</p>
         </div>
 
         {% if form.non_field_errors %}
@@ -55,6 +57,10 @@
             Don't have an account? <a href="{% url 'register' %}" class="font-medium text-accent hover:underline">Register here</a>
         </p>
         {% endif %}
+
+        <p class="text-center text-sm text-muted-foreground">
+            <a href="{% url 'getting_started' %}" class="font-medium text-accent hover:underline">Getting Started</a>
+        </p>
     </div>
 </div>
 {% endblock %}
