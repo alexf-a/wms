@@ -21,7 +21,7 @@ export TW_VERSION ?= v$(shell awk '/^tailwindcss / {print $$2}' .tool-versions)
 # Install with: cd /tmp && git clone https://github.com/paxan/lightsailctl.git -b paxan/image-push-bug-fixes && cd lightsailctl && go install ./...
 export PATH := $(PATH):$(HOME)/go/bin
 
-.PHONY: docker-build deploy up down create push install-lightsailctl-fix sync-env local-up update-image local-https caddy-trust caddy-export-ca local-https-down test-js tw-install tw-build tw-watch install-e2e test-e2e test-e2e-headed
+.PHONY: docker-build deploy up down create push install-lightsailctl-fix sync-env local-up update-image local-https caddy-trust caddy-export-ca local-https-down test-python test test-js tw-install tw-build tw-watch install-e2e test-e2e test-e2e-headed
 
 # =============================================================================
 # Helper Functions for Local HTTPS Setup
@@ -166,6 +166,11 @@ local-down:
 	@docker-compose down
 	@rm -f .env  # Clean up root .env file
 	@echo "Local development server stopped."
+
+test-python:  ## Run Python tests (excludes E2E)
+	poetry run pytest tests/ -vvv --ignore=tests/e2e
+
+test: test-python test-e2e test-js  ## Run all tests (Python + E2E + JS)
 
 test-js:
 	npm run test:js
