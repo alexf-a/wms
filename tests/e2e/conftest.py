@@ -107,16 +107,15 @@ def _load_e2e_config() -> dict:
         dict: Parsed YAML config.
 
     Raises:
-        FileNotFoundError: If config.yaml does not exist, with instructions
-            to copy config.yaml.example.
+        pytest.skip.Exception: If config.yaml does not exist, skipping
+            the test with instructions to copy config.yaml.example.
     """
     if not _CONFIG_PATH.exists():
-        msg = (
+        pytest.skip(
             f"E2E config file not found: {_CONFIG_PATH}\n"
             f"Copy the example to get started:\n"
             f"  cp {_CONFIG_PATH.with_suffix('.yaml.example')} {_CONFIG_PATH}"
         )
-        raise FileNotFoundError(msg)
     with _CONFIG_PATH.open() as f:
         return yaml.safe_load(f)
 
