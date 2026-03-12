@@ -4,166 +4,115 @@
 {% block title %}Edit {{ unit.name }} - WMS{% endblock %}
 
 {% block content %}
-<div class="m3-page-shell">
-    
-    <!-- Snackbar for error messages -->
-    <div id="error-snackbar" class="m3-snackbar" role="alert" aria-live="polite">
-        <span id="error-snackbar-text" class="m3-snackbar-text"></span>
-        <button type="button" id="error-snackbar-dismiss" class="m3-snackbar-action" aria-label="Dismiss">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-            </svg>
-        </button>
-    </div>
-    
-    <form method="post" id="unit-form" class="m3-form-vertical">
+<div class="mx-auto max-w-sm">
+    <h1 class="mb-4 text-xl font-bold text-foreground">Edit Unit</h1>
+
+    <form method="post" id="unit-form" class="space-y-4">
         {% csrf_token %}
-        
-        <div class="m3-card m3-card--filled">
-            <div class="m3-card__content">
-                <div class="m3-card__icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
-                    </svg>
-                </div>
-                <h1 class="md-typescale-headline-medium m3-card__title">Edit Unit</h1>
-                
-                <!-- Name Field -->
-                <div class="m3-form-field{% if form.name.errors %} m3-form-field--error{% endif %}">
-                    <label for="id_{{ form.name.name }}" class="m3-form-label">Name</label>
-                    <input type="text" name="{{ form.name.name }}" id="id_{{ form.name.name }}" class="m3-text-field{% if form.name.errors %} m3-text-field--error{% endif %}" value="{{ form.name.value|default:'' }}" required>
-                    {% if form.name.errors %}
-                    <span class="m3-form-error">{{ form.name.errors.0 }}</span>
+
+        {% if form.non_field_errors %}
+        <div class="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {{ form.non_field_errors.0 }}
+        </div>
+        {% endif %}
+
+        <!-- Name -->
+        <div>
+            <label for="id_{{ form.name.name }}" class="mb-1.5 block text-xs font-medium text-muted-foreground">Name</label>
+            <input type="text" name="{{ form.name.name }}" id="id_{{ form.name.name }}"
+                   value="{{ form.name.value|default:'' }}"
+                   class="w-full rounded-md border {% if form.name.errors %}border-destructive{% else %}border-input{% endif %} bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                   required>
+            {% if form.name.errors %}
+            <p class="mt-1 text-xs text-destructive">{{ form.name.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <!-- Description -->
+        <div>
+            <label for="id_{{ form.description.name }}" class="mb-1.5 block text-xs font-medium text-muted-foreground">Description</label>
+            <textarea name="{{ form.description.name }}" id="id_{{ form.description.name }}" rows="4"
+                      class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">{{ form.description.value|default:'' }}</textarea>
+        </div>
+
+        <!-- Container -->
+        <div>
+            <label for="id_{{ form.container.name }}" class="mb-1.5 block text-xs font-medium text-muted-foreground">Container</label>
+            <select name="{{ form.container.name }}" id="id_{{ form.container.name }}"
+                    class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+                <option value="">None (standalone unit)</option>
+                {% for value, label in form.fields.container.choices %}
+                    {% if value %}
+                    <option value="{{ value }}"{% if form.container.value == value %} selected{% endif %}>{{ label }}</option>
+                    {% endif %}
+                {% endfor %}
+            </select>
+            <p class="mt-1 text-xs text-muted-foreground">Select a Location or parent Unit to contain this unit</p>
+        </div>
+
+        <!-- Dimensions -->
+        <fieldset class="rounded-lg border border-border p-4">
+            <legend class="px-1 text-sm font-medium text-foreground">Dimensions <span class="text-xs text-muted-foreground">(optional)</span></legend>
+            <p class="mb-3 text-xs text-muted-foreground">Either provide all dimensions or leave them all blank</p>
+
+            <div class="grid grid-cols-3 gap-3">
+                <div>
+                    <label for="id_{{ form.length.name }}" class="mb-1.5 block text-xs font-medium text-muted-foreground">Length</label>
+                    <input type="number" step="any" name="{{ form.length.name }}" id="id_{{ form.length.name }}"
+                           value="{{ form.length.value|default:'' }}"
+                           class="w-full rounded-md border {% if form.length.errors %}border-destructive{% else %}border-input{% endif %} bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+                    {% if form.length.errors %}
+                    <p class="mt-1 text-xs text-destructive">{{ form.length.errors.0 }}</p>
                     {% endif %}
                 </div>
-                
-                <!-- Description Field -->
-                <div class="m3-form-field">
-                    <label for="id_{{ form.description.name }}" class="m3-form-label">Description</label>
-                    <textarea name="{{ form.description.name }}" id="id_{{ form.description.name }}" class="m3-text-field" rows="4">{{ form.description.value|default:'' }}</textarea>
-                </div>
-                
-                <!-- Container Field -->
-                <div class="m3-form-field">
-                    <label for="id_{{ form.container.name }}" class="m3-form-label">Container</label>
-                    <select name="{{ form.container.name }}" id="id_{{ form.container.name }}" class="m3-text-field">
-                        <option value="">None (standalone unit)</option>
-                        {% for value, label in form.fields.container.choices %}
-                            {% if value %}
-                            <option value="{{ value }}"{% if form.container.value == value %} selected{% endif %}>{{ label }}</option>
-                            {% endif %}
-                        {% endfor %}
-                    </select>
-                    <span class="m3-form-helper-text">Select a Location or parent Unit to contain this unit</span>
-                </div>
-                
-                <!-- Dimensions Section -->
-                <h3 class="md-typescale-title-medium" style="margin-top: var(--wms-space-md); margin-bottom: var(--wms-space-xs);">Dimensions (Optional)</h3>
-                <p class="md-typescale-body-small" style="color: var(--md-sys-color-on-surface-variant); margin-bottom: var(--wms-space-sm);">
-                    Either provide all dimensions or leave them all blank
-                </p>
-                
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--wms-space-sm);">
-                    <!-- Length Field -->
-                    <div class="m3-form-field{% if form.length.errors %} m3-form-field--error{% endif %}">
-                        <label for="id_{{ form.length.name }}" class="m3-form-label">Length</label>
-                        <input type="number" step="any" name="{{ form.length.name }}" id="id_{{ form.length.name }}" class="m3-text-field{% if form.length.errors %} m3-text-field--error{% endif %}" value="{{ form.length.value|default:'' }}">
-                        {% if form.length.errors %}
-                        <span class="m3-form-error">{{ form.length.errors.0 }}</span>
-                        {% endif %}
-                    </div>
-                    
-                    <!-- Width Field -->
-                    <div class="m3-form-field{% if form.width.errors %} m3-form-field--error{% endif %}">
-                        <label for="id_{{ form.width.name }}" class="m3-form-label">Width</label>
-                        <input type="number" step="any" name="{{ form.width.name }}" id="id_{{ form.width.name }}" class="m3-text-field{% if form.width.errors %} m3-text-field--error{% endif %}" value="{{ form.width.value|default:'' }}">
-                        {% if form.width.errors %}
-                        <span class="m3-form-error">{{ form.width.errors.0 }}</span>
-                        {% endif %}
-                    </div>
-                    
-                    <!-- Height Field -->
-                    <div class="m3-form-field{% if form.height.errors %} m3-form-field--error{% endif %}">
-                        <label for="id_{{ form.height.name }}" class="m3-form-label">Height</label>
-                        <input type="number" step="any" name="{{ form.height.name }}" id="id_{{ form.height.name }}" class="m3-text-field{% if form.height.errors %} m3-text-field--error{% endif %}" value="{{ form.height.value|default:'' }}">
-                        {% if form.height.errors %}
-                        <span class="m3-form-error">{{ form.height.errors.0 }}</span>
-                        {% endif %}
-                    </div>
-                </div>
-                
-                <!-- Dimensions Unit Field -->
-                <div class="m3-form-field{% if form.dimensions_unit.errors %} m3-form-field--error{% endif %}" style="margin-top: var(--wms-space-sm);">
-                    <label for="id_{{ form.dimensions_unit.name }}" class="m3-form-label">Unit of Measurement</label>
-                    <select name="{{ form.dimensions_unit.name }}" id="id_{{ form.dimensions_unit.name }}" class="m3-text-field{% if form.dimensions_unit.errors %} m3-text-field--error{% endif %}">
-                        <option value="">Select unit...</option>
-                        {% for value, label in form.fields.dimensions_unit.choices %}
-                            {% if value %}
-                            <option value="{{ value }}"{% if form.dimensions_unit.value == value %} selected{% endif %}>{{ label }}</option>
-                            {% endif %}
-                        {% endfor %}
-                    </select>
-                    {% if form.dimensions_unit.errors %}
-                    <span class="m3-form-error">{{ form.dimensions_unit.errors.0 }}</span>
+                <div>
+                    <label for="id_{{ form.width.name }}" class="mb-1.5 block text-xs font-medium text-muted-foreground">Width</label>
+                    <input type="number" step="any" name="{{ form.width.name }}" id="id_{{ form.width.name }}"
+                           value="{{ form.width.value|default:'' }}"
+                           class="w-full rounded-md border {% if form.width.errors %}border-destructive{% else %}border-input{% endif %} bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+                    {% if form.width.errors %}
+                    <p class="mt-1 text-xs text-destructive">{{ form.width.errors.0 }}</p>
                     {% endif %}
                 </div>
-                
-                {% if form.non_field_errors %}
-                <div class="m3-form-field m3-form-field--error" style="margin-top: var(--wms-space-sm);">
-                    <span class="m3-form-error">{{ form.non_field_errors.0 }}</span>
-                </div>
-                {% endif %}
-                
-                <div class="m3-card__actions form-actions-spacing">
-                    <button type="submit" class="m3-button m3-button-filled m3-button-standard">
-                        <svg class="m3-button-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-                        </svg>
-                        <span class="m3-button-label">Save Changes</span>
-                    </button>
-                    <a href="{% url 'unit_detail' unit.user_id unit.access_token %}" class="m3-button m3-button-tonal m3-button-standard">
-                        <svg class="m3-button-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
-                        </svg>
-                        <span class="m3-button-label">Cancel</span>
-                    </a>
+                <div>
+                    <label for="id_{{ form.height.name }}" class="mb-1.5 block text-xs font-medium text-muted-foreground">Height</label>
+                    <input type="number" step="any" name="{{ form.height.name }}" id="id_{{ form.height.name }}"
+                           value="{{ form.height.value|default:'' }}"
+                           class="w-full rounded-md border {% if form.height.errors %}border-destructive{% else %}border-input{% endif %} bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+                    {% if form.height.errors %}
+                    <p class="mt-1 text-xs text-destructive">{{ form.height.errors.0 }}</p>
+                    {% endif %}
                 </div>
             </div>
+
+            <div class="mt-3">
+                <label for="id_{{ form.dimensions_unit.name }}" class="mb-1.5 block text-xs font-medium text-muted-foreground">Unit of measurement</label>
+                <select name="{{ form.dimensions_unit.name }}" id="id_{{ form.dimensions_unit.name }}"
+                        class="w-full rounded-md border {% if form.dimensions_unit.errors %}border-destructive{% else %}border-input{% endif %} bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+                    <option value="">Select unit...</option>
+                    {% for value, label in form.fields.dimensions_unit.choices %}
+                        {% if value %}
+                        <option value="{{ value }}"{% if form.dimensions_unit.value == value %} selected{% endif %}>{{ label }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+                {% if form.dimensions_unit.errors %}
+                <p class="mt-1 text-xs text-destructive">{{ form.dimensions_unit.errors.0 }}</p>
+                {% endif %}
+            </div>
+        </fieldset>
+
+        <!-- Actions -->
+        <div class="flex gap-2 pt-2">
+            <button type="submit"
+                    class="flex-1 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                Save Changes
+            </button>
+            <a href="{% url 'unit_detail' unit.user_id unit.access_token %}"
+               class="flex-1 rounded-md border border-border px-4 py-2.5 text-center text-sm font-medium text-foreground hover:bg-accent">
+                Cancel
+            </a>
         </div>
     </form>
 </div>
-
-<nav class="m3-bottom-nav">
-    <a href="{% url 'home_view' %}" class="m3-nav-item">
-        <div class="m3-nav-icon-container">
-            <svg class="m3-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
-            </svg>
-        </div>
-        <span class="m3-nav-label">Home</span>
-    </a>
-
-    <a href="{% url 'list_units' %}" class="m3-nav-item m3-nav-item-active">
-        <div class="m3-nav-icon-container">
-            <svg class="m3-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M20 2H4c-1 0-2 .9-2 2v3.01c0 .72.43 1.34 1 1.69V20c0 1.1 1.1 2 2 2h14c.9 0 2-.9 2-2V8.7c.57-.35 1-.97 1-1.69V4c0-1.1-1-2-2-2zm-5 12H9v-2h6v2zm5-7H4V4h16v3z" />
-            </svg>
-        </div>
-        <span class="m3-nav-label">Inventory</span>
-    </a>
-
-    <a href="{% url 'item_search' %}" class="m3-nav-item">
-        <div class="m3-nav-icon-container">
-            <svg class="m3-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.71.71l.27.28v.79l5 4.99L20.49 19zM9.5 14a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z" />
-            </svg>
-        </div>
-        <span class="m3-nav-label">Search</span>
-    </a>
-</nav>
-{% endblock %}
-
-{% block extra_js %}
-<script src="{% static 'core/js/ui_utils.js' %}"></script>
-{% include "core/includes/form_error_snackbar_script.html" with form=form %}
 {% endblock %}

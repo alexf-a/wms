@@ -26,6 +26,8 @@ WMS seeks to address both pain-points:
 - **LLM Functionality**: Use the LLMHandler for all LLM queries, and ensure that LLMCall objects are used to encapsulate query parameters.
 - **Poetry**: Use Poetry for environment management, project configuration and to run scripts and tests. Ensure that the `pyproject.toml` file is updated with any new dependencies. Run all commands and scripts with `poetry run`
 - **Ruff**: Use Ruff for linting and code quality checks. Follow the project's linting rules and fix any issues reported by Ruff.
+- **Tailwind CSS**: The project uses Tailwind CSS v4 via the standalone CLI (no Node.js). Theme tokens and design system colors are defined in `core/tailwind/input.css` using `@theme`. Run `make tw-build` for a one-shot build or `make tw-watch` during development. New templates should extend `base.html` and use Tailwind utility classes. See `.github/instructions/ui-ux.instructions.md` for the design system.
+- **Tool Versions**: Build tool versions (Poetry, Tailwind) are pinned in `.tool-versions`. Update versions there — the Makefile and Dockerfile read from it automatically.
 - **Google Docstrings**: Use Google-style docstrings for all public methods and classes.
 - **Testing**: All tests are written using pytest. Use the `test_*.py` naming convention for test files and organize tests in the `tests/` directory. Ensure that all new features and bug fixes are covered by tests.
 - **Debugging**:
@@ -41,7 +43,8 @@ WMS seeks to address both pain-points:
 This project deploys to AWS Lightsail Container Service using a container image built from the repository. Configuration is environment‑driven and centralized.
 
 ### Key Files
-- `Dockerfile`: Builds the production image (Poetry install, collectstatic, non‑root user).
+- `.tool-versions`: Single source of truth for build tool versions (Poetry, Tailwind CSS). The Makefile reads versions from this file and passes them to Docker via `--build-arg`.
+- `Dockerfile`: Builds the production image (Poetry install, Tailwind CSS build, collectstatic, non‑root user). Receives `POETRY_VERSION` and `TW_VERSION` as build args.
 - `docker-entrypoint.sh`: Runtime bootstrap (verifies `PORT` env, runs migrations opportunistically, then `gunicorn`).
 - `gunicorn.conf.py`: Server tuning (workers via `WEB_CONCURRENCY` override or `(2*cores)+1`, threading, timeouts, logging). Also ensures `DJANGO_SETTINGS_MODULE` is set from the environment.
 - `deploy/containers.example.json`: Template for the real (ignored) `deploy/containers.json` containing env vars (single source of truth for `PORT`, `DEBUG`, `ALLOWED_HOSTS`, `SECRET_KEY`, DB_* vars, `DJANGO_SETTINGS_MODULE`, optional `WEB_CONCURRENCY`).

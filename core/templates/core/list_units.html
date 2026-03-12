@@ -1,90 +1,159 @@
 {% extends "core/base.html" %}
+{% load static %}
 
-{% block title %}Your Storage Units - WMS{% endblock %}
+{% block title %}Browse - WMS{% endblock %}
 
 {% block content %}
-<div class="m3-page-shell">
-    {% if units %}
-        <!-- Units Grid -->
-        <div class="grid-2">
-            {% for unit in units %}
-                <div class="m3-card m3-card--filled">
-                    <div class="m3-card__content">
-                        <h3 class="md-typescale-title-large m3-card__title">{{ unit.name }}</h3>
-                        
-                        {% if unit.description %}
-                            <p class="md-typescale-body-medium m3-card__description">{{ unit.description|truncatewords:20 }}</p>
-                        {% else %}
-                            <p class="md-typescale-body-medium m3-card__description text-muted"><em>No description</em></p>
-                        {% endif %}
-                        
-                        {% if unit.location %}
-                            <p class="md-typescale-body-small text-muted m3-card__meta">
-                                <strong>Location:</strong> {{ unit.location }}
-                            </p>
-                        {% endif %}
-                        
-                        <p class="md-typescale-label-medium text-muted m3-card__meta-spacing">
-                            {% with item_count=unit.items.count %}
-                                {% if item_count == 0 %}
-                                    Empty unit
-                                {% elif item_count == 1 %}
-                                    1 item
-                                {% else %}
-                                    {{ item_count }} items
-                                {% endif %}
-                            {% endwith %}
-                        </p>
-                    </div>
-                    
-                    <div class="m3-card__actions">
-                        <a href="{% url 'unit_detail' unit.user_id unit.access_token %}" class="m3-button m3-button-filled">
-                            <span class="m3-button-label">View Details</span>
-                        </a>
-                        <a href="{% url 'unit_qr' unit.user_id unit.access_token %}" class="m3-button m3-button-tonal">
-                            <span class="m3-button-label">QR Code</span>
-                        </a>
-                    </div>
-                </div>
-            {% endfor %}
-        </div>
-        
-        <!-- Add Unit Button -->
-        <div class="m3-button-centered">
-            <a href="{% url 'create_storage' %}" class="m3-button m3-button-filled m3-button-standard">
-                <svg class="m3-button-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-                </svg>
-                <span class="m3-button-label">Add Storage</span>
-            </a>
-        </div>
-        
-        <!-- QR Code Help Link -->
-        <div class="m3-button-centered mt-sm">
-            <a href="{% url 'getting_started' %}#qr-codes" class="m3-help-link" target="_blank" rel="noopener noreferrer" aria-label="How to use QR codes (opens in new window)">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-                </svg>
-                <span>How to use QR codes</span>
-            </a>
-        </div>
-    {% else %}
-        <!-- Empty State -->
-        <div class="empty-state">
-            <svg width="120" height="120" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M20 2H4c-1 0-2 .9-2 2v3.01c0 .72.43 1.34 1 1.69V20c0 1.1 1.1 2 2 2h14c.9 0 2-.9 2-2V8.7c.57-.35 1-.97 1-1.69V4c0-1.1-1-2-2-2zm-5 12H9v-2h6v2zm5-7H4V4h16v3z" fill="currentColor"/>
-            </svg>
-            <h2 class="md-typescale-headline-small">No storage units yet</h2>
-            <p class="md-typescale-body-large text-muted">Create your first unit to start organizing your belongings</p>
-            <div class="m3-button-centered">
-                <a href="{% url 'create_storage' %}" class="m3-button m3-button-filled m3-button-standard">
-                    <svg class="m3-button-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-                    </svg>
-                    <span class="m3-button-label">Add Storage</span>
-                </a>
-            </div>
-        </div>
+<div id="browse-app" class="flex flex-col">
+
+  <!-- Header -->
+  <div class="mb-4 flex items-center gap-2">
+    <button id="browse-back-btn" class="hidden rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" aria-label="Back" type="button">
+      <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/>
+      </svg>
+    </button>
+    <div class="flex-1">
+      <h1 id="browse-title" class="text-xl font-bold text-foreground">Browse</h1>
+      <p id="browse-subtitle" class="text-sm text-muted-foreground">
+        {{ locations|length }} location{{ locations|length|pluralize:",s" }}{% if orphan_units %}, {{ orphan_units|length }} ungrouped unit{{ orphan_units|length|pluralize:",s" }}{% endif %}
+      </p>
+    </div>
+    <div class="flex gap-2">
+      <button type="button" id="browse-create-location-btn"
+              class="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent transition-colors"
+              aria-label="Add location">
+        + Location
+      </button>
+      <button type="button" id="browse-create-unit-btn"
+              class="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+              aria-label="Add unit">
+        + Unit
+      </button>
+    </div>
+  </div>
+
+  <!-- Screen: Locations (server-rendered) -->
+  <div id="screen-locations" class="space-y-3">
+    {% for loc in locations %}
+    <a href="#" class="browse-location-card relative flex items-center gap-3 rounded-lg border border-border bg-card p-4 no-underline hover:border-primary/50 transition-colors"
+       data-location-id="{{ loc.id }}" data-location-name="{{ loc.name }}">
+      <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+        <svg class="h-5 w-5 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+          <circle cx="12" cy="10" r="3"/>
+        </svg>
+      </div>
+      <div class="min-w-0 flex-1">
+        <p class="truncate text-sm font-medium text-foreground">{{ loc.name }}</p>
+        {% if loc.address %}
+        <p class="truncate text-xs text-muted-foreground">{{ loc.address }}</p>
+        {% endif %}
+      </div>
+      <span class="shrink-0 text-xs text-muted-foreground">{{ loc.unit_count }} unit{{ loc.unit_count|pluralize:",s" }}</span>
+      <button type="button" class="entity-menu-btn shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+              data-entity-type="location"
+              data-entity-id="{{ loc.id }}"
+              data-entity-name="{{ loc.name }}"
+              data-entity-address="{{ loc.address|default_if_none:'' }}"
+              aria-label="Location options">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/>
+        </svg>
+      </button>
+      <svg class="h-4 w-4 shrink-0 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 18l6-6-6-6"/>
+      </svg>
+    </a>
+    {% endfor %}
+
+    {% if orphan_units %}
+    <p class="mt-4 mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Ungrouped Units</p>
+    {% for unit in orphan_units %}
+    <a href="#" class="browse-unit-card relative flex items-center gap-3 rounded-lg border border-border bg-card p-4 no-underline hover:border-primary/50 transition-colors"
+       data-unit-user-id="{{ unit.user_id }}" data-unit-access-token="{{ unit.access_token }}" data-unit-name="{{ unit.name }}">
+      <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+        <svg class="h-5 w-5 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+          <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+          <line x1="12" y1="22.08" x2="12" y2="12"/>
+        </svg>
+      </div>
+      <div class="min-w-0 flex-1">
+        <p class="truncate text-sm font-medium text-foreground">{{ unit.name }}</p>
+      </div>
+      <span class="shrink-0 text-xs text-muted-foreground">{{ unit.item_count }} item{{ unit.item_count|pluralize:",s" }}</span>
+      <button type="button" class="entity-menu-btn shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+              data-entity-type="unit"
+              data-entity-user-id="{{ unit.user_id }}"
+              data-entity-access-token="{{ unit.access_token }}"
+              data-entity-name="{{ unit.name }}"
+              aria-label="Unit options">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/>
+        </svg>
+      </button>
+      <svg class="h-4 w-4 shrink-0 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 18l6-6-6-6"/>
+      </svg>
+    </a>
+    {% endfor %}
     {% endif %}
+
+    {% if not locations and not orphan_units %}
+    <div class="py-12 text-center">
+      <svg class="mx-auto h-12 w-12 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+      </svg>
+      <h2 class="mt-4 text-lg font-medium text-foreground">No storage spaces yet</h2>
+      <p class="mt-1 text-sm text-muted-foreground">Create a location or unit to start organizing</p>
+      <div class="mt-4 flex justify-center gap-3">
+        <button type="button" id="empty-create-location-btn"
+                class="rounded-md border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-accent no-underline"
+                onclick="document.getElementById('browse-create-location-btn').click()">
+          Add Location
+        </button>
+        <button type="button" id="empty-create-unit-btn"
+                class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 no-underline"
+                onclick="document.getElementById('browse-create-unit-btn').click()">
+          Add Unit
+        </button>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Screen: Units (populated by JS) -->
+  <div id="screen-units" class="hidden space-y-3"></div>
+
 </div>
+
+{# Dialog templates #}
+{% include "core/includes/dialogs/create_location.html" %}
+{% include "core/includes/dialogs/create_unit.html" %}
+{% include "core/includes/dialogs/edit_location.html" %}
+{% include "core/includes/dialogs/edit_unit.html" %}
+{% include "core/includes/dialogs/delete_location.html" %}
+{% include "core/includes/dialogs/delete_unit.html" %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'core/js/fetch_utils.js' %}"></script>
+<script
+  src="{% static 'core/js/browse.js' %}"
+  data-browse-locations-url="{% url 'api_browse_locations' %}"
+  data-browse-location-units-url="{% url 'api_browse_location_units' location_id=0 %}"
+  data-unit-detail-url="{% url 'unit_detail' user_id=0 access_token='PLACEHOLDER' %}"
+></script>
+<script
+  src="{% static 'core/js/browse_crud.js' %}"
+  data-create-location-url="{% url 'api_create_location' %}"
+  data-update-location-url="{% url 'api_update_location' location_id=0 %}"
+  data-delete-location-url="{% url 'api_delete_location' location_id=0 %}"
+  data-create-unit-url="{% url 'api_create_unit' %}"
+  data-unit-detail-json-url="{% url 'api_unit_detail_json' user_id=0 access_token='PLACEHOLDER' %}"
+  data-update-unit-url="{% url 'api_update_unit' user_id=0 access_token='PLACEHOLDER' %}"
+  data-delete-unit-url="{% url 'api_delete_unit' user_id=0 access_token='PLACEHOLDER' %}"
+  data-container-options-url="{% url 'api_container_options' %}"
+></script>
 {% endblock %}

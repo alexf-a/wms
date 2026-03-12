@@ -1,0 +1,20 @@
+{# Reusable <dialog> wrapper partial.                                       #}
+{# Usage:                                                                    #}
+{#   {% include "core/includes/dialog_shell.html" with dialog_id="my-dlg" %} #}
+{#     … dialog body …                                                       #}
+{#   (content goes inside the block, not via include — use as a pattern ref) #}
+{#                                                                           #}
+{# Or copy this skeleton into your template and customise:                   #}
+<dialog id="{{ dialog_id }}"
+        class="w-full max-w-md rounded-lg border border-border bg-card p-0 text-card-foreground shadow-xl backdrop:bg-foreground/40
+               open:animate-[dialog-in_200ms_ease-out]
+               [&.dialog--closing]:animate-[dialog-out_150ms_ease-in]
+               [&.dialog--bottom-sheet]:mt-auto [&.dialog--bottom-sheet]:mb-0 [&.dialog--bottom-sheet]:max-w-full [&.dialog--bottom-sheet]:rounded-b-none [&.dialog--bottom-sheet]:rounded-t-2xl
+               [&.dialog--bottom-sheet]:open:animate-[sheet-up_250ms_ease-out]
+               [&.dialog--bottom-sheet.dialog--closing]:animate-[sheet-down_200ms_ease-in]">
+    <div class="px-6 py-5">
+        {% block dialog_body %}
+        {# Override this block when extending the pattern #}
+        {% endblock %}
+    </div>
+</dialog>

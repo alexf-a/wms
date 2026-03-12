@@ -1,0 +1,142 @@
+@import "tailwindcss";
+
+/* Class-based dark mode (v4 defaults to prefers-color-scheme) */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * WMS Design System — Theme Tokens
+ * Colors reference CSS custom properties defined in @layer base so they
+ * can swap between light / dark mode at runtime.
+ *
+ * In v4 opacity modifiers (e.g. bg-primary/50) use color-mix(), which
+ * requires the variable to resolve to a complete color value — hence the
+ * hsl() wrappers on the custom-property values below.
+ */
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+}
+
+@layer base {
+  :root {
+    --background: hsl(30 20% 98%);
+    --foreground: hsl(25 15% 12%);
+
+    --card: hsl(30 15% 99%);
+    --card-foreground: hsl(25 15% 12%);
+
+    --popover: hsl(30 15% 99%);
+    --popover-foreground: hsl(25 15% 12%);
+
+    --primary: hsl(143 35% 48%);
+    --primary-foreground: hsl(0 0% 100%);
+
+    --secondary: hsl(30 8% 92%);
+    --secondary-foreground: hsl(25 10% 30%);
+
+    --muted: hsl(30 10% 94%);
+    --muted-foreground: hsl(25 8% 48%);
+
+    --accent: hsl(192 40% 38%);
+    --accent-foreground: hsl(0 0% 100%);
+
+    --destructive: hsl(0 72% 51%);
+    --destructive-foreground: hsl(0 0% 100%);
+
+    --border: hsl(30 12% 88%);
+    --input: hsl(30 12% 88%);
+    --ring: hsl(143 35% 48%);
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: hsl(25 12% 10%);
+    --foreground: hsl(30 15% 92%);
+
+    --card: hsl(25 10% 13%);
+    --card-foreground: hsl(30 15% 92%);
+
+    --popover: hsl(25 10% 13%);
+    --popover-foreground: hsl(30 15% 92%);
+
+    --primary: hsl(143 35% 48%);
+    --primary-foreground: hsl(0 0% 100%);
+
+    --secondary: hsl(25 8% 18%);
+    --secondary-foreground: hsl(30 12% 85%);
+
+    --muted: hsl(25 8% 18%);
+    --muted-foreground: hsl(30 8% 55%);
+
+    --accent: hsl(192 40% 38%);
+    --accent-foreground: hsl(0 0% 100%);
+
+    --destructive: hsl(0 62% 40%);
+    --destructive-foreground: hsl(0 0% 100%);
+
+    --border: hsl(25 8% 20%);
+    --input: hsl(25 8% 20%);
+    --ring: hsl(143 35% 48%);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Dialog & bottom-sheet animations (used by native <dialog> elements) */
+@keyframes dialog-in {
+  from { opacity: 0; transform: scale(0.95) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes dialog-out {
+  from { opacity: 1; transform: scale(1) translateY(0); }
+  to   { opacity: 0; transform: scale(0.95) translateY(8px); }
+}
+
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+@keyframes sheet-down {
+  from { transform: translateY(0); }
+  to   { transform: translateY(100%); }
+}

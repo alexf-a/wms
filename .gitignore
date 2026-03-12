@@ -36,3 +36,12 @@ deploy/caddy-ca-qr.png
 
 staticfiles/*
 .DS_Store
+
+# Tailwind CSS
+bin/tailwindcss
+core/static/core/css/tailwind.css
+
+# E2E test artifacts
+tests/e2e/screenshots/
+tests/e2e/gifs/
+tests/e2e/config.yaml

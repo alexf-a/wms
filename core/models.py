@@ -73,6 +73,12 @@ class WMSUser(AbstractUser):
         help_text="If True, user will be required to change password on next login."
     )
 
+    # Onboarding wizard completion
+    has_completed_onboarding = models.BooleanField(
+        default=False,
+        help_text="If True, user has completed the onboarding wizard."
+    )
+
     # Use email as the username field for authentication
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []  # Email is already the USERNAME_FIELD, so don't include it here
@@ -410,6 +416,26 @@ class Unit(StorageSpace):
             current = current.parent if isinstance(current, Unit) else None
 
         return " > ".join(parts)
+
+    def get_ancestor_path(self) -> str:
+        """Return hierarchical path from root to this unit's parent (excludes self).
+
+        Useful when the unit name is already displayed separately (e.g., as a heading)
+        and only the ancestor context is needed.
+
+        Examples:
+            - "Garage > Workbench" (for a unit nested under Workbench)
+            - "Garage" (for a top-level unit in a location)
+            - "" (standalone unit with no parent)
+
+        Returns:
+            str: Ancestor path with " > " separators, or empty string if no parent.
+        """
+        full = self.get_full_path()
+        # Remove the last segment (self.name)
+        sep = " > "
+        idx = full.rfind(sep)
+        return full[:idx] if idx != -1 else ""
 
     def get_root_unit(self) -> Unit:
         """Return the top-level Unit in this hierarchy.

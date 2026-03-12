@@ -11,13 +11,17 @@ PLATFORM?=linux/amd64
 # Image tag suffix based on architecture
 ARCH_TAG?=amd64
 
+# Tool versions from .tool-versions (single source of truth)
+export POETRY_VERSION ?= $(shell awk '/^poetry / {print $$2}' .tool-versions)
+export TW_VERSION ?= v$(shell awk '/^tailwindcss / {print $$2}' .tool-versions)
+
 # lightsailctl bug fix: Ensure the patched version is in PATH
 # The official lightsailctl has a bug with "image push response does not contain the image digest"
 # We use the patched version from: https://github.com/aws/lightsailctl/pull/102
 # Install with: cd /tmp && git clone https://github.com/paxan/lightsailctl.git -b paxan/image-push-bug-fixes && cd lightsailctl && go install ./...
 export PATH := $(PATH):$(HOME)/go/bin
 
-.PHONY: docker-build deploy up down create push install-lightsailctl-fix sync-env local-up update-image local-https caddy-trust caddy-export-ca local-https-down test-js
+.PHONY: docker-build deploy up down create push install-lightsailctl-fix sync-env local-up update-image local-https caddy-trust caddy-export-ca local-https-down test-js tw-install tw-build tw-watch install-e2e test-e2e test-e2e-headed
 
 # =============================================================================
 # Helper Functions for Local HTTPS Setup
@@ -77,7 +81,7 @@ endef
 docker-build:
 	# Build with explicit platform to ensure compatibility with Lightsail
 	# Lightsail only supports linux/amd64 containers
-	docker build --platform $(PLATFORM) -t $(SVC):$(ARCH_TAG) .
+	docker build --platform $(PLATFORM) --build-arg POETRY_VERSION=$(POETRY_VERSION) --build-arg TW_VERSION=$(TW_VERSION) -t $(SVC):$(ARCH_TAG) .
 
 create:
 	aws lightsail create-container-service --region $(REGION) --service-name $(SVC) --power $(POWER) --scale $(SCALE) --no-cli-pager
@@ -165,6 +169,19 @@ local-down:
 
 test-js:
 	npm run test:js
+
+# =============================================================================
+# E2E Testing (Browser-Use)
+# =============================================================================
+
+install-e2e:  ## Install E2E test dependencies (browser-use + chromium via cdp-use)
+	poetry install --with e2e
+
+test-e2e:  ## Run E2E browser tests (headless)
+	poetry run pytest tests/e2e/ -vvv --tb=short -x
+
+test-e2e-headed:  ## Run E2E browser tests with visible browser (for debugging)
+	BROWSER_USE_HEADLESS=false poetry run pytest tests/e2e/ -vvv --tb=short -x
 
 # Help target to document the bug fix
 help:
@@ -323,3 +340,47 @@ local-https-down:
 refresh-local:
 	@docker-compose exec web python manage.py collectstatic --noinput
 	@docker-compose restart web
+
+# =============================================================================
+# Tailwind CSS Targets
+# =============================================================================
+
+# Tailwind standalone CLI settings
+TW_INPUT=core/tailwind/input.css
+TW_OUTPUT=core/static/core/css/tailwind.css
+
+# Detect OS/arch for downloading the correct binary
+UNAME_S := $(shell uname -s)
+UNAME_M := $(shell uname -m)
+ifeq ($(UNAME_S),Darwin)
+  ifeq ($(UNAME_M),arm64)
+    TW_PLATFORM=macos-arm64
+  else
+    TW_PLATFORM=macos-x64
+  endif
+else
+  ifeq ($(UNAME_M),aarch64)
+    TW_PLATFORM=linux-arm64
+  else
+    TW_PLATFORM=linux-x64
+  endif
+endif
+
+# Download the Tailwind standalone CLI
+tw-install:
+	@mkdir -p bin
+	@echo "Downloading Tailwind CSS $(TW_VERSION) for $(TW_PLATFORM)..."
+	@curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/download/$(TW_VERSION)/tailwindcss-$(TW_PLATFORM)
+	@mv tailwindcss-$(TW_PLATFORM) bin/tailwindcss
+	@chmod +x bin/tailwindcss
+	@echo "Tailwind CSS CLI installed at bin/tailwindcss"
+
+# One-shot build (minified)
+tw-build:
+	@if [ ! -f bin/tailwindcss ]; then $(MAKE) tw-install; fi
+	bin/tailwindcss -i $(TW_INPUT) -o $(TW_OUTPUT) --minify
+
+# Watch mode for development
+tw-watch:
+	@if [ ! -f bin/tailwindcss ]; then $(MAKE) tw-install; fi
+	bin/tailwindcss -i $(TW_INPUT) -o $(TW_OUTPUT) --watch

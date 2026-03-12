@@ -11,7 +11,7 @@ from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError
-from django.db.models import F
+from django.db.models import Count, F
 from django.db.models.functions import Greatest
 from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -31,12 +31,11 @@ from .forms import (
     ItemForm,
     ItemSearchForm,
     PasswordChangeForm,
-    StorageSpaceForm,
     UnitForm,
     WMSUserAuthForm,
     WMSUserCreationForm,
 )
-from .models import UNIT_2_NAME, Item, Unit
+from .models import UNIT_2_NAME, Item, Location, Unit
 from .models import ITEM_QUANTITY_COUNT_STEP, ITEM_QUANTITY_NON_COUNT_STEP, ITEM_QUANTITY_ROUNDING_QUANTUM
 
 logger = logging.getLogger(__name__)
@@ -126,7 +125,7 @@ def register_view(request: HttpRequest) -> HttpResponse:
         if form.is_valid():
             user = form.save()
             login(request, user)
-            return redirect("home_view")
+            return redirect("onboarding")
         logger.error("Registration form errors: %s", form.errors)
     else:
         form = WMSUserCreationForm()
@@ -229,8 +228,502 @@ def home_view(request: HttpRequest) -> HttpResponse:
     Returns:
         The rendered home page with content based on authentication status.
     """
-    # Pass authentication status to the template
-    return render(request, "core/home.html", {"is_authenticated": request.user.is_authenticated, "active_nav": "home"})
+    if request.user.is_authenticated and not request.user.has_completed_onboarding:
+        return redirect("onboarding")
+
+    context = {
+        "is_authenticated": request.user.is_authenticated,
+        "active_nav": "home",
+    }
+
+    if request.user.is_authenticated:
+        context["location_count"] = Location.objects.filter(user=request.user).count()
+        context["unit_count"] = Unit.objects.filter(user=request.user).count()
+        context["item_count"] = Item.objects.filter(user=request.user).count()
+
+    return render(request, "core/home.html", context)
+
+
+@login_required
+def onboarding_view(request: HttpRequest) -> HttpResponse:
+    """Render the onboarding wizard.
+
+    Redirects to home if the user has already completed onboarding.
+
+    Args:
+        request: The HTTP request object.
+
+    Returns:
+        The rendered onboarding page or a redirect to home.
+    """
+    if request.user.has_completed_onboarding:
+        return redirect("home_view")
+    return render(request, "core/onboarding.html")
+
+
+@login_required
+def complete_onboarding_api(request: HttpRequest) -> JsonResponse:
+    """Mark the current user as having completed onboarding.
+
+    Args:
+        request: The HTTP request object.
+
+    Returns:
+        JSON response indicating success or method not allowed.
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+    request.user.has_completed_onboarding = True
+    request.user.save(update_fields=["has_completed_onboarding"])
+    return JsonResponse({"status": "ok"})
+
+
+@login_required
+def api_create_location(request: HttpRequest) -> JsonResponse:
+    """Create a new location via JSON API.
+
+    Args:
+        request: The HTTP request with JSON body containing 'name' and optional 'address'.
+
+    Returns:
+        JsonResponse with created location's id and name (201), or error.
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    name = (data.get("name") or "").strip()
+    if not name:
+        return JsonResponse({"error": "Name is required"}, status=400)
+
+    address = (data.get("address") or "").strip() or None
+
+    try:
+        location = Location.objects.create(
+            user=request.user, name=name, address=address
+        )
+    except IntegrityError:
+        return JsonResponse(
+            {"error": f'A location named "{name}" already exists.'}, status=409
+        )
+
+    return JsonResponse({"id": location.id, "name": location.name}, status=201)
+
+
+@login_required
+def api_create_unit(request: HttpRequest) -> JsonResponse:
+    """Create a new unit via JSON API.
+
+    Args:
+        request: The HTTP request with JSON body containing 'name' and optional
+            'location_id' or 'parent_unit_id' (mutually exclusive).
+
+    Returns:
+        JsonResponse with created unit's id, name, and access_token (201), or error.
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    name = (data.get("name") or "").strip()
+    if not name:
+        return JsonResponse({"error": "Name is required"}, status=400)
+
+    location_id = data.get("location_id")
+    parent_unit_id = data.get("parent_unit_id")
+    location = None
+    parent_unit = None
+    if location_id and parent_unit_id:
+        return JsonResponse(
+            {"error": "A unit cannot have both a location and a parent unit."},
+            status=400,
+        )
+    if location_id:
+        location = get_object_or_404(Location, id=location_id, user=request.user)
+    if parent_unit_id:
+        parent_unit = get_object_or_404(Unit, id=parent_unit_id, user=request.user)
+
+    try:
+        unit = Unit.objects.create(
+            user=request.user, name=name, location=location, parent_unit=parent_unit,
+        )
+    except IntegrityError:
+        return JsonResponse(
+            {"error": f'A unit named "{name}" already exists.'}, status=409
+        )
+
+    return JsonResponse(
+        {"id": unit.id, "name": unit.name, "access_token": unit.access_token},
+        status=201,
+    )
+
+
+@login_required
+def api_browse_locations(request: HttpRequest) -> JsonResponse:
+    """Return locations with unit counts and orphan units with item counts.
+
+    Args:
+        request: The HTTP request object.
+
+    Returns:
+        JsonResponse with 'locations' and 'orphan_units' lists.
+    """
+    if request.method != "GET":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    locations = (
+        Location.objects.filter(user=request.user)
+        .annotate(unit_count=Count("unit_set"))
+        .order_by("name")
+        .values("id", "name", "address", "unit_count")
+    )
+
+    orphan_units = (
+        Unit.objects.filter(
+            user=request.user, location__isnull=True, parent_unit__isnull=True
+        )
+        .annotate(item_count=Count("items"))
+        .order_by("name")
+        .values("id", "name", "user_id", "access_token", "item_count")
+    )
+
+    return JsonResponse({
+        "locations": list(locations),
+        "orphan_units": list(orphan_units),
+    })
+
+
+@login_required
+def api_browse_location_units(request: HttpRequest, location_id: int) -> JsonResponse:
+    """Return units within a location with item and child unit counts.
+
+    Args:
+        request: The HTTP request object.
+        location_id: The ID of the location to browse.
+
+    Returns:
+        JsonResponse with 'location' info and 'units' list.
+    """
+    if request.method != "GET":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    location = get_object_or_404(Location, id=location_id, user=request.user)
+
+    units = (
+        Unit.objects.filter(user=request.user, location=location)
+        .annotate(
+            item_count=Count("items"),
+            child_count=Count("child_units"),
+        )
+        .order_by("name")
+        .values("id", "name", "user_id", "access_token", "item_count", "child_count")
+    )
+
+    return JsonResponse({
+        "location": {"id": location.id, "name": location.name},
+        "units": list(units),
+    })
+
+
+@login_required
+def api_browse_unit_items(request: HttpRequest, user_id: int, access_token: str) -> JsonResponse:
+    """Return items and child units within a unit.
+
+    Args:
+        request: The HTTP request object.
+        user_id: The ID of the unit owner.
+        access_token: The unit's access token.
+
+    Returns:
+        JsonResponse with 'unit' info, 'parent_label', 'child_units', and 'items'.
+    """
+    if request.method != "GET":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    unit = get_object_or_404(
+        Unit, user_id=user_id, access_token=access_token, user=request.user
+    )
+
+    child_units = (
+        Unit.objects.filter(parent_unit=unit)
+        .annotate(item_count=Count("items"))
+        .order_by("name")
+        .values("id", "name", "user_id", "access_token", "item_count")
+    )
+
+    items = unit.items.order_by("name").values(
+        "id", "name", "quantity", "quantity_unit"
+    )
+
+    parent_label = ""
+    if unit.location:
+        parent_label = unit.location.name
+    elif unit.parent_unit:
+        parent_label = unit.parent_unit.name
+
+    return JsonResponse({
+        "unit": {"id": unit.id, "name": unit.name},
+        "parent_label": parent_label,
+        "child_units": list(child_units),
+        "items": list(items),
+    })
+
+
+@login_required
+def api_update_location(request: HttpRequest, location_id: int) -> JsonResponse:
+    """Update an existing location via JSON API.
+
+    Args:
+        request: The HTTP request with JSON body containing 'name' and optional 'address'.
+        location_id: The ID of the location to update.
+
+    Returns:
+        JsonResponse with updated location data (200), or error.
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    location = get_object_or_404(Location, id=location_id, user=request.user)
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    name = (data.get("name") or "").strip()
+    if not name:
+        return JsonResponse({"error": "Name is required"}, status=400)
+
+    location.name = name
+    location.address = (data.get("address") or "").strip() or None
+
+    try:
+        location.save()
+    except IntegrityError:
+        return JsonResponse(
+            {"error": f'A location named "{name}" already exists.'}, status=409
+        )
+
+    return JsonResponse({"id": location.id, "name": location.name, "address": location.address})
+
+
+@login_required
+def api_delete_location(request: HttpRequest, location_id: int) -> JsonResponse:
+    """Delete a location via JSON API. Orphans child units.
+
+    Args:
+        request: The HTTP request object.
+        location_id: The ID of the location to delete.
+
+    Returns:
+        JsonResponse with success status (200), or error.
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    location = get_object_or_404(Location, id=location_id, user=request.user)
+
+    # Orphan child units before deleting
+    location.unit_set.update(location=None)
+    location.delete()
+
+    return JsonResponse({"success": True})
+
+
+@login_required
+def api_unit_detail_json(request: HttpRequest, user_id: int, access_token: str) -> JsonResponse:
+    """Return full unit data for edit dialog population.
+
+    Args:
+        request: The HTTP request object.
+        user_id: The ID of the unit owner.
+        access_token: The unit's access token.
+
+    Returns:
+        JsonResponse with all editable unit fields.
+    """
+    if request.method != "GET":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    unit = get_object_or_404(Unit, user_id=user_id, access_token=access_token)
+    if unit.user != request.user:
+        raise Http404("Unit not found")
+
+    return JsonResponse({
+        "id": unit.id,
+        "name": unit.name,
+        "description": unit.description or "",
+        "location_id": unit.location_id,
+        "parent_unit_id": unit.parent_unit_id,
+        "length": unit.length,
+        "width": unit.width,
+        "height": unit.height,
+        "dimensions_unit": unit.dimensions_unit or "",
+        "user_id": unit.user_id,
+        "access_token": unit.access_token,
+    })
+
+
+@login_required
+def api_update_unit(request: HttpRequest, user_id: int, access_token: str) -> JsonResponse:
+    """Update an existing unit via JSON API.
+
+    Args:
+        request: The HTTP request with JSON body containing unit fields.
+        user_id: The ID of the unit owner.
+        access_token: The unit's access token.
+
+    Returns:
+        JsonResponse with updated unit data (200), or error.
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    unit = get_object_or_404(Unit, user_id=user_id, access_token=access_token)
+    if unit.user != request.user:
+        raise Http404("Unit not found")
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    name = (data.get("name") or "").strip()
+    if not name:
+        return JsonResponse({"error": "Name is required"}, status=400)
+
+    # Validate dimensions: all-or-nothing
+    length = data.get("length")
+    width = data.get("width")
+    height = data.get("height")
+    dimensions_unit = (data.get("dimensions_unit") or "").strip() or None
+    dim_values = [length, width, height, dimensions_unit]
+    dim_present = [v is not None and v != "" for v in dim_values]
+
+    if any(dim_present) and not all(dim_present):
+        return JsonResponse(
+            {"error": "All dimension fields must be provided together, or all left empty."},
+            status=400,
+        )
+
+    # Validate container: location or parent_unit, not both
+    location_id = data.get("location_id")
+    parent_unit_id = data.get("parent_unit_id")
+    if location_id and parent_unit_id:
+        return JsonResponse(
+            {"error": "A unit cannot have both a location and a parent unit."},
+            status=400,
+        )
+
+    unit.name = name
+    unit.description = (data.get("description") or "").strip() or None
+
+    # Set container
+    if location_id:
+        location = get_object_or_404(Location, id=location_id, user=request.user)
+        unit.location = location
+        unit.parent_unit = None
+    elif parent_unit_id:
+        parent = get_object_or_404(Unit, id=parent_unit_id, user=request.user)
+        unit.parent_unit = parent
+        unit.location = None
+    else:
+        unit.location = None
+        unit.parent_unit = None
+
+    # Set dimensions
+    if all(dim_present):
+        unit.length = float(length)
+        unit.width = float(width)
+        unit.height = float(height)
+        unit.dimensions_unit = dimensions_unit
+    else:
+        unit.length = None
+        unit.width = None
+        unit.height = None
+        unit.dimensions_unit = None
+
+    try:
+        unit.save()
+    except IntegrityError:
+        return JsonResponse(
+            {"error": f'A unit named "{name}" already exists.'}, status=409
+        )
+
+    return JsonResponse({
+        "id": unit.id, "name": unit.name, "access_token": unit.access_token,
+    })
+
+
+@login_required
+def api_delete_unit(request: HttpRequest, user_id: int, access_token: str) -> JsonResponse:
+    """Delete a unit via JSON API. Orphans child units, cascade-deletes items.
+
+    Args:
+        request: The HTTP request object.
+        user_id: The ID of the unit owner.
+        access_token: The unit's access token.
+
+    Returns:
+        JsonResponse with success status and items deleted count (200), or error.
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    unit = get_object_or_404(Unit, user_id=user_id, access_token=access_token)
+    if unit.user != request.user:
+        raise Http404("Unit not found")
+
+    # Count items before deletion
+    items_count = unit.items.count()
+
+    # Orphan child units before deleting
+    unit.child_units.update(parent_unit=None)
+
+    # Delete unit (cascade deletes items)
+    unit.delete()
+
+    return JsonResponse({"success": True, "items_deleted": items_count})
+
+
+@login_required
+def api_container_options(request: HttpRequest) -> JsonResponse:
+    """Return locations and units available as container options.
+
+    Args:
+        request: The HTTP request object. Accepts optional 'exclude_unit' query param.
+
+    Returns:
+        JsonResponse with 'locations' and 'units' lists.
+    """
+    if request.method != "GET":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    locations = list(
+        Location.objects.filter(user=request.user)
+        .order_by("name")
+        .values("id", "name")
+    )
+
+    units_qs = Unit.objects.filter(user=request.user).order_by("name")
+
+    exclude_unit = request.GET.get("exclude_unit")
+    if exclude_unit:
+        try:
+            units_qs = units_qs.exclude(id=int(exclude_unit))
+        except (ValueError, TypeError):
+            pass
+
+    units = list(units_qs.values("id", "name", "user_id", "access_token"))
+
+    return JsonResponse({"locations": locations, "units": units})
+
 
 def getting_started_view(request: HttpRequest) -> HttpResponse:
     """Render the getting started guide page.
@@ -245,41 +738,13 @@ def getting_started_view(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def expand_inventory_view(request: HttpRequest) -> HttpResponse:
-    """Render the expand inventory page.
-
-    Args:
-        request: The HTTP request object.
-
-    Returns:
-        The rendered expand inventory page.
-    """
-    return render(request, "core/expand_inventory.html", {"active_nav": "add"})
+    """Redirect to the add-items page (expand_inventory landing page removed)."""
+    return redirect("add_items_to_unit")
 
 @login_required
 def create_storage_view(request: HttpRequest) -> HttpResponse:
-    """Handle the creation of a new storage space (Location or Unit).
-
-    Args:
-        request: The HTTP request object.
-
-    Returns:
-        The rendered create storage page or a redirect to the created object's detail page.
-    """
-    if request.method == "POST":
-        form = StorageSpaceForm(request.POST, user=request.user)
-        if form.is_valid():
-            created_object = form.save()
-
-            # Redirect to the appropriate detail page
-            if hasattr(created_object, "access_token"):  # It's a Unit
-                return redirect("unit_detail", user_id=request.user.id, access_token=created_object.access_token)
-            # It's a Location - redirect to list_units for now (no location detail view exists)
-            messages.success(request, f"Location '{created_object.name}' created successfully!")
-            return redirect("expand_inventory")
-    else:
-        form = StorageSpaceForm(user=request.user)
-
-    return render(request, "core/create_storage.html", {"form": form})
+    """Redirect to the browse page where storage is now created via dialogs."""
+    return redirect("list_units")
 
 @login_required
 def add_items_to_unit_view(request: HttpRequest) -> HttpResponse:
@@ -307,24 +772,50 @@ def add_items_to_unit_view(request: HttpRequest) -> HttpResponse:
                     f"You already have an item named '{item.name}'. Please choose a different name."
                 )
     else:
-        form = ItemForm(user=request.user)
+        initial = {}
+        unit_id = request.GET.get("unit")
+        if unit_id:
+            initial["unit"] = unit_id
+        form = ItemForm(user=request.user, initial=initial)
 
     # Get user's units for the template
     units = Unit.objects.filter(user=request.user)
-    return render(request, "core/add_items_to_unit.html", {"form": form, "units": units})
+    return render(request, "core/add_items_to_unit.html", {
+        "form": form,
+        "units": units,
+        "active_nav": "add",
+    })
 
 @login_required
 def list_units(request: HttpRequest) -> HttpResponse:
-    """List all units for the current user.
+    """List all locations and orphan units for the current user.
+
+    Serves as the browse page's initial data source. Locations include unit
+    counts; orphan units include item counts. JS handles drill-down navigation.
 
     Args:
         request: The HTTP request object.
 
     Returns:
-        The rendered list units page.
+        The rendered browse page with locations and orphan units.
     """
-    units = Unit.objects.filter(user=request.user)
-    return render(request, "core/list_units.html", {"units": units, "active_nav": "see"})
+    locations = (
+        Location.objects.filter(user=request.user)
+        .annotate(unit_count=Count("unit_set"))
+        .order_by("name")
+    )
+    orphan_units = (
+        Unit.objects.filter(
+            user=request.user, location__isnull=True, parent_unit__isnull=True
+        )
+        .annotate(item_count=Count("items"))
+        .order_by("name")
+    )
+    return render(request, "core/list_units.html", {
+        "locations": locations,
+        "orphan_units": orphan_units,
+        "active_nav": "see",
+    })
 
 @login_required
 def unit_detail(request: HttpRequest, user_id: int, access_token: str) -> HttpResponse:
@@ -342,6 +833,7 @@ def unit_detail(request: HttpRequest, user_id: int, access_token: str) -> HttpRe
     return render(request, "core/unit_detail.html", {
         "unit": _unit,
         "unit_2_name_json": json.dumps(UNIT_2_NAME),
+        "active_nav": "see",
     })
 
 
@@ -521,12 +1013,13 @@ def item_search_view(request: HttpRequest) -> HttpResponse:
         if form.is_valid():
             query = form.cleaned_data["query"]
             item_location = find_item_location(query, request.user.id)
-            result = str(item_location)
-            # Try to fetch the actual Item object for displaying its image
+            # Only show results when the item actually exists in the user's inventory
             found_item = Item.objects.filter(
                 user=request.user,
                 name=item_location.item_name,
             ).first()
+            if found_item:
+                result = str(item_location)
     else:
         form = ItemSearchForm()
 
@@ -667,6 +1160,142 @@ def update_item_quantity_api(request: HttpRequest, item_id: int) -> JsonResponse
     except Exception:
         logger.exception("[UpdateQuantityAPI] Unexpected error")
         return JsonResponse({"error": "Failed to update quantity"}, status=500)
+
+
+# =============================================================================
+# Item CRUD JSON APIs (Phase 8)
+# =============================================================================
+
+
+@login_required
+def api_item_detail_json(request: HttpRequest, item_id: int) -> JsonResponse:
+    """Return item fields as JSON for the detail bottom sheet.
+
+    Args:
+        request: The HTTP request object.
+        item_id: The database ID of the item.
+
+    Returns:
+        JSON with item name, description, quantity, unit, image URL, and timestamps.
+    """
+    if request.method != "GET":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    item = get_object_or_404(Item, id=item_id, user=request.user)
+
+    return JsonResponse({
+        "id": item.id,
+        "name": item.name,
+        "description": item.description,
+        "image_url": item.image.url if item.image else None,
+        "quantity": float(item.quantity) if item.quantity is not None else None,
+        "quantity_unit": item.quantity_unit or None,
+        "formatted_quantity": item.formatted_quantity,
+        "unit_id": item.unit_id,
+        "unit_name": item.unit.name,
+        "created_on": item.created_on.isoformat(),
+    })
+
+
+@login_required
+def api_update_item(request: HttpRequest, item_id: int) -> JsonResponse:
+    """Update an item's name, description, or quantity via JSON POST.
+
+    Args:
+        request: The HTTP request object.
+        item_id: The database ID of the item.
+
+    Returns:
+        JSON confirmation with updated item fields.
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    item = get_object_or_404(Item, id=item_id, user=request.user)
+
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    name = data.get("name", "").strip()
+    if not name:
+        return JsonResponse({"error": "Name is required"}, status=400)
+
+    item.name = name
+    item.description = data.get("description", "").strip()
+
+    try:
+        item.save()
+    except IntegrityError:
+        return JsonResponse(
+            {"error": f"You already have an item named '{name}'."},
+            status=409,
+        )
+
+    return JsonResponse({
+        "id": item.id,
+        "name": item.name,
+        "description": item.description,
+    })
+
+
+@login_required
+def api_delete_item(request: HttpRequest, item_id: int) -> JsonResponse:
+    """Delete an item via POST.
+
+    Args:
+        request: The HTTP request object.
+        item_id: The database ID of the item.
+
+    Returns:
+        JSON confirmation with the deleted item's name.
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    item = get_object_or_404(Item, id=item_id, user=request.user)
+    item_name = item.name
+    item.delete()
+
+    return JsonResponse({"status": "deleted", "name": item_name})
+
+
+@login_required
+def api_move_item(request: HttpRequest, item_id: int) -> JsonResponse:
+    """Move an item to a different unit via POST.
+
+    Args:
+        request: The HTTP request object.
+        item_id: The database ID of the item.
+
+    Returns:
+        JSON confirmation with the new unit details.
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    item = get_object_or_404(Item, id=item_id, user=request.user)
+
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    target_unit_id = data.get("unit_id")
+    if not target_unit_id:
+        return JsonResponse({"error": "unit_id is required"}, status=400)
+
+    target_unit = get_object_or_404(Unit, id=target_unit_id, user=request.user)
+
+    item.unit = target_unit
+    item.save(update_fields=["unit"])
+
+    return JsonResponse({
+        "id": item.id,
+        "unit_id": target_unit.id,
+        "unit_name": target_unit.name,
+    })
 
 
 def healthcheck_view(_: HttpRequest) -> JsonResponse:  # pragma: no cover - trivial

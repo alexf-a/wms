@@ -1,85 +1,149 @@
 {% extends "core/base.html" %}
 
-{% block title %}Account - WMS{% endblock %}
+{% block title %}Settings - WMS{% endblock %}
 
 {% block content %}
-<div class="m3-page-shell">
-    <!-- Account Card -->
-    <div class="m3-card m3-card--filled">
-        <div class="m3-card__content">
-            <h2 class="md-typescale-headline-small" style="margin-bottom: var(--wms-space-md);">Account Settings</h2>
-            
-            <form method="post" class="m3-form-vertical">
-                {% csrf_token %}
-                
-                <!-- Email Field -->
-                <div class="m3-field-group">
-                    <label class="md-typescale-label-large" for="{{ form.email.id_for_label }}">Email</label>
-                    <div class="m3-filled-text-field">
-                        <svg class="m3-filled-text-field__icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
-                        </svg>
-                        {{ form.email }}
-                    </div>
-                    {% if form.email.errors %}
-                        <p class="md-typescale-body-small m3-error-text">{{ form.email.errors.0 }}</p>
-                    {% endif %}
-                </div>
-                
-                <!-- First Name Field -->
-                <div class="m3-field-group">
-                    <label class="md-typescale-label-large" for="{{ form.first_name.id_for_label }}">First Name</label>
-                    <div class="m3-filled-text-field">
-                        {{ form.first_name }}
-                    </div>
-                    {% if form.first_name.errors %}
-                        <p class="md-typescale-body-small m3-error-text">{{ form.first_name.errors.0 }}</p>
-                    {% endif %}
-                </div>
-                
-                <!-- Last Name Field -->
-                <div class="m3-field-group">
-                    <label class="md-typescale-label-large" for="{{ form.last_name.id_for_label }}">Last Name</label>
-                    <div class="m3-filled-text-field">
-                        {{ form.last_name }}
-                    </div>
-                    {% if form.last_name.errors %}
-                        <p class="md-typescale-body-small m3-error-text">{{ form.last_name.errors.0 }}</p>
-                    {% endif %}
-                </div>
-                
-                <!-- Save Button -->
-                <div class="m3-button-centered" style="margin-top: var(--wms-space-md);">
-                    <button type="submit" class="m3-button m3-button-filled m3-button-standard">
-                        <svg class="m3-button-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-                        </svg>
-                        <span class="m3-button-label">Save</span>
-                    </button>
-                </div>
-            </form>
+<div class="mx-auto max-w-sm">
+    <h1 class="mb-6 text-xl font-bold text-foreground">Account</h1>
+
+    <!-- Profile Avatar -->
+    <div class="mb-6 flex justify-center">
+        <div class="flex h-20 w-20 items-center justify-center rounded-full bg-muted">
+            <svg class="h-10 w-10 text-muted-foreground" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+            </svg>
         </div>
     </div>
-    
-    <!-- Change Password Button -->
-    <div class="m3-button-centered" style="margin-top: var(--wms-space-lg);">
-        <a href="{% url 'change_password' %}" class="m3-button m3-button-outlined m3-button-standard">
-            <svg class="m3-button-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
-            </svg>
-            <span class="m3-button-label">Change Password</span>
-        </a>
-    </div>
-    
-    <!-- Logout Button -->
-    <form method="post" action="{% url 'logout' %}" class="m3-button-centered" style="margin-top: var(--wms-space-lg);">
+
+    <!-- Profile Form -->
+    <form method="post" class="mb-8 space-y-4">
         {% csrf_token %}
-        <button type="submit" class="m3-button m3-button-tonal m3-button-standard">
-            <svg class="m3-button-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
-            </svg>
-            <span class="m3-button-label">Logout</span>
+
+        <!-- First Name -->
+        <div>
+            <label for="id_first_name" class="mb-1.5 block text-xs font-medium text-muted-foreground">First name</label>
+            <input type="text" name="first_name" id="id_first_name"
+                   value="{{ form.first_name.value|default:'' }}"
+                   class="w-full rounded-md border {% if form.first_name.errors %}border-destructive{% else %}border-input{% endif %} bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+            {% if form.first_name.errors %}
+            <p class="mt-1 text-xs text-destructive">{{ form.first_name.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <!-- Last Name -->
+        <div>
+            <label for="id_last_name" class="mb-1.5 block text-xs font-medium text-muted-foreground">Last name</label>
+            <input type="text" name="last_name" id="id_last_name"
+                   value="{{ form.last_name.value|default:'' }}"
+                   class="w-full rounded-md border {% if form.last_name.errors %}border-destructive{% else %}border-input{% endif %} bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+            {% if form.last_name.errors %}
+            <p class="mt-1 text-xs text-destructive">{{ form.last_name.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <div class="border-t border-border"></div>
+
+        <!-- Email -->
+        <div>
+            <label for="id_email" class="mb-1.5 block text-xs font-medium text-muted-foreground">Email</label>
+            <input type="email" name="email" id="id_email"
+                   value="{{ form.email.value|default:'' }}"
+                   class="w-full rounded-md border {% if form.email.errors %}border-destructive{% else %}border-input{% endif %} bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                   required>
+            {% if form.email.errors %}
+            <p class="mt-1 text-xs text-destructive">{{ form.email.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <!-- Save Button -->
+        <button type="submit"
+                class="w-full rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+            Save changes
         </button>
     </form>
+
+    <!-- Appearance -->
+    <div class="mb-8">
+        <h2 class="mb-3 text-sm font-medium text-foreground">Appearance</h2>
+        <button type="button" id="theme-toggle"
+                class="flex w-full items-center justify-between rounded-md border border-border bg-background px-4 py-2.5 text-sm text-foreground hover:bg-accent">
+            <span class="flex items-center gap-2">
+                <svg id="theme-icon-light" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="5"/>
+                    <line x1="12" y1="1" x2="12" y2="3"/>
+                    <line x1="12" y1="21" x2="12" y2="23"/>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                    <line x1="1" y1="12" x2="3" y2="12"/>
+                    <line x1="21" y1="12" x2="23" y2="12"/>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                </svg>
+                <svg id="theme-icon-dark" class="hidden h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+                </svg>
+                <span id="theme-label">Light mode</span>
+            </span>
+            <span class="text-xs text-muted-foreground">Toggle</span>
+        </button>
+    </div>
+
+    <!-- Security Section -->
+    <div class="space-y-3">
+        <a href="{% url 'change_password' %}"
+           class="flex w-full items-center justify-center gap-2 rounded-md border border-border bg-background px-4 py-2.5 text-sm font-medium text-foreground hover:bg-accent">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
+            </svg>
+            Change password
+        </a>
+
+        <!-- Sign Out -->
+        <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button type="submit"
+                    class="flex w-full items-center justify-center gap-2 rounded-md border border-border bg-background px-4 py-2.5 text-sm font-medium text-destructive hover:bg-destructive/10">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
+                </svg>
+                Sign out
+            </button>
+        </form>
+    </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+/**
+ * Theme toggle button for the Settings page.
+ * Uses toggleTheme() from theme.js (loaded in base.html <head>).
+ */
+document.addEventListener('DOMContentLoaded', function() {
+    var btn = document.getElementById('theme-toggle');
+    var label = document.getElementById('theme-label');
+    var iconLight = document.getElementById('theme-icon-light');
+    var iconDark = document.getElementById('theme-icon-dark');
+
+    /**
+     * Update the button label and icon to reflect the current theme.
+     * @returns {void}
+     */
+    function updateUI() {
+        var isDark = document.documentElement.classList.contains('dark');
+        label.textContent = isDark ? 'Dark mode' : 'Light mode';
+        iconLight.classList.toggle('hidden', isDark);
+        iconDark.classList.toggle('hidden', !isDark);
+    }
+
+    updateUI();
+
+    if (btn) {
+        btn.addEventListener('click', function() {
+            toggleTheme();
+            updateUI();
+        });
+    }
+});
+</script>
 {% endblock %}
