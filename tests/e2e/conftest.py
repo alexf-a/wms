@@ -14,11 +14,18 @@ from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock
 
 import pytest
-import pytest_asyncio
-import yaml
-from browser_use import Agent, Browser
-from browser_use.llm.aws.chat_bedrock import ChatAWSBedrock
-from pydantic import BaseModel
+
+try:
+    import pytest_asyncio
+    import yaml
+    from browser_use import Agent, Browser
+    from browser_use.llm.aws.chat_bedrock import ChatAWSBedrock
+    from pydantic import BaseModel
+except ImportError:
+    pytest.skip(
+        "E2E dependencies not installed (install with: poetry install --with e2e)",
+        allow_module_level=True,
+    )
 
 from core.models import Item, Location, Unit, WMSUser
 from schemas.item_generation import GeneratedItem
