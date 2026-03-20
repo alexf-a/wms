@@ -14,6 +14,7 @@ from django.conf import settings
 from PIL import Image as PILImage
 
 # Local application imports
+from aws_utils.model_id import ClaudeModelID
 from aws_utils.region import AWSRegion
 from lib.llm.llm_handler import StructuredLangChainHandler
 from lib.llm.utils import get_llm_call
@@ -35,11 +36,16 @@ def _get_cached_handler() -> StructuredLangChainHandler:
     logger.info("[ItemGen] Creating cached handler...")
     llm_call = get_llm_call("item_generation/item_image_generation")
     logger.info("[ItemGen] LLM call loaded: model_id=%s", llm_call.model_id)
-    # Get the region from Django settings, defaulting to US_WEST_2
-    region_name = settings.AWS_BEDROCK_REGION_NAME
-    logger.info("[ItemGen] Using AWS region: %s", region_name)
-    region = AWSRegion(region_name)
-    handler = StructuredLangChainHandler(llm_call=llm_call, output_schema=GeneratedItem, region=region)
+
+    if isinstance(llm_call.model_id, ClaudeModelID):
+        region_name = settings.AWS_BEDROCK_REGION_NAME
+        logger.info("[ItemGen] Using AWS region: %s", region_name)
+        region = AWSRegion(region_name)
+        handler = StructuredLangChainHandler(llm_call=llm_call, output_schema=GeneratedItem, region=region)
+    else:
+        logger.info("[ItemGen] Using non-AWS provider: %s", type(llm_call.model_id).__name__)
+        handler = StructuredLangChainHandler(llm_call=llm_call, output_schema=GeneratedItem)
+
     logger.info("[ItemGen] Handler created successfully")
     return handler
 

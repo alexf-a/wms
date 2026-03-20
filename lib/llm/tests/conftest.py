@@ -27,3 +27,14 @@ def mock_bedrock_client() -> Generator[MutableMapping, None, None]:
         mock_instance.__or__.return_value = mock_instance
         mock_instance.invoke.return_value = "Mock LLM response"
         yield mock_client
+
+
+@pytest.fixture
+def mock_gemini_client() -> Generator[MutableMapping, None, None]:
+    """Provide a patched ChatGoogleGenerativeAI client."""
+    with patch("lib.llm.llm_handler.ChatGoogleGenerativeAI") as mock_client:
+        mock_instance = MagicMock()
+        mock_client.return_value = mock_instance
+        mock_instance.__or__.return_value = mock_instance
+        mock_instance.invoke.return_value = "Mock Gemini response"
+        yield mock_client

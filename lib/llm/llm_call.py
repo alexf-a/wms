@@ -7,6 +7,7 @@ from typing import Any
 from pydantic import BaseModel, field_serializer, field_validator
 
 from aws_utils.model_id import ClaudeModelID
+from lib.llm.gemini_model_id import GeminiModelID
 from lib.llm.model_id import ModelID  # noqa: TC001
 from lib.pydantic_utils import serialize_schema
 
@@ -46,9 +47,16 @@ class LLMCall(BaseModel):
 
     @field_validator("model_id", mode="before")
     def validate_model_id(cls, value: str | ModelID) -> ModelID:  # noqa: N805
-        """If provided model_id is a string, convert it via ModelID constructor."""
+        """If provided model_id is a string, convert it via the matching ModelID subclass."""
         if isinstance(value, str):
-            return ClaudeModelID(value)
+            model_id_classes: tuple[type[ModelID], ...] = (ClaudeModelID, GeminiModelID)
+            for enum_cls in model_id_classes:
+                try:
+                    return enum_cls(value)
+                except ValueError:  # noqa: PERF203
+                    continue
+            msg = f"Unknown model_id: {value}"
+            raise ValueError(msg)
         return value
 
     @field_serializer("model_id")
