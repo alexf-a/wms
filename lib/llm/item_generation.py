@@ -4,6 +4,7 @@ from __future__ import annotations
 # Standard library imports
 import base64
 import logging
+import time
 from functools import lru_cache
 from io import BytesIO
 from typing import BinaryIO
@@ -90,7 +91,10 @@ def extract_item_features_from_image(img_file: BinaryIO) -> GeneratedItem:
     logger.info("[ItemGen] Image converted to base64, length=%d chars", len(img_str))
     # Get cached handler and extract features
     handler = _get_cached_handler()
-    logger.info("[ItemGen] Calling LLM with image...")
+    model_id = handler.llm_call.model_id.value
+    logger.info("[ItemGen] Calling LLM model=%s with image...", model_id)
+    start = time.monotonic()
     result: GeneratedItem = handler.query_with_image(img_str)
-    logger.info("[ItemGen] LLM returned: name=%s", result.name)
+    elapsed_ms = (time.monotonic() - start) * 1000
+    logger.info("[ItemGen] LLM responded in %.0fms: model=%s, name=%s", elapsed_ms, model_id, result.name)
     return result
