@@ -138,9 +138,10 @@ sync-env:
 # Run containerized local development server
 # Runs Docker compose with the local dev environment
 # Usage:
-#   make local-up                              - Use env generated from containers.json
-#   make local-up ENV_FILE=.env.local          - Use custom env file (e.g., for mobile testing)
+#   make local-up                              - Use .env.local (default)
+#   make local-up ENV_FILE=.env.other          - Use custom env file
 #   make local-up CONTAINERS=deploy/other.json - Use different containers.json for sync-env
+ENV_FILE ?= .env.local
 local-up:
 	@rm -f .env  # Clean up any leftover from local-https
 	@mkdir -p .cache
