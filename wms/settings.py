@@ -259,6 +259,9 @@ if USE_S3:
     # AWS Bedrock region configuration (can be different from S3)
     AWS_BEDROCK_REGION_NAME = os.getenv("AWS_BEDROCK_REGION", "us-west-2")
 
+    # Google Gemini API key (read automatically by langchain-google-genai from env)
+    GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+
     # Django 4.2+ STORAGES configuration for S3
     STORAGES = {
         "default": {

@@ -4,6 +4,7 @@ from __future__ import annotations
 # Standard library imports
 import base64
 import logging
+import time
 from functools import lru_cache
 from io import BytesIO
 from typing import BinaryIO
@@ -14,6 +15,7 @@ from django.conf import settings
 from PIL import Image as PILImage
 
 # Local application imports
+from aws_utils.model_id import ClaudeModelID
 from aws_utils.region import AWSRegion
 from lib.llm.llm_handler import StructuredLangChainHandler
 from lib.llm.utils import get_llm_call
@@ -35,11 +37,16 @@ def _get_cached_handler() -> StructuredLangChainHandler:
     logger.info("[ItemGen] Creating cached handler...")
     llm_call = get_llm_call("item_generation/item_image_generation")
     logger.info("[ItemGen] LLM call loaded: model_id=%s", llm_call.model_id)
-    # Get the region from Django settings, defaulting to US_WEST_2
-    region_name = settings.AWS_BEDROCK_REGION_NAME
-    logger.info("[ItemGen] Using AWS region: %s", region_name)
-    region = AWSRegion(region_name)
-    handler = StructuredLangChainHandler(llm_call=llm_call, output_schema=GeneratedItem, region=region)
+
+    if isinstance(llm_call.model_id, ClaudeModelID):
+        region_name = settings.AWS_BEDROCK_REGION_NAME
+        logger.info("[ItemGen] Using AWS region: %s", region_name)
+        region = AWSRegion(region_name)
+        handler = StructuredLangChainHandler(llm_call=llm_call, output_schema=GeneratedItem, region=region)
+    else:
+        logger.info("[ItemGen] Using non-AWS provider: %s", type(llm_call.model_id).__name__)
+        handler = StructuredLangChainHandler(llm_call=llm_call, output_schema=GeneratedItem)
+
     logger.info("[ItemGen] Handler created successfully")
     return handler
 
@@ -84,7 +91,10 @@ def extract_item_features_from_image(img_file: BinaryIO) -> GeneratedItem:
     logger.info("[ItemGen] Image converted to base64, length=%d chars", len(img_str))
     # Get cached handler and extract features
     handler = _get_cached_handler()
-    logger.info("[ItemGen] Calling LLM with image...")
+    model_id = handler.llm_call.model_id.value
+    logger.info("[ItemGen] Calling LLM model=%s with image...", model_id)
+    start = time.monotonic()
     result: GeneratedItem = handler.query_with_image(img_str)
-    logger.info("[ItemGen] LLM returned: name=%s", result.name)
+    elapsed_ms = (time.monotonic() - start) * 1000
+    logger.info("[ItemGen] LLM responded in %.0fms: model=%s, name=%s", elapsed_ms, model_id, result.name)
     return result

@@ -25,6 +25,7 @@ services:
     volumes:
       - ./core:/app/core
       - ./lib:/app/lib
+      - ./llm_calls:/app/llm_calls
       - ./schemas:/app/schemas
       - ./staticfiles:/app/staticfiles
       - ./wms:/app/wms

@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from aws_utils.model_id import ClaudeModelID
 from aws_utils.region import AWSRegion
+from lib.llm.gemini_model_id import GeminiModelID
 from lib.llm.llm_call import LLMCall
 from lib.llm.llm_handler import LangChainHandler, StructuredLangChainHandler
 
@@ -524,3 +525,98 @@ class TestStructuredLangChainHandler:
 
 
 # The abstract LLMHandler base class is indirectly tested through the concrete implementations above.
+
+
+class TestGeminiLangChainHandler:
+
+    @pytest.fixture
+    def gemini_model_id(self) -> GeminiModelID:
+        return GeminiModelID.GEMINI_3_FLASH_PREVIEW
+
+    @pytest.fixture
+    def gemini_llm_call(self, system_prompt: str, human_prompt: str, gemini_model_id: GeminiModelID) -> LLMCall:
+        return LLMCall(
+            system_prompt_tmplt=system_prompt,
+            human_prompt_tmplt=human_prompt,
+            model_id=gemini_model_id,
+        )
+
+    def test_init_creates_gemini_client(self, gemini_llm_call: LLMCall, mock_gemini_client: MagicMock) -> None:
+        handler = LangChainHandler(gemini_llm_call)
+        assert handler.llm_call == gemini_llm_call
+        mock_gemini_client.assert_called_once_with(
+            model=gemini_llm_call.model_id.value,
+            temperature=gemini_llm_call.temp,
+        )
+
+    def test_init_does_not_require_region(self, gemini_llm_call: LLMCall, mock_gemini_client: MagicMock) -> None:
+        handler = LangChainHandler(gemini_llm_call)
+        assert handler.llm_call == gemini_llm_call
+
+    def test_bedrock_without_region_raises(self, llm_call: LLMCall) -> None:
+        with pytest.raises(ValueError, match="region is required"):
+            LangChainHandler(llm_call)
+
+    def test_query_with_image_uses_image_url_format(
+        self, gemini_llm_call: LLMCall, mock_gemini_client: MagicMock
+    ) -> None:
+        handler = LangChainHandler(gemini_llm_call)
+        with patch.object(LangChainHandler, "chain") as mock_chain:
+            mock_chain.invoke.return_value = "Gemini image response"
+            image_data = "base64_encoded_image_data"
+            mime_type = "image/png"
+            handler.query_with_image(image_data=image_data, mime_type=mime_type)
+
+        call_args = mock_chain.invoke.call_args[0][0]
+        image_message = call_args["additional_messages"][0]
+        assert isinstance(image_message, HumanMessage)
+        image_content = image_message.content[0]
+        assert image_content["type"] == "image_url"
+        assert image_content["image_url"]["url"] == f"data:{mime_type};base64,{image_data}"
+
+
+class TestGeminiStructuredHandler:
+
+    @pytest.fixture
+    def gemini_model_id(self) -> GeminiModelID:
+        return GeminiModelID.GEMINI_3_FLASH_PREVIEW
+
+    @pytest.fixture
+    def output_schema(self) -> type[DummyOutputSchema]:
+        return DummyOutputSchema
+
+    @pytest.fixture
+    def gemini_llm_call(self, system_prompt: str, gemini_model_id: GeminiModelID) -> LLMCall:
+        return LLMCall(
+            system_prompt_tmplt=system_prompt,
+            model_id=gemini_model_id,
+        )
+
+    def test_structured_init_with_gemini(
+        self, gemini_llm_call: LLMCall, output_schema: type[DummyOutputSchema], mock_gemini_client: MagicMock
+    ) -> None:
+        handler = StructuredLangChainHandler(gemini_llm_call, output_schema)
+        assert handler.output_schema == output_schema
+        mock_gemini_client.assert_called_once_with(
+            model=gemini_llm_call.model_id.value,
+            temperature=gemini_llm_call.temp,
+        )
+        mock_instance = mock_gemini_client.return_value
+        mock_instance.with_structured_output.assert_called_once_with(output_schema)
+
+    def test_structured_query_with_image_gemini_format(
+        self, gemini_llm_call: LLMCall, output_schema: type[DummyOutputSchema], mock_gemini_client: MagicMock
+    ) -> None:
+        handler = StructuredLangChainHandler(gemini_llm_call, output_schema)
+        expected_output = DummyOutputSchema(field1="gemini_result", field2=42)
+
+        with patch.object(StructuredLangChainHandler, "chain") as mock_chain:
+            mock_chain.invoke.return_value = expected_output
+            result = handler.query_with_image(image_data="test_b64", mime_type="image/jpeg")
+
+        call_args = mock_chain.invoke.call_args[0][0]
+        image_message = call_args["additional_messages"][0]
+        image_content = image_message.content[0]
+        assert image_content["type"] == "image_url"
+        assert image_content["image_url"]["url"] == "data:image/jpeg;base64,test_b64"
+        assert result == expected_output

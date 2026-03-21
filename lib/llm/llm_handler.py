@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import traceback
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any
 
@@ -14,6 +13,9 @@ from langchain.prompts import (
 from langchain_aws.chat_models.bedrock import ChatBedrock
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.output_parsers import StrOutputParser
+from langchain_google_genai import ChatGoogleGenerativeAI
+
+from lib.llm.gemini_model_id import GeminiModelID
 
 logger = logging.getLogger(__name__)
 
@@ -53,25 +55,37 @@ class LangChainHandler(LLMHandler):
     langchain_client: BaseChatModel
     chain: Runnable[LanguageModelInput, str | BaseModel]
 
-    def __init__(self, llm_call: LLMCall, region: AWSRegion) -> None:
-        """Initialize the LLMHandler with an LLMCall and a Langchain ChatBedrock client.
+    def __init__(self, llm_call: LLMCall, region: AWSRegion | None = None) -> None:
+        """Initialize the LLMHandler with an LLMCall and a LangChain chat client.
 
         Args:
             llm_call (LLMCall): An LLMCall object containing the configuration for the LLM call.
-            region (AWSRegion): The AWS region to use for the ChatBedrock client.
+            region (AWSRegion | None): The AWS region for ChatBedrock. Required for Claude models, ignored for Gemini.
         """
         self.llm_call = llm_call
         self._additional_messages: list[SystemMessage | HumanMessage] = []
 
-        client_params = {
-            "model_id": self.llm_call.model_id.value,
-            "temperature": self.llm_call.temp,
-            "region": region.value,
-        }
-        if self.llm_call.max_tokens is not None:
-            client_params["max_tokens"] = self.llm_call.max_tokens
+        if isinstance(llm_call.model_id, GeminiModelID):
+            client_params: dict[str, Any] = {
+                "model": self.llm_call.model_id.value,
+                "temperature": self.llm_call.temp,
+            }
+            if self.llm_call.max_tokens is not None:
+                client_params["max_tokens"] = self.llm_call.max_tokens
+            self.langchain_client = ChatGoogleGenerativeAI(**client_params)
+        else:
+            if region is None:
+                msg = "region is required for Claude/Bedrock models"
+                raise ValueError(msg)
+            client_params = {
+                "model_id": self.llm_call.model_id.value,
+                "temperature": self.llm_call.temp,
+                "region": region.value,
+            }
+            if self.llm_call.max_tokens is not None:
+                client_params["max_tokens"] = self.llm_call.max_tokens
+            self.langchain_client = ChatBedrock(**client_params)
 
-        self.langchain_client = ChatBedrock(**client_params)
         self._configure_langchain_client()
 
     def _maybe_configure_retry(self) -> None:
@@ -148,6 +162,20 @@ class LangChainHandler(LLMHandler):
         # Use the chain with the modified template that includes additional messages
         return self.chain.invoke(kwargs)
 
+    def _build_image_content(self, image_data: str, mime_type: str) -> dict[str, Any]:
+        """Build a provider-appropriate image content block.
+
+        Args:
+            image_data: Base64-encoded image data.
+            mime_type: MIME type of the image.
+
+        Returns:
+            dict: Image content block in the format expected by the provider.
+        """
+        if isinstance(self.llm_call.model_id, GeminiModelID):
+            return {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{image_data}"}}
+        return {"type": "image", "source_type": "base64", "data": image_data, "mime_type": mime_type}
+
     def query_with_image(self, image_data: str, mime_type: str = "image/jpeg", **kwargs: str) -> str:
         """Process a query with an image using the configured LLM.
 
@@ -160,7 +188,7 @@ class LangChainHandler(LLMHandler):
             str: The response from the LLM as a string.
         """
         # Create temporary image message for this query only
-        image_message = HumanMessage(content=[{"type": "image", "source_type": "base64", "data": image_data, "mime_type": mime_type}])
+        image_message = HumanMessage(content=[self._build_image_content(image_data, mime_type)])
 
         return self.query(additional_messages=[image_message], **kwargs)
 
@@ -168,13 +196,13 @@ class LangChainHandler(LLMHandler):
 class StructuredLangChainHandler(LangChainHandler):
     """Handler for LLM calls that structures the output using a Pydantic model."""
 
-    def __init__(self, llm_call: LLMCall, output_schema: BaseModel, region: AWSRegion) -> None:
+    def __init__(self, llm_call: LLMCall, output_schema: BaseModel, region: AWSRegion | None = None) -> None:
         """Initialize the handler with an LLM call and an output schema.
 
         Args:
             llm_call (LLMCall): An LLMCall object containing the configuration for the LLM call.
             output_schema (BaseModel): The Pydantic model to use for structuring the LLM output.
-            region (AWSRegion): The AWS region to use for the ChatBedrock client.
+            region (AWSRegion | None): The AWS region for ChatBedrock. Required for Claude models, ignored for Gemini.
         """
         self.output_schema = output_schema
         super().__init__(llm_call=llm_call, region=region)
@@ -228,13 +256,13 @@ class StructuredLangChainHandler(LangChainHandler):
         """
         logger.info("[LLMHandler] query_with_image called, image_data length=%d, mime=%s", len(image_data), mime_type)
         # Create temporary image message for this query only
-        image_message = HumanMessage(content=[{"type": "image", "source_type": "base64", "data": image_data, "mime_type": mime_type}])
+        image_message = HumanMessage(content=[self._build_image_content(image_data, mime_type)])
 
         try:
             result = self.query(additional_messages=[image_message], **kwargs)
+        except Exception:
+            logger.exception("[LLMHandler] query_with_image FAILED")
+            raise
+        else:
             logger.info("[LLMHandler] query_with_image succeeded, result type=%s", type(result).__name__)
             return result
-        except Exception as e:
-            logger.error("[LLMHandler] query_with_image FAILED: %s: %s", type(e).__name__, str(e))
-            logger.error("[LLMHandler] Full traceback:\n%s", traceback.format_exc())
-            raise

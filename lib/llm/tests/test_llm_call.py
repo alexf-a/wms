@@ -4,6 +4,7 @@ import pytest
 from pydantic import BaseModel
 
 from aws_utils.model_id import ClaudeModelID
+from lib.llm.gemini_model_id import GeminiModelID
 from lib.llm.llm_call import LLMCall
 
 
@@ -306,3 +307,30 @@ def test_json_structure(
         assert "required" in field_info
         assert "description" in field_info
         assert "default" in field_info
+
+
+def test_gemini_model_id_deserialization() -> None:
+    data = {
+        "system_prompt_tmplt": "Test",
+        "model_id": "gemini-3-flash-preview",
+    }
+    llm_call = LLMCall.model_validate(data)
+    assert llm_call.model_id == GeminiModelID.GEMINI_3_FLASH_PREVIEW
+
+
+def test_gemini_model_id_serialization() -> None:
+    llm_call = LLMCall(
+        system_prompt_tmplt="Test",
+        model_id=GeminiModelID.GEMINI_3_FLASH_PREVIEW,
+    )
+    serialized = llm_call.model_dump()
+    assert serialized["model_id"] == "gemini-3-flash-preview"
+
+
+def test_unknown_model_id_raises_error() -> None:
+    data = {
+        "system_prompt_tmplt": "Test",
+        "model_id": "unknown-model-id-xyz",
+    }
+    with pytest.raises(ValueError, match="Unknown model_id"):
+        LLMCall.model_validate(data)
