@@ -9,6 +9,7 @@ from django.conf import settings
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.core.files.base import ContentFile
 from django.db import models
+from django.db.models import Q, QuerySet
 from django.urls import reverse
 from django.utils.text import slugify
 
@@ -90,6 +91,45 @@ class WMSUser(AbstractUser):
 
         app_label: ClassVar[str] = "core"
 
+    def accessible_units(self) -> QuerySet[Unit]:
+        """Return all units this user owns or has explicit shared access to.
+
+        Includes only units accessible via direct UnitSharedAccess.
+        LocationSharedAccess grants visibility of unit names within the
+        location but does NOT grant access to unit contents.
+
+        Returns:
+            QuerySet of Unit objects this user can access.
+        """
+        return Unit.objects.filter(
+            Q(user=self)
+            | Q(unitsharedaccess__user=self)
+        ).distinct()
+
+    def accessible_locations(self) -> QuerySet[Location]:
+        """Return all locations this user owns or has shared access to.
+
+        Returns:
+            QuerySet of Location objects this user can access.
+        """
+        return Location.objects.filter(
+            Q(user=self) | Q(shared_access__user=self)
+        ).distinct()
+
+    def accessible_items(self) -> QuerySet[Item]:
+        """Return all items this user owns or can see via explicit unit sharing.
+
+        Only includes items in units with direct UnitSharedAccess.
+        LocationSharedAccess does NOT grant access to items within units.
+
+        Returns:
+            QuerySet of Item objects this user can access.
+        """
+        return Item.objects.filter(
+            Q(user=self)
+            | Q(unit__unitsharedaccess__user=self)
+        ).distinct()
+
 
 class StorageSpace(models.Model):
     """Abstract base class for storage containers.
@@ -117,15 +157,22 @@ class StorageSpace(models.Model):
 
 class Location(StorageSpace):
     """Organizational location (address, building, room).
-    
+
     Pure metadata - does not contain items directly. Items must be in Units.
-    
+
     Attributes:
         user (User): Inherited from StorageSpace.
         name (str): Inherited from StorageSpace.
         description (str): Inherited from StorageSpace.
         address (str): Physical address (optional).
+        shared_users (ManyToManyField): Users with shared access to the location.
     """
+    shared_users = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        through="LocationSharedAccess",
+        blank=True,
+        related_name="shared_locations"
+    )
     address = models.TextField(blank=True, null=True)
 
     class Meta:
@@ -176,12 +223,32 @@ class Location(StorageSpace):
 
         return unit
 
+    def get_user_permission(self, user: WMSUser) -> str | None:
+        """Return the effective permission level for a user on this Location.
+
+        Args:
+            user: The user to check.
+
+        Returns:
+            'owner' for the location owner, 'write'/'read' for shared users,
+            or None if the user has no access.
+        """
+        if self.user_id == user.id:
+            return "owner"
+        access = LocationSharedAccess.objects.filter(
+            user=user, location=self
+        ).first()
+        return access.permission if access else None
+
 
 class LocationSharedAccess(models.Model):
     """Model to handle shared access to locations with specific permissions.
-    
-    Access to a Location grants transitive access to all Units within it.
-    
+
+    Access to a Location grants visibility of Unit names within it and
+    the ability to create new Units (with write permission). It does NOT
+    grant access to Unit contents (items, child units). Explicit
+    UnitSharedAccess is required for that.
+
     Attributes:
         user (User): The user with shared access.
         location (Location): The location to which access is shared.
@@ -492,16 +559,18 @@ class Unit(StorageSpace):
 
     def user_has_access(self, user: WMSUser) -> bool:
         """Check if a user has access to this Unit.
-        
+
         Checks:
         1. Direct ownership
         2. Direct UnitSharedAccess for this Unit
-        3. Transitive UnitSharedAccess through any parent Unit
-        4. Transitive LocationSharedAccess through root Location
-        
+
+        Note: Access does NOT inherit from parent Units or Locations.
+        LocationSharedAccess grants visibility of unit names but not
+        access to unit contents. Sharing must be explicit per unit.
+
         Args:
             user: The user to check access for.
-        
+
         Returns:
             bool: True if user is owner or has shared access, False otherwise.
         """
@@ -513,18 +582,30 @@ class Unit(StorageSpace):
         if UnitSharedAccess.objects.filter(user=user, unit=self).exists():
             return True
 
-        # Check transitive access through parent hierarchy
-        current = self.parent
-        while current:
-            if isinstance(current, Unit):
-                if UnitSharedAccess.objects.filter(user=user, unit=current).exists():
-                    return True
-            elif isinstance(current, Location):
-                if LocationSharedAccess.objects.filter(user=user, location=current).exists():
-                    return True
-            current = current.parent if isinstance(current, Unit) else None
-
         return False
+
+    def get_user_permission(self, user: WMSUser) -> str | None:
+        """Return the effective permission level for a user on this Unit.
+
+        Checks ownership and direct UnitSharedAccess only.
+        LocationSharedAccess does NOT grant unit-level permissions.
+
+        Args:
+            user: The user to check.
+
+        Returns:
+            'owner' for the unit owner, 'write'/'read' for shared users,
+            or None if the user has no access.
+        """
+        if self.user_id == user.id:
+            return "owner"
+
+        # Check direct unit access
+        access = UnitSharedAccess.objects.filter(user=user, unit=self).first()
+        if access:
+            return access.permission
+
+        return None
 
     def get_qr_filename(self) -> str:
         """Return a deterministic filename for the unit's QR code image."""
@@ -628,15 +709,17 @@ class Item(models.Model):
         return self.name
 
     def save(self, *args: object, **kwargs: object) -> None:
-        """Persist the item after verifying ownership alignment."""
+        """Persist the item after verifying the user has access to the unit."""
         if self.unit is None:
             msg = f"Must assign a Unit before saving Item {self}"
             raise ValueError(msg)
         if self.user is None:
             self.user = self.unit.user
         elif self.user_id != self.unit.user_id:
-            msg = f"User for Unit {self.unit} and Item {self} must be the same"
-            raise ValueError(msg)
+            # Allow shared users to create/edit items in units they have access to
+            if not self.unit.user_has_access(self.user):
+                msg = f"User {self.user} does not have access to Unit {self.unit}"
+                raise ValueError(msg)
 
         super().save(*args, **kwargs)
 

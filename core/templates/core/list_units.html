@@ -109,7 +109,55 @@
     {% endfor %}
     {% endif %}
 
-    {% if not locations and not orphan_units %}
+    {% if shared_locations or shared_units %}
+    <div class="mt-6 border-t border-border pt-4">
+      <h3 class="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Shared with me</h3>
+      {% for loc in shared_locations %}
+      <a href="#" class="browse-location-card relative mb-2 flex items-center gap-3 rounded-lg border border-border bg-card p-4 no-underline hover:border-primary/50 transition-colors"
+         data-location-id="{{ loc.id }}" data-location-name="{{ loc.name }}">
+        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+          <svg class="h-5 w-5 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+            <circle cx="12" cy="10" r="3"/>
+          </svg>
+        </div>
+        <div class="min-w-0 flex-1">
+          <p class="truncate text-sm font-medium text-foreground">{{ loc.name }}</p>
+          {% if loc.address %}
+          <p class="truncate text-xs text-muted-foreground">{{ loc.address }}</p>
+          {% endif %}
+        </div>
+        <span class="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-xs text-accent">Shared</span>
+        <span class="shrink-0 text-xs text-muted-foreground">{{ loc.unit_count }} unit{{ loc.unit_count|pluralize:",s" }}</span>
+        <svg class="h-4 w-4 shrink-0 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 18l6-6-6-6"/>
+        </svg>
+      </a>
+      {% endfor %}
+      {% for unit in shared_units %}
+      <a href="#" class="browse-unit-card relative mb-2 flex items-center gap-3 rounded-lg border border-border bg-card p-4 no-underline hover:border-primary/50 transition-colors"
+         data-unit-user-id="{{ unit.user_id }}" data-unit-access-token="{{ unit.access_token }}" data-unit-name="{{ unit.name }}">
+        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+          <svg class="h-5 w-5 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+            <line x1="12" y1="22.08" x2="12" y2="12"/>
+          </svg>
+        </div>
+        <div class="min-w-0 flex-1">
+          <p class="truncate text-sm font-medium text-foreground">{{ unit.name }}</p>
+        </div>
+        <span class="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-xs text-accent">Shared</span>
+        <span class="shrink-0 text-xs text-muted-foreground">{{ unit.item_count }} item{{ unit.item_count|pluralize:",s" }}</span>
+        <svg class="h-4 w-4 shrink-0 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 18l6-6-6-6"/>
+        </svg>
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if not locations and not orphan_units and not shared_locations and not shared_units %}
     <div class="py-12 text-center">
       <svg class="mx-auto h-12 w-12 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
@@ -144,10 +192,12 @@
 {% include "core/includes/dialogs/edit_unit.html" %}
 {% include "core/includes/dialogs/delete_location.html" %}
 {% include "core/includes/dialogs/delete_unit.html" %}
+{% include "core/includes/dialogs/sharing.html" %}
 {% endblock %}
 
 {% block extra_js %}
 <script src="{% static 'core/js/fetch_utils.js' %}"></script>
+<script src="{% static 'core/js/sharing.js' %}"></script>
 <script
   src="{% static 'core/js/browse.js' %}"
   data-browse-locations-url="{% url 'api_browse_locations' %}"

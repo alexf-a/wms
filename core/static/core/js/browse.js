@@ -104,15 +104,31 @@ function initBrowse(config) {
 
   /**
    * Render an HTML card for a unit with icon, name, item count, and chevron.
+   * If the unit is not accessible, renders a restricted card (name only).
    *
    * @param {Object} unit - Unit data from the API.
    * @param {number} unit.user_id - Owner user ID.
-   * @param {string} unit.access_token - Unit access token.
+   * @param {string} [unit.access_token] - Unit access token (absent for restricted units).
    * @param {string} unit.name - Unit display name.
-   * @param {number} unit.item_count - Number of items in the unit.
+   * @param {number} [unit.item_count] - Number of items in the unit.
+   * @param {boolean} [unit.accessible] - Whether the user can access this unit's contents.
    * @returns {string} HTML string for the unit card.
    */
   function renderUnitCard(unit) {
+    if (unit.accessible === false) {
+      return (
+        '<div class="browse-unit-card browse-unit-card--restricted flex items-center gap-3 rounded-lg border border-border bg-muted/50 p-4 opacity-60 cursor-default">' +
+        '<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">' +
+        '<svg class="h-5 w-5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+        '<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>' +
+        '<path d="M7 11V7a5 5 0 0 1 10 0v4"/>' +
+        '</svg></div>' +
+        '<div class="min-w-0 flex-1">' +
+        '<p class="truncate text-sm font-medium text-muted-foreground">' + escapeHtml(unit.name) + '</p>' +
+        '</div>' +
+        '</div>'
+      );
+    }
     return (
       '<a href="#" class="browse-unit-card relative flex items-center gap-3 rounded-lg border border-border bg-card p-4 no-underline hover:border-primary/50 transition-colors"' +
       ' data-unit-user-id="' + escapeAttr(String(unit.user_id)) + '"' +
@@ -288,6 +304,7 @@ function initBrowse(config) {
       var unitCard = e.target.closest('.browse-unit-card');
       if (unitCard) {
         e.preventDefault();
+        if (unitCard.classList.contains('browse-unit-card--restricted')) return;
         navigateToUnit(
           unitCard.dataset.unitUserId,
           unitCard.dataset.unitAccessToken

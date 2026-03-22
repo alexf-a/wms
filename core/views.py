@@ -35,7 +35,8 @@ from .forms import (
     WMSUserAuthForm,
     WMSUserCreationForm,
 )
-from .models import UNIT_2_NAME, Item, Location, Unit
+from .access import require_item_access, require_location_access, require_unit_access
+from .models import UNIT_2_NAME, Item, Location, LocationSharedAccess, Unit, UnitSharedAccess, WMSUser
 from .models import ITEM_QUANTITY_COUNT_STEP, ITEM_QUANTITY_NON_COUNT_STEP, ITEM_QUANTITY_ROUNDING_QUANTUM
 
 logger = logging.getLogger(__name__)
@@ -345,9 +346,11 @@ def api_create_unit(request: HttpRequest) -> JsonResponse:
             status=400,
         )
     if location_id:
-        location = get_object_or_404(Location, id=location_id, user=request.user)
+        location = get_object_or_404(Location, id=location_id)
+        require_location_access(location, request.user, require_write=True)
     if parent_unit_id:
-        parent_unit = get_object_or_404(Unit, id=parent_unit_id, user=request.user)
+        parent_unit = get_object_or_404(Unit, id=parent_unit_id)
+        require_unit_access(parent_unit, request.user, require_write=True)
 
     try:
         unit = Unit.objects.create(
@@ -378,16 +381,15 @@ def api_browse_locations(request: HttpRequest) -> JsonResponse:
         return JsonResponse({"error": "Method not allowed"}, status=405)
 
     locations = (
-        Location.objects.filter(user=request.user)
+        request.user.accessible_locations()
         .annotate(unit_count=Count("unit_set"))
         .order_by("name")
-        .values("id", "name", "address", "unit_count")
+        .values("id", "name", "address", "unit_count", "user_id")
     )
 
     orphan_units = (
-        Unit.objects.filter(
-            user=request.user, location__isnull=True, parent_unit__isnull=True
-        )
+        request.user.accessible_units()
+        .filter(location__isnull=True, parent_unit__isnull=True)
         .annotate(item_count=Count("items"))
         .order_by("name")
         .values("id", "name", "user_id", "access_token", "item_count")
@@ -403,37 +405,87 @@ def api_browse_locations(request: HttpRequest) -> JsonResponse:
 def api_browse_location_units(request: HttpRequest, location_id: int) -> JsonResponse:
     """Return units within a location with item and child unit counts.
 
+    For location owners, all units are returned with full data.
+    For shared users, units without explicit UnitSharedAccess are
+    returned with name only (no contents access).
+
     Args:
         request: The HTTP request object.
         location_id: The ID of the location to browse.
 
     Returns:
-        JsonResponse with 'location' info and 'units' list.
+        JsonResponse with 'location' info, 'permission', and 'units' list.
     """
     if request.method != "GET":
         return JsonResponse({"error": "Method not allowed"}, status=405)
 
-    location = get_object_or_404(Location, id=location_id, user=request.user)
+    location = get_object_or_404(Location, id=location_id)
+    perm = require_location_access(location, request.user)
 
-    units = (
-        Unit.objects.filter(user=request.user, location=location)
+    all_units = (
+        Unit.objects.filter(location=location)
         .annotate(
             item_count=Count("items"),
             child_count=Count("child_units"),
         )
         .order_by("name")
-        .values("id", "name", "user_id", "access_token", "item_count", "child_count")
     )
+
+    if perm == "owner":
+        units = [
+            {
+                "id": u.id,
+                "name": u.name,
+                "user_id": u.user_id,
+                "access_token": u.access_token,
+                "item_count": u.item_count,
+                "child_count": u.child_count,
+                "accessible": True,
+            }
+            for u in all_units
+        ]
+    else:
+        accessible_ids = set(
+            UnitSharedAccess.objects.filter(
+                user=request.user, unit__location=location
+            ).values_list("unit_id", flat=True)
+        ) | set(
+            all_units.filter(user=request.user).values_list("id", flat=True)
+        )
+        units = []
+        for u in all_units:
+            if u.id in accessible_ids:
+                units.append({
+                    "id": u.id,
+                    "name": u.name,
+                    "user_id": u.user_id,
+                    "access_token": u.access_token,
+                    "item_count": u.item_count,
+                    "child_count": u.child_count,
+                    "accessible": True,
+                })
+            else:
+                units.append({
+                    "id": u.id,
+                    "name": u.name,
+                    "user_id": u.user_id,
+                    "accessible": False,
+                })
 
     return JsonResponse({
         "location": {"id": location.id, "name": location.name},
-        "units": list(units),
+        "permission": perm,
+        "units": units,
     })
 
 
 @login_required
 def api_browse_unit_items(request: HttpRequest, user_id: int, access_token: str) -> JsonResponse:
     """Return items and child units within a unit.
+
+    For unit owners, all child units are returned with full data.
+    For shared users, child units without explicit UnitSharedAccess
+    are returned with name only.
 
     Args:
         request: The HTTP request object.
@@ -447,15 +499,54 @@ def api_browse_unit_items(request: HttpRequest, user_id: int, access_token: str)
         return JsonResponse({"error": "Method not allowed"}, status=405)
 
     unit = get_object_or_404(
-        Unit, user_id=user_id, access_token=access_token, user=request.user
+        Unit, user_id=user_id, access_token=access_token
     )
+    perm = require_unit_access(unit, request.user)
 
-    child_units = (
+    all_child_units = (
         Unit.objects.filter(parent_unit=unit)
         .annotate(item_count=Count("items"))
         .order_by("name")
-        .values("id", "name", "user_id", "access_token", "item_count")
     )
+
+    if perm == "owner":
+        child_units = [
+            {
+                "id": cu.id,
+                "name": cu.name,
+                "user_id": cu.user_id,
+                "access_token": cu.access_token,
+                "item_count": cu.item_count,
+                "accessible": True,
+            }
+            for cu in all_child_units
+        ]
+    else:
+        accessible_child_ids = set(
+            UnitSharedAccess.objects.filter(
+                user=request.user, unit__parent_unit=unit
+            ).values_list("unit_id", flat=True)
+        ) | set(
+            all_child_units.filter(user=request.user).values_list("id", flat=True)
+        )
+        child_units = []
+        for cu in all_child_units:
+            if cu.id in accessible_child_ids:
+                child_units.append({
+                    "id": cu.id,
+                    "name": cu.name,
+                    "user_id": cu.user_id,
+                    "access_token": cu.access_token,
+                    "item_count": cu.item_count,
+                    "accessible": True,
+                })
+            else:
+                child_units.append({
+                    "id": cu.id,
+                    "name": cu.name,
+                    "user_id": cu.user_id,
+                    "accessible": False,
+                })
 
     items = unit.items.order_by("name").values(
         "id", "name", "quantity", "quantity_unit"
@@ -470,7 +561,7 @@ def api_browse_unit_items(request: HttpRequest, user_id: int, access_token: str)
     return JsonResponse({
         "unit": {"id": unit.id, "name": unit.name},
         "parent_label": parent_label,
-        "child_units": list(child_units),
+        "child_units": child_units,
         "items": list(items),
     })
 
@@ -489,7 +580,8 @@ def api_update_location(request: HttpRequest, location_id: int) -> JsonResponse:
     if request.method != "POST":
         return JsonResponse({"error": "Method not allowed"}, status=405)
 
-    location = get_object_or_404(Location, id=location_id, user=request.user)
+    location = get_object_or_404(Location, id=location_id)
+    require_location_access(location, request.user, owner_only=True)
 
     try:
         data = json.loads(request.body)
@@ -527,7 +619,8 @@ def api_delete_location(request: HttpRequest, location_id: int) -> JsonResponse:
     if request.method != "POST":
         return JsonResponse({"error": "Method not allowed"}, status=405)
 
-    location = get_object_or_404(Location, id=location_id, user=request.user)
+    location = get_object_or_404(Location, id=location_id)
+    require_location_access(location, request.user, owner_only=True)
 
     # Orphan child units before deleting
     location.unit_set.update(location=None)
@@ -552,8 +645,7 @@ def api_unit_detail_json(request: HttpRequest, user_id: int, access_token: str) 
         return JsonResponse({"error": "Method not allowed"}, status=405)
 
     unit = get_object_or_404(Unit, user_id=user_id, access_token=access_token)
-    if unit.user != request.user:
-        raise Http404("Unit not found")
+    require_unit_access(unit, request.user, owner_only=True)
 
     return JsonResponse({
         "id": unit.id,
@@ -586,8 +678,7 @@ def api_update_unit(request: HttpRequest, user_id: int, access_token: str) -> Js
         return JsonResponse({"error": "Method not allowed"}, status=405)
 
     unit = get_object_or_404(Unit, user_id=user_id, access_token=access_token)
-    if unit.user != request.user:
-        raise Http404("Unit not found")
+    require_unit_access(unit, request.user, owner_only=True)
 
     try:
         data = json.loads(request.body)
@@ -626,11 +717,13 @@ def api_update_unit(request: HttpRequest, user_id: int, access_token: str) -> Js
 
     # Set container
     if location_id:
-        location = get_object_or_404(Location, id=location_id, user=request.user)
+        location = get_object_or_404(Location, id=location_id)
+        require_location_access(location, request.user)
         unit.location = location
         unit.parent_unit = None
     elif parent_unit_id:
-        parent = get_object_or_404(Unit, id=parent_unit_id, user=request.user)
+        parent = get_object_or_404(Unit, id=parent_unit_id)
+        require_unit_access(parent, request.user)
         unit.parent_unit = parent
         unit.location = None
     else:
@@ -677,8 +770,7 @@ def api_delete_unit(request: HttpRequest, user_id: int, access_token: str) -> Js
         return JsonResponse({"error": "Method not allowed"}, status=405)
 
     unit = get_object_or_404(Unit, user_id=user_id, access_token=access_token)
-    if unit.user != request.user:
-        raise Http404("Unit not found")
+    require_unit_access(unit, request.user, owner_only=True)
 
     # Count items before deletion
     items_count = unit.items.count()
@@ -706,12 +798,12 @@ def api_container_options(request: HttpRequest) -> JsonResponse:
         return JsonResponse({"error": "Method not allowed"}, status=405)
 
     locations = list(
-        Location.objects.filter(user=request.user)
+        request.user.accessible_locations()
         .order_by("name")
         .values("id", "name")
     )
 
-    units_qs = Unit.objects.filter(user=request.user).order_by("name")
+    units_qs = request.user.accessible_units().order_by("name")
 
     exclude_unit = request.GET.get("exclude_unit")
     if exclude_unit:
@@ -778,8 +870,8 @@ def add_items_to_unit_view(request: HttpRequest) -> HttpResponse:
             initial["unit"] = unit_id
         form = ItemForm(user=request.user, initial=initial)
 
-    # Get user's units for the template
-    units = Unit.objects.filter(user=request.user)
+    # Get user's accessible units for the template
+    units = request.user.accessible_units()
     return render(request, "core/add_items_to_unit.html", {
         "form": form,
         "units": units,
@@ -811,9 +903,25 @@ def list_units(request: HttpRequest) -> HttpResponse:
         .annotate(item_count=Count("items"))
         .order_by("name")
     )
+    shared_locations = (
+        Location.objects.filter(shared_access__user=request.user)
+        .annotate(unit_count=Count("unit_set"))
+        .order_by("name")
+    )
+    shared_units = (
+        Unit.objects.filter(
+            unitsharedaccess__user=request.user,
+            location__isnull=True,
+            parent_unit__isnull=True,
+        )
+        .annotate(item_count=Count("items"))
+        .order_by("name")
+    )
     return render(request, "core/list_units.html", {
         "locations": locations,
         "orphan_units": orphan_units,
+        "shared_locations": shared_locations,
+        "shared_units": shared_units,
         "active_nav": "see",
     })
 
@@ -830,8 +938,24 @@ def unit_detail(request: HttpRequest, user_id: int, access_token: str) -> HttpRe
         The rendered unit detail page.
     """
     _unit = get_object_or_404(Unit, user_id=user_id, access_token=access_token)
+    permission = require_unit_access(_unit, request.user)
+
+    accessible_child_ids: set[int] = set()
+    if permission != "owner":
+        accessible_child_ids = set(
+            UnitSharedAccess.objects.filter(
+                user=request.user, unit__parent_unit=_unit
+            ).values_list("unit_id", flat=True)
+        ) | set(
+            Unit.objects.filter(
+                parent_unit=_unit, user=request.user
+            ).values_list("id", flat=True)
+        )
+
     return render(request, "core/unit_detail.html", {
         "unit": _unit,
+        "permission": permission,
+        "accessible_child_ids": accessible_child_ids,
         "unit_2_name_json": json.dumps(UNIT_2_NAME),
         "active_nav": "see",
     })
@@ -841,10 +965,7 @@ def unit_detail(request: HttpRequest, user_id: int, access_token: str) -> HttpRe
 def unit_qr_view(request: HttpRequest, user_id: int, access_token: str) -> HttpResponse:
     """Return a PNG QR code for the requested unit."""
     _unit = get_object_or_404(Unit, user_id=user_id, access_token=access_token)
-    has_access = _unit.user_id == request.user.id or _unit.shared_users.filter(id=request.user.id).exists()
-    if not has_access:
-        message = "Unit not found."
-        raise Http404(message)
+    require_unit_access(_unit, request.user)
 
     base_url = request.build_absolute_uri("/")
     qr_file = _unit.get_qr_code(base_url=base_url)
@@ -866,7 +987,11 @@ def item_detail(request: HttpRequest, item_id: int) -> HttpResponse:
         The rendered item detail page.
     """
     item = get_object_or_404(Item, id=item_id)
-    return render(request, "core/item_detail.html", {"item": item})
+    permission = require_item_access(item, request.user)
+    return render(request, "core/item_detail.html", {
+        "item": item,
+        "permission": permission,
+    })
 
 
 @login_required
@@ -880,7 +1005,8 @@ def item_edit_view(request: HttpRequest, item_id: int) -> HttpResponse:
     Returns:
         The rendered item edit page or a redirect to the item detail page.
     """
-    item = get_object_or_404(Item, id=item_id, user=request.user)
+    item = get_object_or_404(Item, id=item_id)
+    require_item_access(item, request.user, require_write=True)
 
     if request.method == "POST":
         form = ItemForm(request.POST, request.FILES, instance=item, user=request.user)
@@ -911,7 +1037,8 @@ def item_delete_view(request: HttpRequest, item_id: int) -> HttpResponse:
     Returns:
         Redirect to the parent unit's detail page.
     """
-    item = get_object_or_404(Item, id=item_id, user=request.user)
+    item = get_object_or_404(Item, id=item_id)
+    require_item_access(item, request.user, require_write=True)
 
     if request.method != "POST":
         return redirect("item_detail", item_id=item.id)
@@ -940,10 +1067,7 @@ def unit_edit_view(request: HttpRequest, user_id: int, access_token: str) -> Htt
         The rendered unit edit page or a redirect to the unit detail page.
     """
     unit = get_object_or_404(Unit, user_id=user_id, access_token=access_token)
-
-    # Check user permissions
-    if unit.user != request.user:
-        raise Http404("Unit not found")
+    require_unit_access(unit, request.user, owner_only=True)
 
     if request.method == "POST":
         form = UnitForm(request.POST, instance=unit, user=request.user)
@@ -976,10 +1100,7 @@ def unit_delete_view(request: HttpRequest, user_id: int, access_token: str) -> H
         Redirect to the units list page.
     """
     unit = get_object_or_404(Unit, user_id=user_id, access_token=access_token)
-
-    # Check user permissions
-    if unit.user != request.user:
-        raise Http404("Unit not found")
+    require_unit_access(unit, request.user, owner_only=True)
 
     if request.method != "POST":
         return redirect("unit_detail", user_id=unit.user_id, access_token=unit.access_token)
@@ -1013,9 +1134,8 @@ def item_search_view(request: HttpRequest) -> HttpResponse:
         if form.is_valid():
             query = form.cleaned_data["query"]
             item_location = find_item_location(query, request.user.id)
-            # Only show results when the item actually exists in the user's inventory
-            found_item = Item.objects.filter(
-                user=request.user,
+            # Only show results when the item actually exists in accessible inventory
+            found_item = request.user.accessible_items().filter(
                 name=item_location.item_name,
             ).first()
             if found_item:
@@ -1027,7 +1147,7 @@ def item_search_view(request: HttpRequest) -> HttpResponse:
         "form": form,
         "result": result,
         "found_item": found_item,
-        "units": Unit.objects.filter(user=request.user).order_by("name"),
+        "units": request.user.accessible_units().order_by("name"),
         "selected_unit_id": selected_unit_id,
         "active_nav": "find",
     })
@@ -1107,9 +1227,8 @@ def update_item_quantity_api(request: HttpRequest, item_id: int) -> JsonResponse
     except Item.DoesNotExist:
         return JsonResponse({"error": "Item not found"}, status=404)
 
-    # Verify ownership
-    if item.unit.user != request.user:
-        return JsonResponse({"error": "Permission denied"}, status=403)
+    # Verify access with write permission
+    require_item_access(item, request.user, require_write=True)
 
     # Item must have quantity/unit set to be updatable
     if item.quantity is None or not item.quantity_unit:
@@ -1181,7 +1300,8 @@ def api_item_detail_json(request: HttpRequest, item_id: int) -> JsonResponse:
     if request.method != "GET":
         return JsonResponse({"error": "Method not allowed"}, status=405)
 
-    item = get_object_or_404(Item, id=item_id, user=request.user)
+    item = get_object_or_404(Item, id=item_id)
+    require_item_access(item, request.user)
 
     return JsonResponse({
         "id": item.id,
@@ -1193,6 +1313,7 @@ def api_item_detail_json(request: HttpRequest, item_id: int) -> JsonResponse:
         "formatted_quantity": item.formatted_quantity,
         "unit_id": item.unit_id,
         "unit_name": item.unit.name,
+        "user_id": item.user_id,
         "created_on": item.created_on.isoformat(),
     })
 
@@ -1211,7 +1332,8 @@ def api_update_item(request: HttpRequest, item_id: int) -> JsonResponse:
     if request.method != "POST":
         return JsonResponse({"error": "Method not allowed"}, status=405)
 
-    item = get_object_or_404(Item, id=item_id, user=request.user)
+    item = get_object_or_404(Item, id=item_id)
+    require_item_access(item, request.user, require_write=True)
 
     try:
         data = json.loads(request.body)
@@ -1254,7 +1376,8 @@ def api_delete_item(request: HttpRequest, item_id: int) -> JsonResponse:
     if request.method != "POST":
         return JsonResponse({"error": "Method not allowed"}, status=405)
 
-    item = get_object_or_404(Item, id=item_id, user=request.user)
+    item = get_object_or_404(Item, id=item_id)
+    require_item_access(item, request.user, require_write=True)
     item_name = item.name
     item.delete()
 
@@ -1275,7 +1398,8 @@ def api_move_item(request: HttpRequest, item_id: int) -> JsonResponse:
     if request.method != "POST":
         return JsonResponse({"error": "Method not allowed"}, status=405)
 
-    item = get_object_or_404(Item, id=item_id, user=request.user)
+    item = get_object_or_404(Item, id=item_id)
+    require_item_access(item, request.user, require_write=True)
 
     try:
         data = json.loads(request.body)
@@ -1286,7 +1410,8 @@ def api_move_item(request: HttpRequest, item_id: int) -> JsonResponse:
     if not target_unit_id:
         return JsonResponse({"error": "unit_id is required"}, status=400)
 
-    target_unit = get_object_or_404(Unit, id=target_unit_id, user=request.user)
+    target_unit = get_object_or_404(Unit, id=target_unit_id)
+    require_unit_access(target_unit, request.user, require_write=True)
 
     item.unit = target_unit
     item.save(update_fields=["unit"])
@@ -1341,6 +1466,281 @@ def caddy_ca_download_view(request: HttpRequest) -> HttpResponse:
             {"error": "Failed to read certificate file", "details": str(e)},
             status=500,
         )
+
+
+# =============================================================================
+# Sharing Management APIs
+# =============================================================================
+
+_VALID_PERMISSIONS = ("read", "write")
+
+
+@login_required
+def api_unit_sharing(request: HttpRequest, user_id: int, access_token: str) -> JsonResponse:
+    """List users with shared access to a unit.
+
+    Args:
+        request: The HTTP request object.
+        user_id: The ID of the unit owner.
+        access_token: The unit's access token.
+
+    Returns:
+        JSON with list of shared access records.
+    """
+    if request.method != "GET":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    unit = get_object_or_404(Unit, user_id=user_id, access_token=access_token)
+    require_unit_access(unit, request.user, owner_only=True)
+
+    shares = UnitSharedAccess.objects.filter(unit=unit).select_related("user")
+    return JsonResponse({
+        "shares": [
+            {"id": s.id, "email": s.user.email, "permission": s.permission}
+            for s in shares
+        ]
+    })
+
+
+@login_required
+def api_unit_sharing_add(request: HttpRequest, user_id: int, access_token: str) -> JsonResponse:
+    """Invite a user to a unit by email.
+
+    Args:
+        request: The HTTP request object with JSON body containing 'email' and 'permission'.
+        user_id: The ID of the unit owner.
+        access_token: The unit's access token.
+
+    Returns:
+        JSON with created share record (201), or error.
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    unit = get_object_or_404(Unit, user_id=user_id, access_token=access_token)
+    require_unit_access(unit, request.user, owner_only=True)
+
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    email = (data.get("email") or "").strip().lower()
+    permission = data.get("permission", "read")
+
+    if permission not in _VALID_PERMISSIONS:
+        return JsonResponse({"error": "Invalid permission"}, status=400)
+    if not email:
+        return JsonResponse({"error": "Email is required"}, status=400)
+
+    try:
+        target_user = WMSUser.objects.get(email=email)
+    except WMSUser.DoesNotExist:
+        return JsonResponse({"error": "No user with that email"}, status=404)
+
+    if target_user == request.user:
+        return JsonResponse({"error": "Cannot share with yourself"}, status=400)
+
+    access, created = UnitSharedAccess.objects.get_or_create(
+        user=target_user, unit=unit, defaults={"permission": permission}
+    )
+    if not created:
+        return JsonResponse({"error": "Already shared with this user"}, status=409)
+
+    return JsonResponse(
+        {"id": access.id, "email": email, "permission": permission}, status=201
+    )
+
+
+@login_required
+def api_unit_sharing_remove(request: HttpRequest, user_id: int, access_token: str, access_id: int) -> JsonResponse:
+    """Revoke a user's shared access to a unit.
+
+    Args:
+        request: The HTTP request object.
+        user_id: The ID of the unit owner.
+        access_token: The unit's access token.
+        access_id: The ID of the UnitSharedAccess record.
+
+    Returns:
+        JSON confirmation.
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    unit = get_object_or_404(Unit, user_id=user_id, access_token=access_token)
+    require_unit_access(unit, request.user, owner_only=True)
+
+    access = get_object_or_404(UnitSharedAccess, id=access_id, unit=unit)
+    access.delete()
+    return JsonResponse({"status": "removed"})
+
+
+@login_required
+def api_unit_sharing_update(request: HttpRequest, user_id: int, access_token: str, access_id: int) -> JsonResponse:
+    """Update a shared user's permission level on a unit.
+
+    Args:
+        request: The HTTP request object with JSON body containing 'permission'.
+        user_id: The ID of the unit owner.
+        access_token: The unit's access token.
+        access_id: The ID of the UnitSharedAccess record.
+
+    Returns:
+        JSON with updated permission.
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    unit = get_object_or_404(Unit, user_id=user_id, access_token=access_token)
+    require_unit_access(unit, request.user, owner_only=True)
+
+    access = get_object_or_404(UnitSharedAccess, id=access_id, unit=unit)
+
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    permission = data.get("permission")
+    if permission not in _VALID_PERMISSIONS:
+        return JsonResponse({"error": "Invalid permission"}, status=400)
+
+    access.permission = permission
+    access.save(update_fields=["permission"])
+    return JsonResponse({"id": access.id, "permission": permission})
+
+
+@login_required
+def api_location_sharing(request: HttpRequest, location_id: int) -> JsonResponse:
+    """List users with shared access to a location.
+
+    Args:
+        request: The HTTP request object.
+        location_id: The ID of the location.
+
+    Returns:
+        JSON with list of shared access records.
+    """
+    if request.method != "GET":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    location = get_object_or_404(Location, id=location_id)
+    require_location_access(location, request.user, owner_only=True)
+
+    shares = LocationSharedAccess.objects.filter(location=location).select_related("user")
+    return JsonResponse({
+        "shares": [
+            {"id": s.id, "email": s.user.email, "permission": s.permission}
+            for s in shares
+        ]
+    })
+
+
+@login_required
+def api_location_sharing_add(request: HttpRequest, location_id: int) -> JsonResponse:
+    """Invite a user to a location by email.
+
+    Args:
+        request: The HTTP request object with JSON body containing 'email' and 'permission'.
+        location_id: The ID of the location.
+
+    Returns:
+        JSON with created share record (201), or error.
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    location = get_object_or_404(Location, id=location_id)
+    require_location_access(location, request.user, owner_only=True)
+
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    email = (data.get("email") or "").strip().lower()
+    permission = data.get("permission", "read")
+
+    if permission not in _VALID_PERMISSIONS:
+        return JsonResponse({"error": "Invalid permission"}, status=400)
+    if not email:
+        return JsonResponse({"error": "Email is required"}, status=400)
+
+    try:
+        target_user = WMSUser.objects.get(email=email)
+    except WMSUser.DoesNotExist:
+        return JsonResponse({"error": "No user with that email"}, status=404)
+
+    if target_user == request.user:
+        return JsonResponse({"error": "Cannot share with yourself"}, status=400)
+
+    access, created = LocationSharedAccess.objects.get_or_create(
+        user=target_user, location=location, defaults={"permission": permission}
+    )
+    if not created:
+        return JsonResponse({"error": "Already shared with this user"}, status=409)
+
+    return JsonResponse(
+        {"id": access.id, "email": email, "permission": permission}, status=201
+    )
+
+
+@login_required
+def api_location_sharing_remove(request: HttpRequest, location_id: int, access_id: int) -> JsonResponse:
+    """Revoke a user's shared access to a location.
+
+    Args:
+        request: The HTTP request object.
+        location_id: The ID of the location.
+        access_id: The ID of the LocationSharedAccess record.
+
+    Returns:
+        JSON confirmation.
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    location = get_object_or_404(Location, id=location_id)
+    require_location_access(location, request.user, owner_only=True)
+
+    access = get_object_or_404(LocationSharedAccess, id=access_id, location=location)
+    access.delete()
+    return JsonResponse({"status": "removed"})
+
+
+@login_required
+def api_location_sharing_update(request: HttpRequest, location_id: int, access_id: int) -> JsonResponse:
+    """Update a shared user's permission level on a location.
+
+    Args:
+        request: The HTTP request object with JSON body containing 'permission'.
+        location_id: The ID of the location.
+        access_id: The ID of the LocationSharedAccess record.
+
+    Returns:
+        JSON with updated permission.
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    location = get_object_or_404(Location, id=location_id)
+    require_location_access(location, request.user, owner_only=True)
+
+    access = get_object_or_404(LocationSharedAccess, id=access_id, location=location)
+
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    permission = data.get("permission")
+    if permission not in _VALID_PERMISSIONS:
+        return JsonResponse({"error": "Invalid permission"}, status=400)
+
+    access.permission = permission
+    access.save(update_fields=["permission"])
+    return JsonResponse({"id": access.id, "permission": permission})
 
 
 # =============================================================================
