@@ -60,6 +60,7 @@ poetry run python manage.py collectstatic    # Collect static files
 
 ## Development Guidelines
 
+- **State Management:** ALWAYS create Markdown files to manage complex tasks. These markdown files should include a detailed task description and the task plan (broken down into phases) as a check-list so that completed items can be checked off.
 - **Python:** Type annotations on all parameters and return types. Ruff-compatible code. Google-style docstrings on public methods and classes.
 - **JavaScript:** JSDoc on all functions (`@param`/`@returns`) and file-level comments on new files.
 - **Templates:** Extend `base.html`. Use Tailwind utility classes with semantic tokens. No inline styles.
@@ -68,7 +69,6 @@ poetry run python manage.py collectstatic    # Collect static files
 - **E2E Testing:** Browser-Use with AWS Bedrock. Tests live in `tests/e2e/`. Config in `tests/e2e/config.yaml` (git-ignored; copy `config.yaml.example` to get started). Requires `make install-e2e` for first-time setup. WMS internal LLM calls are mocked; only the Browser-Use agent uses a real LLM.
 - **Tailwind CSS:** Theme defined in `core/tailwind/input.css`. Use `make tw-build` or `make tw-watch`.
 - **Tool versions:** Update `.tool-versions` — Makefile and Dockerfile propagate automatically.
-- **State Management:** ALWAYS create Markdown files to manage complex tasks. These markdown files should include a detailed task description and the task plan (broken down into phases) as a check-list so that completed items can be checked off.
 
 ## Coding Practices
 
