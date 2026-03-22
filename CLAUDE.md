@@ -60,7 +60,7 @@ poetry run python manage.py collectstatic    # Collect static files
 
 ## Development Guidelines
 
-- **State Management:** ALWAYS create Markdown files to manage complex tasks. These markdown files should include a detailed task description and the task plan (broken down into phases) as a check-list so that completed items can be checked off.
+- **State Management:** ALWAYS create Markdown files to manage complex tasks. These markdown files should include a detailed task description and the task plan (broken down into phases) as a check-list so that completed items can be checked off. If stored within the code-base, all planning files should be named according to the pattern `"*_PLAN.md"` so that they can get Git ignored.
 - **Python:** Type annotations on all parameters and return types. Ruff-compatible code. Google-style docstrings on public methods and classes.
 - **JavaScript:** JSDoc on all functions (`@param`/`@returns`) and file-level comments on new files.
 - **Templates:** Extend `base.html`. Use Tailwind utility classes with semantic tokens. No inline styles.
