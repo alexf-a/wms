@@ -2563,10 +2563,10 @@ class TestSharedAccessViews:
         )
         assert response.status_code == http.HTTPStatus.NOT_FOUND
 
-    def test_api_update_item_allowed_for_write_user(
+    def test_api_update_item_denied_for_write_user_on_others_item(
         self, client: Client, user: User, other_user: User, standalone_unit: Unit, item: Item
     ):
-        """Test that a write-shared user can update items."""
+        """Test that a write-shared user cannot update another user's item."""
         from core.models import UnitSharedAccess
         UnitSharedAccess.objects.create(
             user=other_user, unit=standalone_unit, permission="write"
@@ -2577,7 +2577,7 @@ class TestSharedAccessViews:
             data=json.dumps({"name": "Updated Name", "description": "updated"}),
             content_type="application/json",
         )
-        assert response.status_code == http.HTTPStatus.OK
+        assert response.status_code == http.HTTPStatus.NOT_FOUND
 
     def test_api_delete_item_denied_for_read_user(
         self, client: Client, user: User, other_user: User, standalone_unit: Unit, item: Item
@@ -2894,3 +2894,131 @@ class TestRestrictedSharingViews:
         assert "access_token" in children["Shared Child"]
         assert children["Private Child"]["accessible"] is False
         assert "access_token" not in children["Private Child"]
+
+
+@pytest.mark.django_db
+class TestItemOwnershipEnforcement:
+    """Tests for Phase 11 — item-level ownership enforcement with write/write_all."""
+
+    def test_write_user_cannot_edit_others_item(
+        self, client: Client, user: User, other_user: User, standalone_unit: Unit, item: Item
+    ):
+        """write user cannot edit an item owned by another user via API."""
+        from core.models import UnitSharedAccess
+        UnitSharedAccess.objects.create(user=other_user, unit=standalone_unit, permission="write")
+        client.force_login(other_user)
+        response = client.post(
+            reverse("api_update_item", kwargs={"item_id": item.id}),
+            data=json.dumps({"name": "Hijacked", "description": "nope"}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.NOT_FOUND
+
+    def test_write_user_cannot_delete_others_item(
+        self, client: Client, user: User, other_user: User, standalone_unit: Unit, item: Item
+    ):
+        """write user cannot delete an item owned by another user via API."""
+        from core.models import UnitSharedAccess
+        UnitSharedAccess.objects.create(user=other_user, unit=standalone_unit, permission="write")
+        client.force_login(other_user)
+        response = client.post(reverse("api_delete_item", kwargs={"item_id": item.id}))
+        assert response.status_code == http.HTTPStatus.NOT_FOUND
+
+    def test_write_user_can_edit_own_item(
+        self, client: Client, user: User, other_user: User, standalone_unit: Unit
+    ):
+        """write user can edit their own item in a shared unit."""
+        from core.models import UnitSharedAccess
+        UnitSharedAccess.objects.create(user=other_user, unit=standalone_unit, permission="write")
+        own_item = Item.objects.create(user=other_user, name="My Widget", unit=standalone_unit)
+        client.force_login(other_user)
+        response = client.post(
+            reverse("api_update_item", kwargs={"item_id": own_item.id}),
+            data=json.dumps({"name": "Renamed Widget", "description": "updated"}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.OK
+        own_item.refresh_from_db()
+        assert own_item.name == "Renamed Widget"
+
+    def test_write_user_can_delete_own_item(
+        self, client: Client, user: User, other_user: User, standalone_unit: Unit
+    ):
+        """write user can delete their own item in a shared unit."""
+        from core.models import UnitSharedAccess
+        UnitSharedAccess.objects.create(user=other_user, unit=standalone_unit, permission="write")
+        own_item = Item.objects.create(user=other_user, name="Disposable", unit=standalone_unit)
+        item_id = own_item.id
+        client.force_login(other_user)
+        response = client.post(reverse("api_delete_item", kwargs={"item_id": item_id}))
+        assert response.status_code == http.HTTPStatus.OK
+        assert not Item.objects.filter(id=item_id).exists()
+
+    def test_write_all_user_can_edit_others_item(
+        self, client: Client, user: User, other_user: User, standalone_unit: Unit, item: Item
+    ):
+        """write_all user can edit another user's item."""
+        from core.models import UnitSharedAccess
+        UnitSharedAccess.objects.create(user=other_user, unit=standalone_unit, permission="write_all")
+        client.force_login(other_user)
+        response = client.post(
+            reverse("api_update_item", kwargs={"item_id": item.id}),
+            data=json.dumps({"name": "Updated by collaborator", "description": "edited"}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.OK
+        item.refresh_from_db()
+        assert item.name == "Updated by collaborator"
+
+    def test_write_all_user_can_delete_others_item(
+        self, client: Client, user: User, other_user: User, standalone_unit: Unit, item: Item
+    ):
+        """write_all user can delete another user's item."""
+        from core.models import UnitSharedAccess
+        UnitSharedAccess.objects.create(user=other_user, unit=standalone_unit, permission="write_all")
+        item_id = item.id
+        client.force_login(other_user)
+        response = client.post(reverse("api_delete_item", kwargs={"item_id": item_id}))
+        assert response.status_code == http.HTTPStatus.OK
+        assert not Item.objects.filter(id=item_id).exists()
+
+    def test_read_user_cannot_edit_any_item(
+        self, client: Client, user: User, other_user: User, standalone_unit: Unit, item: Item
+    ):
+        """read user cannot edit any item via API."""
+        from core.models import UnitSharedAccess
+        UnitSharedAccess.objects.create(user=other_user, unit=standalone_unit, permission="read")
+        client.force_login(other_user)
+        response = client.post(
+            reverse("api_update_item", kwargs={"item_id": item.id}),
+            data=json.dumps({"name": "Nope", "description": "denied"}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.NOT_FOUND
+
+    def test_read_user_cannot_delete_any_item(
+        self, client: Client, user: User, other_user: User, standalone_unit: Unit, item: Item
+    ):
+        """read user cannot delete any item via API."""
+        from core.models import UnitSharedAccess
+        UnitSharedAccess.objects.create(user=other_user, unit=standalone_unit, permission="read")
+        client.force_login(other_user)
+        response = client.post(reverse("api_delete_item", kwargs={"item_id": item.id}))
+        assert response.status_code == http.HTTPStatus.NOT_FOUND
+
+    def test_sharing_api_accepts_write_all(
+        self, client: Client, user: User, other_user: User, standalone_unit: Unit
+    ):
+        """Sharing API accepts write_all as a valid permission."""
+        client.force_login(user)
+        response = client.post(
+            reverse("api_unit_sharing_add", kwargs={
+                "user_id": standalone_unit.user_id,
+                "access_token": standalone_unit.access_token,
+            }),
+            data=json.dumps({"email": other_user.email, "permission": "write_all"}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.CREATED
+        data = response.json()
+        assert data["permission"] == "write_all"

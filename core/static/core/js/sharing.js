@@ -82,7 +82,7 @@
 
     var select = document.createElement('select');
     select.className = 'rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring';
-    select.innerHTML = '<option value="read">View</option><option value="write">Edit</option>';
+    select.innerHTML = '<option value="read">View</option><option value="write">Edit own</option><option value="write_all">Edit all</option>';
     select.value = share.permission;
     select.addEventListener('change', function () {
       updatePermission(share.id, select.value);

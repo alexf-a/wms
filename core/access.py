@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from django.http import Http404
 
-from .models import Item, Location, Unit, WMSUser
+from .models import Item, Location, Permission, Unit, WMSUser
 
 
 def require_unit_access(
@@ -19,7 +19,7 @@ def require_unit_access(
     *,
     require_write: bool = False,
     owner_only: bool = False,
-) -> str:
+) -> Permission:
     """Check user access to a Unit, raising Http404 on failure.
 
     Args:
@@ -29,7 +29,7 @@ def require_unit_access(
         owner_only: If True, reject all non-owners.
 
     Returns:
-        The permission level: ``"owner"``, ``"write"``, or ``"read"``.
+        The effective Permission for this user.
 
     Raises:
         Http404: If the user lacks sufficient access.
@@ -37,9 +37,9 @@ def require_unit_access(
     perm = unit.get_user_permission(user)
     if perm is None:
         raise Http404("Unit not found")
-    if owner_only and perm != "owner":
+    if owner_only and perm != Permission.OWNER:
         raise Http404("Unit not found")
-    if require_write and perm == "read":
+    if require_write and perm == Permission.READ:
         raise Http404("Unit not found")
     return perm
 
@@ -50,7 +50,7 @@ def require_location_access(
     *,
     require_write: bool = False,
     owner_only: bool = False,
-) -> str:
+) -> Permission:
     """Check user access to a Location, raising Http404 on failure.
 
     Args:
@@ -60,7 +60,7 @@ def require_location_access(
         owner_only: If True, reject all non-owners.
 
     Returns:
-        The permission level: ``"owner"``, ``"write"``, or ``"read"``.
+        The effective Permission for this user.
 
     Raises:
         Http404: If the user lacks sufficient access.
@@ -68,9 +68,9 @@ def require_location_access(
     perm = location.get_user_permission(user)
     if perm is None:
         raise Http404("Location not found")
-    if owner_only and perm != "owner":
+    if owner_only and perm != Permission.OWNER:
         raise Http404("Location not found")
-    if require_write and perm == "read":
+    if require_write and perm == Permission.READ:
         raise Http404("Location not found")
     return perm
 
@@ -80,16 +80,21 @@ def require_item_access(
     user: WMSUser,
     *,
     require_write: bool = False,
-) -> str:
+) -> Permission:
     """Check user access to an Item via its Unit, raising Http404 on failure.
+
+    When ``require_write`` is True, ownership enforcement applies:
+    - ``OWNER`` and ``WRITE_ALL`` may edit/delete any item.
+    - ``WRITE`` may only edit/delete items they own (``item.user == user``).
+    - ``READ`` is always denied for write operations.
 
     Args:
         item: The item to check.
         user: The requesting user.
-        require_write: If True, reject read-only shared users.
+        require_write: If True, reject users without sufficient write access.
 
     Returns:
-        The permission level: ``"owner"``, ``"write"``, or ``"read"``.
+        The effective Permission for this user.
 
     Raises:
         Http404: If the user lacks sufficient access.
@@ -97,6 +102,11 @@ def require_item_access(
     perm = item.unit.get_user_permission(user)
     if perm is None:
         raise Http404("Item not found")
-    if require_write and perm == "read":
-        raise Http404("Item not found")
+    if require_write:
+        if perm == Permission.READ:
+            msg = "Item not found"
+            raise Http404(msg)
+        if perm == Permission.WRITE and item.user_id != user.id:
+            msg = "Item not found"
+            raise Http404(msg)
     return perm

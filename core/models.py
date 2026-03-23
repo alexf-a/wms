@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 from decimal import Decimal
+from enum import StrEnum
 from typing import ClassVar
 from urllib.parse import urljoin
 
@@ -223,22 +224,42 @@ class Location(StorageSpace):
 
         return unit
 
-    def get_user_permission(self, user: WMSUser) -> str | None:
+    def get_user_permission(self, user: WMSUser) -> Permission | None:
         """Return the effective permission level for a user on this Location.
 
         Args:
             user: The user to check.
 
         Returns:
-            'owner' for the location owner, 'write'/'read' for shared users,
-            or None if the user has no access.
+            Permission member for the user, or None if no access.
         """
         if self.user_id == user.id:
-            return "owner"
+            return Permission.OWNER
         access = LocationSharedAccess.objects.filter(
             user=user, location=self
         ).first()
-        return access.permission if access else None
+        return Permission(access.permission) if access else None
+
+
+class Permission(StrEnum):
+    """Sharing permission levels — single source of truth.
+
+    ``OWNER`` is computed at runtime (never stored in the database).
+    ``READ``, ``WRITE``, and ``WRITE_ALL`` are the storable permission levels.
+    """
+
+    OWNER = "owner"
+    READ = "read"
+    WRITE = "write"
+    WRITE_ALL = "write_all"
+
+    @classmethod
+    def storable(cls) -> tuple[Permission, ...]:
+        """Return the permission levels that can be stored in the database.
+
+        Excludes ``OWNER`` which is computed, not stored.
+        """
+        return (cls.READ, cls.WRITE, cls.WRITE_ALL)
 
 
 class LocationSharedAccess(models.Model):
@@ -256,12 +277,22 @@ class LocationSharedAccess(models.Model):
     """
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     location = models.ForeignKey(Location, related_name="shared_access", on_delete=models.CASCADE)
-    permission = models.CharField(max_length=50, default="read")
+    permission = models.CharField(
+        max_length=50,
+        default=Permission.READ,
+        choices={p.value: p.value for p in Permission.storable()},
+    )
 
     class Meta:
         """Model constraints for shared location access."""
 
         unique_together: ClassVar = ("user", "location")
+        constraints: ClassVar = [
+            models.CheckConstraint(
+                condition=Q(permission__in=[p.value for p in Permission.storable()]),
+                name="locationsharedaccess_valid_permission",
+            ),
+        ]
 
     def __str__(self) -> str:
         return f"{self.user.username} → {self.location.name} ({self.permission})"
@@ -584,7 +615,7 @@ class Unit(StorageSpace):
 
         return False
 
-    def get_user_permission(self, user: WMSUser) -> str | None:
+    def get_user_permission(self, user: WMSUser) -> Permission | None:
         """Return the effective permission level for a user on this Unit.
 
         Checks ownership and direct UnitSharedAccess only.
@@ -594,16 +625,15 @@ class Unit(StorageSpace):
             user: The user to check.
 
         Returns:
-            'owner' for the unit owner, 'write'/'read' for shared users,
-            or None if the user has no access.
+            Permission member for the user, or None if no access.
         """
         if self.user_id == user.id:
-            return "owner"
+            return Permission.OWNER
 
         # Check direct unit access
         access = UnitSharedAccess.objects.filter(user=user, unit=self).first()
         if access:
-            return access.permission
+            return Permission(access.permission)
 
         return None
 
@@ -634,20 +664,31 @@ class Unit(StorageSpace):
 
 class UnitSharedAccess(models.Model):
     """Model to handle shared access to units with specific permissions.
-    
+
     Attributes:
         user (User): The user with shared access.
         unit (Unit): The unit to which access is shared.
-        permission (str): The level of permission (e.g., "read", "write").
+        permission (str): The level of permission — ``"read"`` (view only),
+            ``"write"`` (CRUD own items), or ``"write_all"`` (CRUD any item).
     """
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     unit = models.ForeignKey(Unit, on_delete=models.CASCADE)
-    permission = models.CharField(max_length=50, default="read")
+    permission = models.CharField(
+        max_length=50,
+        default=Permission.READ,
+        choices={p.value: p.value for p in Permission.storable()},
+    )
 
     class Meta:
         """Model constraints for shared unit access."""
 
         unique_together: ClassVar = ("user", "unit")
+        constraints: ClassVar = [
+            models.CheckConstraint(
+                condition=Q(permission__in=[p.value for p in Permission.storable()]),
+                name="unitsharedaccess_valid_permission",
+            ),
+        ]
 
     def __str__(self) -> str:
         return f"{self.user.username} → {self.unit.name} ({self.permission})"

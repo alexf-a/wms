@@ -36,7 +36,7 @@ from .forms import (
     WMSUserCreationForm,
 )
 from .access import require_item_access, require_location_access, require_unit_access
-from .models import UNIT_2_NAME, Item, Location, LocationSharedAccess, Unit, UnitSharedAccess, WMSUser
+from .models import UNIT_2_NAME, Item, Location, LocationSharedAccess, Permission, Unit, UnitSharedAccess, WMSUser
 from .models import ITEM_QUANTITY_COUNT_STEP, ITEM_QUANTITY_NON_COUNT_STEP, ITEM_QUANTITY_ROUNDING_QUANTUM
 
 logger = logging.getLogger(__name__)
@@ -431,7 +431,7 @@ def api_browse_location_units(request: HttpRequest, location_id: int) -> JsonRes
         .order_by("name")
     )
 
-    if perm == "owner":
+    if perm == Permission.OWNER:
         units = [
             {
                 "id": u.id,
@@ -509,7 +509,7 @@ def api_browse_unit_items(request: HttpRequest, user_id: int, access_token: str)
         .order_by("name")
     )
 
-    if perm == "owner":
+    if perm == Permission.OWNER:
         child_units = [
             {
                 "id": cu.id,
@@ -941,7 +941,7 @@ def unit_detail(request: HttpRequest, user_id: int, access_token: str) -> HttpRe
     permission = require_unit_access(_unit, request.user)
 
     accessible_child_ids: set[int] = set()
-    if permission != "owner":
+    if permission != Permission.OWNER:
         accessible_child_ids = set(
             UnitSharedAccess.objects.filter(
                 user=request.user, unit__parent_unit=_unit
@@ -988,9 +988,13 @@ def item_detail(request: HttpRequest, item_id: int) -> HttpResponse:
     """
     item = get_object_or_404(Item, id=item_id)
     permission = require_item_access(item, request.user)
+    can_write = permission in (Permission.OWNER, Permission.WRITE_ALL) or (
+        permission == Permission.WRITE and item.user_id == request.user.id
+    )
     return render(request, "core/item_detail.html", {
         "item": item,
         "permission": permission,
+        "can_write": can_write,
     })
 
 
@@ -1472,7 +1476,7 @@ def caddy_ca_download_view(request: HttpRequest) -> HttpResponse:
 # Sharing Management APIs
 # =============================================================================
 
-_VALID_PERMISSIONS = ("read", "write")
+_VALID_PERMISSIONS = Permission.storable()
 
 
 @login_required

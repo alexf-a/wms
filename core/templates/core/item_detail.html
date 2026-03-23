@@ -9,7 +9,7 @@
 {% block content %}
 <div class="mx-auto max-w-sm">
     <!-- Header -->
-    {% if permission != "read" %}
+    {% if can_write %}
     <div class="mb-4 flex items-start justify-end">
         <div class="relative">
             <button type="button" id="item-menu-button"

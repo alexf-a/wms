@@ -398,9 +398,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Permission-aware button visibility
                 var perm = window.WMS_UNIT_PERMISSION;
                 var isOwner = perm === 'owner';
+                var isWriteAll = perm === 'write_all';
                 var isWriter = perm === 'write';
                 var isItemOwner = data.user_id === window.WMS_CURRENT_USER_ID;
-                var canWrite = isOwner || (isWriter && isItemOwner);
+                var canWrite = isOwner || isWriteAll || (isWriter && isItemOwner);
                 if (sheetEditBtn) sheetEditBtn.style.display = canWrite ? '' : 'none';
                 if (sheetDeleteBtn) sheetDeleteBtn.style.display = canWrite ? '' : 'none';
                 if (sheetMoveBtn) sheetMoveBtn.style.display = (isOwner || isWriter) ? '' : 'none';
