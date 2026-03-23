@@ -474,3 +474,12 @@ if (typeof window !== 'undefined') {
         initQuantityControls();
     }
 }
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        initQuantityControls: initQuantityControls,
+        getPendingState: getPendingState,
+        updateQuantity: updateQuantity,
+        updateUI: updateUI,
+    };
+}

@@ -192,4 +192,28 @@ describe('Browse Page', function () {
 
     expect(window.location.href).toBe('/unit/1/tok1/');
   });
+
+  test('restricted unit card renders as div without link', async function () {
+    mockApiFetch({
+      location: { id: 10, name: 'My House' },
+      units: [
+        { id: 1, name: 'Secret Box', user_id: 2, accessible: false, item_count: 0, child_count: 0 },
+      ],
+    });
+
+    initBrowse(CONFIG);
+    document.querySelector('.browse-location-card').click();
+    await flushPromises();
+
+    var card = document.querySelector('#screen-units .browse-unit-card');
+    // Should be a div, not an anchor
+    expect(card.tagName).toBe('DIV');
+    expect(card.classList.contains('browse-unit-card--restricted')).toBe(true);
+    // Should show name
+    expect(card.textContent).toContain('Secret Box');
+    // Should have lock icon (SVG with rect for lock body)
+    expect(card.innerHTML).toContain('<rect');
+    // Should NOT have entity-menu-btn
+    expect(card.querySelector('.entity-menu-btn')).toBeNull();
+  });
 });

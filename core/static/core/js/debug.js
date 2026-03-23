@@ -48,3 +48,7 @@ function debugWarn(...args) {
 function errorLog(...args) {
     console.error(...args);
 }
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { debugLog: debugLog, debugError: debugError, debugWarn: debugWarn, errorLog: errorLog };
+}

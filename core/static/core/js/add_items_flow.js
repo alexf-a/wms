@@ -262,3 +262,7 @@ function initAddItemsFlow() {
 }
 
 document.addEventListener('DOMContentLoaded', initAddItemsFlow);
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { compressImage: compressImage, initAddItemsFlow: initAddItemsFlow };
+}

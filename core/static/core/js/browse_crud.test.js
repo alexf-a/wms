@@ -409,4 +409,132 @@ describe('Browse CRUD', function () {
     expect(unit.location_id).toBeNull();
     expect(unit.parent_unit_id).toBe(3);
   });
+
+  // --- Submit functions ---
+
+  test('submitCreateLocation posts name and address', async function () {
+    var browseApp = document.getElementById('browse-app');
+    browseApp._browseApi = { refreshCurrentScreen: jest.fn(), getCurrentContext: function () { return { screen: 'locations' }; } };
+    mockApiFetch({}, true);
+
+    var api = initBrowseCrud(CONFIG);
+    api.openCreateLocationDialog();
+
+    document.getElementById('create-location-name').value = 'New Loc';
+    document.getElementById('create-location-address').value = '789 Elm St';
+    document.getElementById('create-location-submit').click();
+    await flushPromises();
+
+    var callArgs = global.apiFetch.mock.calls[0];
+    var body = JSON.parse(callArgs[1].body);
+    expect(body.name).toBe('New Loc');
+    expect(body.address).toBe('789 Elm St');
+  });
+
+  test('submitCreateLocation shows error on API failure', async function () {
+    mockApiFetch({ error: 'Name already taken' }, false);
+
+    var api = initBrowseCrud(CONFIG);
+    api.openCreateLocationDialog();
+
+    document.getElementById('create-location-name').value = 'Dup';
+    document.getElementById('create-location-submit').click();
+    await flushPromises();
+
+    var errorEl = document.getElementById('create-location-error');
+    expect(errorEl.classList.contains('hidden')).toBe(false);
+    expect(errorEl.textContent).toBe('Name already taken');
+  });
+
+  test('submitCreateUnit posts name and container', async function () {
+    // First call: container options; second call: create unit
+    var callCount = 0;
+    global.apiFetch = jest.fn(function () {
+      callCount++;
+      if (callCount === 1) {
+        return Promise.resolve({
+          json: function () { return Promise.resolve({ locations: [{ id: 1, name: 'Loc' }], units: [] }); },
+        });
+      }
+      return Promise.resolve({ ok: true, json: function () { return Promise.resolve({}); } });
+    });
+
+    var browseApp = document.getElementById('browse-app');
+    browseApp._browseApi = { refreshCurrentScreen: jest.fn(), getCurrentContext: function () { return { screen: 'locations' }; } };
+
+    var api = initBrowseCrud(CONFIG);
+    api.openCreateUnitDialog(null);
+    await flushPromises();
+
+    document.getElementById('create-unit-name').value = 'New Unit';
+    document.getElementById('create-unit-container').value = 'location:1';
+    document.getElementById('create-unit-submit').click();
+    await flushPromises();
+
+    var createCall = global.apiFetch.mock.calls[1];
+    expect(createCall[0]).toBe('/api/units/create/');
+    var body = JSON.parse(createCall[1].body);
+    expect(body.name).toBe('New Unit');
+    expect(body.location_id).toBe(1);
+  });
+
+  test('submitEditLocation posts updated name', async function () {
+    mockApiFetch({}, true);
+    var browseApp = document.getElementById('browse-app');
+    browseApp._browseApi = { refreshCurrentScreen: jest.fn(), getCurrentContext: function () { return { screen: 'locations' }; } };
+
+    var api = initBrowseCrud(CONFIG);
+    api.openEditLocationDialog(10, 'My House', '123 Main St');
+
+    document.getElementById('edit-location-name').value = 'Updated House';
+    document.getElementById('edit-location-address').value = '456 Oak Ave';
+    document.getElementById('edit-location-submit').click();
+    await flushPromises();
+
+    var callArgs = global.apiFetch.mock.calls[0];
+    expect(callArgs[0]).toBe('/api/locations/10/update/');
+    var body = JSON.parse(callArgs[1].body);
+    expect(body.name).toBe('Updated House');
+    expect(body.address).toBe('456 Oak Ave');
+  });
+
+  test('submitDeleteLocation posts to correct URL', async function () {
+    mockApiFetch({}, true);
+    var browseApp = document.getElementById('browse-app');
+    browseApp._browseApi = { refreshCurrentScreen: jest.fn(), getCurrentContext: function () { return { screen: 'locations' }; } };
+
+    var api = initBrowseCrud(CONFIG);
+    api.openDeleteLocationDialog(10, 'My House');
+
+    document.getElementById('delete-location-submit').click();
+    await flushPromises();
+
+    expect(global.apiFetch).toHaveBeenCalledWith('/api/locations/10/delete/', expect.objectContaining({ method: 'POST' }));
+  });
+
+  test('submitDeleteUnit posts with correct URL', async function () {
+    // First call: unit detail for warning; second call: delete
+    var callCount = 0;
+    global.apiFetch = jest.fn(function () {
+      callCount++;
+      if (callCount <= 1) {
+        return Promise.resolve({ json: function () { return Promise.resolve({ id: 7 }); } });
+      }
+      return Promise.resolve({ ok: true, json: function () { return Promise.resolve({}); } });
+    });
+
+    var browseApp = document.getElementById('browse-app');
+    browseApp._browseApi = { refreshCurrentScreen: jest.fn(), getCurrentContext: function () { return { screen: 'locations' }; } };
+
+    var api = initBrowseCrud(CONFIG);
+    api.openDeleteUnitDialog(1, 'abc123', 'Storage Bin');
+    await flushPromises();
+
+    document.getElementById('delete-unit-submit').click();
+    await flushPromises();
+
+    var deleteCall = global.apiFetch.mock.calls[1];
+    expect(deleteCall[0]).toBe('/api/units/1/abc123/delete/');
+    expect(deleteCall[1].method).toBe('POST');
+  });
 });
