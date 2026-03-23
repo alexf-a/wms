@@ -1642,7 +1642,7 @@ class TestUpdateItemQuantityAPI:
         """Test another user cannot modify the item quantity."""
         client.force_login(other_user)
         response = client.post(self._url(item_with_quantity.id), {"action": "increment"})
-        assert response.status_code == http.HTTPStatus.FORBIDDEN
+        assert response.status_code == http.HTTPStatus.NOT_FOUND
 
     # ----- edge cases -----
 
