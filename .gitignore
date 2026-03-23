@@ -45,3 +45,6 @@ core/static/core/css/tailwind.css
 tests/e2e/screenshots/
 tests/e2e/gifs/
 tests/e2e/config.yaml
+
+#Claude Code
+*_STATE.md
