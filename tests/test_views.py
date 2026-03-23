@@ -3022,3 +3022,657 @@ class TestItemOwnershipEnforcement:
         assert response.status_code == http.HTTPStatus.CREATED
         data = response.json()
         assert data["permission"] == "write_all"
+
+
+@pytest.mark.django_db
+class TestLocationSharingManagementAPI:
+    """Tests for the location sharing management API endpoints."""
+
+    def test_list_shares_owner(
+        self, client: Client, user: User, other_user: User, location: Location
+    ):
+        """Test that the owner can list location shares."""
+        from core.models import LocationSharedAccess
+        LocationSharedAccess.objects.create(
+            user=other_user, location=location, permission="read"
+        )
+        client.force_login(user)
+        response = client.get(
+            reverse("api_location_sharing", kwargs={"location_id": location.id})
+        )
+        assert response.status_code == http.HTTPStatus.OK
+        data = response.json()
+        assert len(data["shares"]) == 1
+        assert data["shares"][0]["email"] == other_user.email
+
+    def test_non_owner_cannot_list_shares(
+        self, client: Client, other_user: User, location: Location
+    ):
+        """Test that a non-owner without access cannot list shares."""
+        client.force_login(other_user)
+        response = client.get(
+            reverse("api_location_sharing", kwargs={"location_id": location.id})
+        )
+        assert response.status_code == http.HTTPStatus.NOT_FOUND
+
+    def test_write_shared_user_cannot_list_shares(
+        self, client: Client, user: User, other_user: User, location: Location
+    ):
+        """Test that a write-shared user cannot list shares (owner-only)."""
+        from core.models import LocationSharedAccess
+        LocationSharedAccess.objects.create(
+            user=other_user, location=location, permission="write"
+        )
+        client.force_login(other_user)
+        response = client.get(
+            reverse("api_location_sharing", kwargs={"location_id": location.id})
+        )
+        assert response.status_code == http.HTTPStatus.NOT_FOUND
+
+    def test_add_share_by_email(
+        self, client: Client, user: User, other_user: User, location: Location
+    ):
+        """Test inviting a user to a location by email."""
+        client.force_login(user)
+        response = client.post(
+            reverse("api_location_sharing_add", kwargs={"location_id": location.id}),
+            data=json.dumps({"email": other_user.email, "permission": "write"}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.CREATED
+        data = response.json()
+        assert data["email"] == other_user.email
+        assert data["permission"] == "write"
+
+    def test_add_share_invalid_email(
+        self, client: Client, user: User, location: Location
+    ):
+        """Test inviting a nonexistent email returns 404."""
+        client.force_login(user)
+        response = client.post(
+            reverse("api_location_sharing_add", kwargs={"location_id": location.id}),
+            data=json.dumps({"email": "nonexistent@example.com", "permission": "read"}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.NOT_FOUND
+
+    def test_add_share_self_returns_400(
+        self, client: Client, user: User, location: Location
+    ):
+        """Test that sharing a location with yourself returns 400."""
+        client.force_login(user)
+        response = client.post(
+            reverse("api_location_sharing_add", kwargs={"location_id": location.id}),
+            data=json.dumps({"email": user.email, "permission": "read"}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.BAD_REQUEST
+
+    def test_add_share_duplicate_returns_409(
+        self, client: Client, user: User, other_user: User, location: Location
+    ):
+        """Test that duplicate location sharing returns 409."""
+        from core.models import LocationSharedAccess
+        LocationSharedAccess.objects.create(
+            user=other_user, location=location, permission="read"
+        )
+        client.force_login(user)
+        response = client.post(
+            reverse("api_location_sharing_add", kwargs={"location_id": location.id}),
+            data=json.dumps({"email": other_user.email, "permission": "write"}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.CONFLICT
+
+    def test_remove_share(
+        self, client: Client, user: User, other_user: User, location: Location
+    ):
+        """Test revoking shared location access."""
+        from core.models import LocationSharedAccess
+        access = LocationSharedAccess.objects.create(
+            user=other_user, location=location, permission="read"
+        )
+        client.force_login(user)
+        response = client.post(
+            reverse("api_location_sharing_remove", kwargs={
+                "location_id": location.id,
+                "access_id": access.id,
+            })
+        )
+        assert response.status_code == http.HTTPStatus.OK
+        assert not LocationSharedAccess.objects.filter(id=access.id).exists()
+
+    def test_update_share_permission(
+        self, client: Client, user: User, other_user: User, location: Location
+    ):
+        """Test changing a location share's permission level."""
+        from core.models import LocationSharedAccess
+        access = LocationSharedAccess.objects.create(
+            user=other_user, location=location, permission="read"
+        )
+        client.force_login(user)
+        response = client.post(
+            reverse("api_location_sharing_update", kwargs={
+                "location_id": location.id,
+                "access_id": access.id,
+            }),
+            data=json.dumps({"permission": "write"}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.OK
+        access.refresh_from_db()
+        assert access.permission == "write"
+
+    def test_non_owner_cannot_add_share(
+        self, client: Client, user: User, other_user: User, location: Location
+    ):
+        """Test that a write-shared user cannot add shares (owner-only)."""
+        from core.models import LocationSharedAccess, WMSUser
+        LocationSharedAccess.objects.create(
+            user=other_user, location=location, permission="write"
+        )
+        third_user = WMSUser.objects.create_user(
+            email="third@example.com", password="testpass123",
+            has_completed_onboarding=True,
+        )
+        client.force_login(other_user)
+        response = client.post(
+            reverse("api_location_sharing_add", kwargs={"location_id": location.id}),
+            data=json.dumps({"email": third_user.email, "permission": "read"}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.NOT_FOUND
+
+
+@pytest.mark.django_db
+class TestItemViewSharedAccess:
+    """Tests for shared user access to item views (detail, edit, delete, quantity)."""
+
+    # ----- item_detail (read-only) -----
+
+    def test_item_detail_read_user_can_view(
+        self, client: Client, user: User, other_user: User, standalone_unit: Unit, item: Item
+    ):
+        """Test that a read-shared user can view the item detail page."""
+        from core.models import UnitSharedAccess
+        UnitSharedAccess.objects.create(
+            user=other_user, unit=standalone_unit, permission="read"
+        )
+        client.force_login(other_user)
+        response = client.get(reverse("item_detail", kwargs={"item_id": item.id}))
+        assert response.status_code == http.HTTPStatus.OK
+        assert response.context["item"] == item
+
+    def test_item_detail_no_access_user_denied(
+        self, client: Client, other_user: User, item: Item
+    ):
+        """Test that a user without access gets 404 on item detail."""
+        client.force_login(other_user)
+        response = client.get(reverse("item_detail", kwargs={"item_id": item.id}))
+        assert response.status_code == http.HTTPStatus.NOT_FOUND
+
+    # ----- item_edit_view (require_write=True) -----
+
+    def test_item_edit_read_user_denied(
+        self, client: Client, user: User, other_user: User, standalone_unit: Unit, item: Item
+    ):
+        """Test that a read-shared user cannot access the item edit page."""
+        from core.models import UnitSharedAccess
+        UnitSharedAccess.objects.create(
+            user=other_user, unit=standalone_unit, permission="read"
+        )
+        client.force_login(other_user)
+        response = client.get(reverse("item_edit", kwargs={"item_id": item.id}))
+        assert response.status_code == http.HTTPStatus.NOT_FOUND
+
+    def test_item_edit_write_user_own_item(
+        self, client: Client, user: User, other_user: User, standalone_unit: Unit
+    ):
+        """Test that a write-shared user can access the edit page for their own item."""
+        from core.models import UnitSharedAccess
+        UnitSharedAccess.objects.create(
+            user=other_user, unit=standalone_unit, permission="write"
+        )
+        own_item = Item.objects.create(
+            user=other_user, name="My Widget", unit=standalone_unit
+        )
+        client.force_login(other_user)
+        response = client.get(reverse("item_edit", kwargs={"item_id": own_item.id}))
+        assert response.status_code == http.HTTPStatus.OK
+        assert response.context["item"] == own_item
+
+    def test_item_edit_write_user_others_item_denied(
+        self, client: Client, user: User, other_user: User, standalone_unit: Unit, item: Item
+    ):
+        """Test that a write-shared user cannot edit another user's item."""
+        from core.models import UnitSharedAccess
+        UnitSharedAccess.objects.create(
+            user=other_user, unit=standalone_unit, permission="write"
+        )
+        client.force_login(other_user)
+        response = client.get(reverse("item_edit", kwargs={"item_id": item.id}))
+        assert response.status_code == http.HTTPStatus.NOT_FOUND
+
+    def test_item_edit_write_all_user_can_edit_others(
+        self, client: Client, user: User, other_user: User, standalone_unit: Unit, item: Item
+    ):
+        """Test that a write_all-shared user can access the edit page for any item."""
+        from core.models import UnitSharedAccess
+        UnitSharedAccess.objects.create(
+            user=other_user, unit=standalone_unit, permission="write_all"
+        )
+        client.force_login(other_user)
+        response = client.get(reverse("item_edit", kwargs={"item_id": item.id}))
+        assert response.status_code == http.HTTPStatus.OK
+        assert response.context["item"] == item
+
+    # ----- item_delete_view (require_write=True) -----
+
+    def test_item_delete_read_user_denied(
+        self, client: Client, user: User, other_user: User, standalone_unit: Unit, item: Item
+    ):
+        """Test that a read-shared user cannot delete items."""
+        from core.models import UnitSharedAccess
+        UnitSharedAccess.objects.create(
+            user=other_user, unit=standalone_unit, permission="read"
+        )
+        client.force_login(other_user)
+        response = client.post(reverse("item_delete", kwargs={"item_id": item.id}))
+        assert response.status_code == http.HTTPStatus.NOT_FOUND
+
+    def test_item_delete_write_user_own_item(
+        self, client: Client, user: User, other_user: User, standalone_unit: Unit
+    ):
+        """Test that a write-shared user can delete their own item."""
+        from core.models import UnitSharedAccess
+        UnitSharedAccess.objects.create(
+            user=other_user, unit=standalone_unit, permission="write"
+        )
+        own_item = Item.objects.create(
+            user=other_user, name="Disposable", unit=standalone_unit
+        )
+        item_id = own_item.id
+        client.force_login(other_user)
+        response = client.post(reverse("item_delete", kwargs={"item_id": item_id}))
+        assert response.status_code == http.HTTPStatus.FOUND
+        assert not Item.objects.filter(id=item_id).exists()
+
+    def test_item_delete_write_user_others_item_denied(
+        self, client: Client, user: User, other_user: User, standalone_unit: Unit, item: Item
+    ):
+        """Test that a write-shared user cannot delete another user's item."""
+        from core.models import UnitSharedAccess
+        UnitSharedAccess.objects.create(
+            user=other_user, unit=standalone_unit, permission="write"
+        )
+        client.force_login(other_user)
+        response = client.post(reverse("item_delete", kwargs={"item_id": item.id}))
+        assert response.status_code == http.HTTPStatus.NOT_FOUND
+
+    def test_item_delete_write_all_user_others_item(
+        self, client: Client, user: User, other_user: User, standalone_unit: Unit, item: Item
+    ):
+        """Test that a write_all-shared user can delete another user's item."""
+        from core.models import UnitSharedAccess
+        UnitSharedAccess.objects.create(
+            user=other_user, unit=standalone_unit, permission="write_all"
+        )
+        item_id = item.id
+        client.force_login(other_user)
+        response = client.post(reverse("item_delete", kwargs={"item_id": item_id}))
+        assert response.status_code == http.HTTPStatus.FOUND
+        assert not Item.objects.filter(id=item_id).exists()
+
+    # ----- update_item_quantity_api (require_write=True) -----
+
+    def test_quantity_read_user_denied(
+        self, client: Client, user: User, other_user: User, standalone_unit: Unit, item_with_quantity: Item
+    ):
+        """Test that a read-shared user cannot update item quantity."""
+        from core.models import UnitSharedAccess
+        UnitSharedAccess.objects.create(
+            user=other_user, unit=standalone_unit, permission="read"
+        )
+        client.force_login(other_user)
+        response = client.post(
+            reverse("update_item_quantity_api", args=[item_with_quantity.id]),
+            {"action": "increment"},
+        )
+        assert response.status_code == http.HTTPStatus.NOT_FOUND
+
+    def test_quantity_write_user_own_item(
+        self, client: Client, user: User, other_user: User, standalone_unit: Unit
+    ):
+        """Test that a write-shared user can update quantity on their own item."""
+        from core.models import UnitSharedAccess
+        UnitSharedAccess.objects.create(
+            user=other_user, unit=standalone_unit, permission="write"
+        )
+        own_item = Item.objects.create(
+            user=other_user, name="Bolts", description="Box of bolts",
+            unit=standalone_unit, quantity=Decimal("5"), quantity_unit="count",
+        )
+        client.force_login(other_user)
+        response = client.post(
+            reverse("update_item_quantity_api", args=[own_item.id]),
+            {"action": "increment"},
+        )
+        assert response.status_code == http.HTTPStatus.OK
+        assert response.json()["quantity"] == 6
+
+    def test_quantity_write_user_others_item_denied(
+        self, client: Client, user: User, other_user: User, standalone_unit: Unit, item_with_quantity: Item
+    ):
+        """Test that a write-shared user cannot update quantity on another user's item."""
+        from core.models import UnitSharedAccess
+        UnitSharedAccess.objects.create(
+            user=other_user, unit=standalone_unit, permission="write"
+        )
+        client.force_login(other_user)
+        response = client.post(
+            reverse("update_item_quantity_api", args=[item_with_quantity.id]),
+            {"action": "increment"},
+        )
+        assert response.status_code == http.HTTPStatus.NOT_FOUND
+
+    def test_quantity_write_all_user_can_update(
+        self, client: Client, user: User, other_user: User, standalone_unit: Unit, item_with_quantity: Item
+    ):
+        """Test that a write_all-shared user can update quantity on any item."""
+        from core.models import UnitSharedAccess
+        UnitSharedAccess.objects.create(
+            user=other_user, unit=standalone_unit, permission="write_all"
+        )
+        client.force_login(other_user)
+        response = client.post(
+            reverse("update_item_quantity_api", args=[item_with_quantity.id]),
+            {"action": "increment"},
+        )
+        assert response.status_code == http.HTTPStatus.OK
+        assert response.json()["quantity"] == 11
+
+
+@pytest.mark.django_db
+class TestMoveItemSharedAccess:
+    """Tests for shared user access to the move item API."""
+
+    def _url(self, item_id: int) -> str:
+        return reverse("api_move_item", kwargs={"item_id": item_id})
+
+    def test_read_user_cannot_move_item(
+        self, client: Client, user: User, other_user: User, standalone_unit: Unit, item: Item
+    ):
+        """Test that a read-shared user cannot move items."""
+        from core.models import UnitSharedAccess
+        UnitSharedAccess.objects.create(
+            user=other_user, unit=standalone_unit, permission="read"
+        )
+        target = Unit.objects.create(user=other_user, name="My Bin")
+        client.force_login(other_user)
+        response = client.post(
+            self._url(item.id),
+            data=json.dumps({"unit_id": target.id}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.NOT_FOUND
+
+    def test_write_user_can_move_own_item(
+        self, client: Client, user: User, other_user: User, standalone_unit: Unit
+    ):
+        """Test that a write-shared user can move their own item."""
+        from core.models import UnitSharedAccess
+        UnitSharedAccess.objects.create(
+            user=other_user, unit=standalone_unit, permission="write"
+        )
+        own_item = Item.objects.create(
+            user=other_user, name="Moveable", unit=standalone_unit
+        )
+        target = Unit.objects.create(user=other_user, name="My Bin")
+        client.force_login(other_user)
+        response = client.post(
+            self._url(own_item.id),
+            data=json.dumps({"unit_id": target.id}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.OK
+        own_item.refresh_from_db()
+        assert own_item.unit == target
+
+    def test_write_user_cannot_move_others_item(
+        self, client: Client, user: User, other_user: User, standalone_unit: Unit, item: Item
+    ):
+        """Test that a write-shared user cannot move another user's item."""
+        from core.models import UnitSharedAccess
+        UnitSharedAccess.objects.create(
+            user=other_user, unit=standalone_unit, permission="write"
+        )
+        target = Unit.objects.create(user=other_user, name="My Bin")
+        client.force_login(other_user)
+        response = client.post(
+            self._url(item.id),
+            data=json.dumps({"unit_id": target.id}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.NOT_FOUND
+
+    def test_write_all_user_can_move_others_item(
+        self, client: Client, user: User, other_user: User, standalone_unit: Unit, item: Item
+    ):
+        """Test that a write_all-shared user can move any item."""
+        from core.models import UnitSharedAccess
+        UnitSharedAccess.objects.create(
+            user=other_user, unit=standalone_unit, permission="write_all"
+        )
+        # Target must be accessible to the item's owner (user) for Item.save() validation
+        target = Unit.objects.create(user=user, name="Owner Target")
+        UnitSharedAccess.objects.create(
+            user=other_user, unit=target, permission="write"
+        )
+        client.force_login(other_user)
+        response = client.post(
+            self._url(item.id),
+            data=json.dumps({"unit_id": target.id}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.OK
+        item.refresh_from_db()
+        assert item.unit == target
+
+    def test_move_to_read_only_target_denied(
+        self, client: Client, user: User, other_user: User
+    ):
+        """Test that an item cannot be moved to a unit with read-only access."""
+        from core.models import UnitSharedAccess
+        source = Unit.objects.create(user=other_user, name="Source")
+        own_item = Item.objects.create(
+            user=other_user, name="Widget", unit=source
+        )
+        target = Unit.objects.create(user=user, name="Read-Only Target")
+        UnitSharedAccess.objects.create(
+            user=other_user, unit=target, permission="read"
+        )
+        client.force_login(other_user)
+        response = client.post(
+            self._url(own_item.id),
+            data=json.dumps({"unit_id": target.id}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.NOT_FOUND
+
+    def test_move_to_write_target_allowed(
+        self, client: Client, user: User, other_user: User
+    ):
+        """Test that an item can be moved to a unit with write access."""
+        from core.models import UnitSharedAccess
+        source = Unit.objects.create(user=other_user, name="Source")
+        own_item = Item.objects.create(
+            user=other_user, name="Widget", unit=source
+        )
+        target = Unit.objects.create(user=user, name="Write Target")
+        UnitSharedAccess.objects.create(
+            user=other_user, unit=target, permission="write"
+        )
+        client.force_login(other_user)
+        response = client.post(
+            self._url(own_item.id),
+            data=json.dumps({"unit_id": target.id}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.OK
+        own_item.refresh_from_db()
+        assert own_item.unit == target
+
+
+@pytest.mark.django_db
+class TestOwnerOnlyViewsDenySharedUsers:
+    """Tests that owner_only views reject shared users (even write_all)."""
+
+    # ----- Unit owner-only views -----
+
+    def test_unit_delete_denied_for_write_all_user(
+        self, client: Client, user: User, other_user: User, standalone_unit: Unit
+    ):
+        """Test that write_all shared user cannot delete the unit."""
+        from core.models import UnitSharedAccess
+        UnitSharedAccess.objects.create(
+            user=other_user, unit=standalone_unit, permission="write_all"
+        )
+        client.force_login(other_user)
+        response = client.post(
+            reverse("unit_delete", kwargs={
+                "user_id": standalone_unit.user_id,
+                "access_token": standalone_unit.access_token,
+            })
+        )
+        assert response.status_code == http.HTTPStatus.NOT_FOUND
+
+    def test_unit_detail_json_denied_for_write_all_user(
+        self, client: Client, user: User, other_user: User, standalone_unit: Unit
+    ):
+        """Test that write_all shared user cannot access unit detail JSON."""
+        from core.models import UnitSharedAccess
+        UnitSharedAccess.objects.create(
+            user=other_user, unit=standalone_unit, permission="write_all"
+        )
+        client.force_login(other_user)
+        response = client.get(
+            reverse("api_unit_detail_json", kwargs={
+                "user_id": standalone_unit.user_id,
+                "access_token": standalone_unit.access_token,
+            })
+        )
+        assert response.status_code == http.HTTPStatus.NOT_FOUND
+
+    def test_unit_sharing_list_denied_for_write_all_user(
+        self, client: Client, user: User, other_user: User, standalone_unit: Unit
+    ):
+        """Test that write_all shared user cannot list unit shares."""
+        from core.models import UnitSharedAccess
+        UnitSharedAccess.objects.create(
+            user=other_user, unit=standalone_unit, permission="write_all"
+        )
+        client.force_login(other_user)
+        response = client.get(
+            reverse("api_unit_sharing", kwargs={
+                "user_id": standalone_unit.user_id,
+                "access_token": standalone_unit.access_token,
+            })
+        )
+        assert response.status_code == http.HTTPStatus.NOT_FOUND
+
+    # ----- Location owner-only views -----
+
+    def test_location_update_denied_for_write_shared_user(
+        self, client: Client, user: User, other_user: User, location: Location
+    ):
+        """Test that a write-shared user cannot update location metadata."""
+        from core.models import LocationSharedAccess
+        LocationSharedAccess.objects.create(
+            user=other_user, location=location, permission="write"
+        )
+        client.force_login(other_user)
+        response = client.post(
+            reverse("api_update_location", kwargs={"location_id": location.id}),
+            data=json.dumps({"name": "Hijacked"}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.NOT_FOUND
+
+    def test_location_delete_denied_for_write_shared_user(
+        self, client: Client, user: User, other_user: User, location: Location
+    ):
+        """Test that a write-shared user cannot delete the location."""
+        from core.models import LocationSharedAccess
+        LocationSharedAccess.objects.create(
+            user=other_user, location=location, permission="write"
+        )
+        client.force_login(other_user)
+        response = client.post(
+            reverse("api_delete_location", kwargs={"location_id": location.id})
+        )
+        assert response.status_code == http.HTTPStatus.NOT_FOUND
+
+    # ----- Unit QR view (read-level access) -----
+
+    @patch("core.models.Unit.get_qr_code")
+    def test_unit_qr_accessible_to_shared_read_user(
+        self, mock_get_qr_code: Mock, client: Client, user: User, other_user: User, standalone_unit: Unit
+    ):
+        """Test that a read-shared user can access the unit QR code."""
+        from core.models import UnitSharedAccess
+        mock_file = Mock()
+        mock_file.read.return_value = b"fake-png-data"
+        mock_file.name = "test_qr.png"
+        mock_file.seek = Mock()
+        mock_get_qr_code.return_value = mock_file
+
+        UnitSharedAccess.objects.create(
+            user=other_user, unit=standalone_unit, permission="read"
+        )
+        client.force_login(other_user)
+        response = client.get(
+            reverse("unit_qr", kwargs={
+                "user_id": standalone_unit.user_id,
+                "access_token": standalone_unit.access_token,
+            })
+        )
+        assert response.status_code == http.HTTPStatus.OK
+        assert response["Content-Type"] == "image/png"
+
+    # ----- Create unit with shared containers -----
+
+    def test_create_unit_read_only_location_denied(
+        self, client: Client, user: User, other_user: User, location: Location
+    ):
+        """Test that a read-shared location user cannot create units in it."""
+        from core.models import LocationSharedAccess
+        LocationSharedAccess.objects.create(
+            user=other_user, location=location, permission="read"
+        )
+        client.force_login(other_user)
+        response = client.post(
+            reverse("api_create_unit"),
+            data=json.dumps({"name": "Blocked Bin", "location_id": location.id}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.NOT_FOUND
+
+    def test_create_unit_in_shared_parent_unit(
+        self, client: Client, user: User, other_user: User
+    ):
+        """Test that a write-shared parent unit allows creating child units."""
+        from core.models import Unit, UnitSharedAccess
+        parent = Unit.objects.create(user=user, name="Shared Parent")
+        UnitSharedAccess.objects.create(
+            user=other_user, unit=parent, permission="write"
+        )
+        client.force_login(other_user)
+        response = client.post(
+            reverse("api_create_unit"),
+            data=json.dumps({"name": "Child Bin", "parent_unit_id": parent.id}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.CREATED
+        child = Unit.objects.get(name="Child Bin")
+        assert child.user == other_user
+        assert child.parent_unit == parent
