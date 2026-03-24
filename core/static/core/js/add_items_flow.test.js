@@ -196,4 +196,5 @@ describe('add_items_flow', function () {
     global.Image = origImage;
     document.createElement.mockRestore();
   });
+
 });

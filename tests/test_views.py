@@ -1318,11 +1318,6 @@ class TestExtractItemFeaturesAPI:
         assert "error" in data
 
 
-# =============================================================================
-# Caddy CA Download View
-# =============================================================================
-
-
 @pytest.mark.django_db
 class TestCaddyCADownloadView:
     """Tests for Caddy CA certificate download."""
