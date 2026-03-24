@@ -8,7 +8,8 @@ describe('add_items_flow', function () {
     document.body.innerHTML = [
       '<form id="item-form">',
       '  <input name="csrfmiddlewaretoken" value="csrf-tok">',
-      '  <input type="file" id="hero-image-input" accept="image/*">',
+      '  <input type="file" id="hero-image-input" accept="image/*" capture="environment">',
+      '  <input type="file" id="gallery-image-input" accept="image/*">',
       '  <button id="skip-to-manual" type="button">Skip</button>',
       '  <div id="form-section" style="display:none">',
       '    <div id="image-preview-container" style="display:none">',

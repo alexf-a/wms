@@ -83,6 +83,7 @@ function initAddItemsFlow() {
     console.log('[AddItems] Referrer:', document.referrer);
     
     const heroInput = document.getElementById('hero-image-input');
+    const galleryInput = document.getElementById('gallery-image-input');
     const skipBtn = document.getElementById('skip-to-manual');
     const formSection = document.getElementById('form-section');
     const imagePreviewContainer = document.getElementById('image-preview-container');
@@ -96,6 +97,7 @@ function initAddItemsFlow() {
     // Log element availability
     console.log('[AddItems] Elements found:', {
         heroInput: !!heroInput,
+        galleryInput: !!galleryInput,
         skipBtn: !!skipBtn,
         formSection: !!formSection,
         nameField: !!nameField
@@ -258,6 +260,9 @@ function initAddItemsFlow() {
 
     // Use 'change' event which is most reliable across browsers
     heroInput.addEventListener('change', handleImageSelect);
+    if (galleryInput) {
+        galleryInput.addEventListener('change', handleImageSelect);
+    }
 
     // Handle skip button - uses shared revealSection utility
     /**
