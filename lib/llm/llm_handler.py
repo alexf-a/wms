@@ -12,7 +12,9 @@ from langchain.prompts import (
 )
 from langchain_aws.chat_models.bedrock import ChatBedrock
 from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.exceptions import OutputParserException
 from langchain_core.output_parsers import StrOutputParser
+from pydantic import ValidationError
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 from lib.llm.gemini_model_id import GeminiModelID
@@ -208,7 +210,10 @@ class StructuredLangChainHandler(LangChainHandler):
         super().__init__(llm_call=llm_call, region=region)
 
     def _configure_langchain_client(self) -> None:
-        # Always use structured_output for all models (disable Claude 4 XML fallback)
+        # Apply retry BEFORE structured output so it only covers transport errors,
+        # not Pydantic validation failures from the output parser.
+        super()._configure_langchain_client()
+
         logger.info("[LLMHandler] Configuring structured output for schema: %s", self.output_schema.__name__)
         try:
             self.langchain_client = self.langchain_client.with_structured_output(self.output_schema)
@@ -218,30 +223,98 @@ class StructuredLangChainHandler(LangChainHandler):
             logger.warning("[LLMHandler] Falling back to bind_tools: %s", str(e))
             self.langchain_client = self.langchain_client.bind_tools([self.output_schema])
 
-        super()._configure_langchain_client()
-
     @property
     def chain(self) -> Runnable[LanguageModelInput, BaseModel]:
         """The runnable chain that calls the LLM and parses the output to a structured format."""
         return self.llm_chain
 
+    @staticmethod
+    def _build_reask_message_for_none() -> HumanMessage:
+        """Build a reask message when the model fails to produce a tool call."""
+        return HumanMessage(content=(
+            "Your previous response did not use the required tool/function call. "
+            "You must respond by calling the provided tool with the appropriate arguments. "
+            "Please try again."
+        ))
+
+    @staticmethod
+    def _build_reask_message_for_error(exc: Exception) -> HumanMessage:
+        """Build a reask message with specific validation errors."""
+        return HumanMessage(content=(
+            "Your previous tool call had validation errors. "
+            f"Please fix the following issues and try again:\n{exc!s}"
+        ))
+
+    def _try_invoke(self, kwargs: dict[str, Any], attempt: int, reask_limit: int) -> BaseModel | None:
+        """Attempt a single structured invocation.
+
+        Returns:
+            BaseModel on success, None to signal the caller should retry.
+
+        Raises:
+            OutputParserException: On the final attempt when the model returns None.
+            ValidationError: On the final attempt when validation fails.
+        """
+        try:
+            result = self.chain.invoke(kwargs)
+        except (ValidationError, OutputParserException) as exc:
+            if attempt < reask_limit:
+                logger.warning(
+                    "[LLMHandler] Reask %d/%d — validation error: %s",
+                    attempt + 1, reask_limit, str(exc)[:200],
+                )
+                kwargs["additional_messages"] = kwargs["additional_messages"] + [
+                    self._build_reask_message_for_error(exc)
+                ]
+                return None
+            raise
+
+        if result is not None:
+            return result
+
+        if attempt < reask_limit:
+            logger.warning(
+                "[LLMHandler] Reask %d/%d — model returned None (no tool call)",
+                attempt + 1, reask_limit,
+            )
+            kwargs["additional_messages"] = kwargs["additional_messages"] + [
+                self._build_reask_message_for_none()
+            ]
+            return None
+
+        msg = "Structured output returned None after all reask attempts"
+        raise OutputParserException(msg)
+
     def query(self, **kwargs: str) -> BaseModel:
-        """Process a query using the configured LLM.
+        """Process a query using the configured LLM, with optional reask on failure.
+
+        When `retry_limit` is set on the LLM call, the method will retry up to
+        that many times if the model returns None (no tool call) or raises a
+        validation error, sending the specific error back to the model each time.
 
         Args:
             **kwargs: Keyword arguments to be passed to the LLM prompt template.
 
         Returns:
             BaseModel: The response from the LLM as a structured Pydantic object.
+
+        Raises:
+            OutputParserException: If the model returns None after all attempts.
+            ValidationError: If the model produces invalid output after all attempts.
         """
-        # Add additional messages to kwargs if they exist
         kwargs["additional_messages"] = kwargs.get("additional_messages", [])
         if self._additional_messages:
-            # Append new additional messages to existing ones
             kwargs["additional_messages"] = self._additional_messages + kwargs["additional_messages"]
 
-        # Use the chain with the modified template that includes additional messages
-        return self.chain.invoke(kwargs)
+        reask_limit = self.llm_call.retry_limit or 0
+
+        for attempt in range(1 + reask_limit):
+            result = self._try_invoke(kwargs, attempt, reask_limit)
+            if result is not None:
+                return result
+
+        msg = "Structured output returned None after all reask attempts"
+        raise OutputParserException(msg)  # unreachable
 
     def query_with_image(self, image_data: str, mime_type: str = "image/jpeg", **kwargs: str) -> BaseModel:
         """Process a query with an image using the configured LLM.

@@ -7,7 +7,8 @@ from langchain.prompts import (
     SystemMessagePromptTemplate,
 )
 from langchain.schema.messages import HumanMessage, SystemMessage
-from pydantic import BaseModel
+from langchain_core.exceptions import OutputParserException
+from pydantic import BaseModel, ValidationError
 
 from aws_utils.model_id import ClaudeModelID
 from aws_utils.region import AWSRegion
@@ -525,6 +526,162 @@ class TestStructuredLangChainHandler:
 
 
 # The abstract LLMHandler base class is indirectly tested through the concrete implementations above.
+
+
+class TestStructuredReask:
+    """Test cases for the reask loop in StructuredLangChainHandler."""
+
+    @pytest.fixture
+    def output_schema(self) -> type[DummyOutputSchema]:
+        return DummyOutputSchema
+
+    @pytest.fixture
+    def llm_call_no_retry(self, system_prompt: str, model_id: ClaudeModelID) -> LLMCall:
+        """LLMCall without retry (default behavior)."""
+        return LLMCall(
+            system_prompt_tmplt=system_prompt,
+            model_id=model_id,
+        )
+
+    @pytest.fixture
+    def llm_call_with_retry(self, system_prompt: str, model_id: ClaudeModelID) -> LLMCall:
+        """LLMCall with retry_limit=2."""
+        return LLMCall(
+            system_prompt_tmplt=system_prompt,
+            model_id=model_id,
+            retry_limit=2,
+        )
+
+    def test_query_none_without_retry_raises(
+        self,
+        llm_call_no_retry: LLMCall,
+        output_schema: type[DummyOutputSchema],
+        region: AWSRegion,
+        mock_bedrock_client: MagicMock,
+    ) -> None:
+        """When retry is disabled and invoke returns None, raises immediately."""
+        handler = StructuredLangChainHandler(llm_call_no_retry, output_schema, region)
+
+        with patch.object(StructuredLangChainHandler, "chain") as mock_chain:
+            mock_chain.invoke.return_value = None
+            with pytest.raises(OutputParserException, match="None"):
+                handler.query()
+
+        assert mock_chain.invoke.call_count == 1
+
+    def test_query_none_with_retry_succeeds(
+        self,
+        llm_call_with_retry: LLMCall,
+        output_schema: type[DummyOutputSchema],
+        region: AWSRegion,
+        mock_bedrock_client: MagicMock,
+    ) -> None:
+        """When invoke returns None then valid result, reask recovers."""
+        handler = StructuredLangChainHandler(llm_call_with_retry, output_schema, region)
+        valid_result = DummyOutputSchema(field1="ok", field2=1)
+
+        with patch.object(StructuredLangChainHandler, "chain") as mock_chain:
+            mock_chain.invoke.side_effect = [None, valid_result]
+            result = handler.query()
+
+        assert result == valid_result
+        assert mock_chain.invoke.call_count == 2
+        # Second call should have a reask message appended
+        second_call_kwargs = mock_chain.invoke.call_args_list[1][0][0]
+        reask_msgs = second_call_kwargs["additional_messages"]
+        assert len(reask_msgs) == 1
+        assert isinstance(reask_msgs[0], HumanMessage)
+        assert "tool" in reask_msgs[0].content.lower()
+
+    def test_query_validation_error_with_retry_succeeds(
+        self,
+        llm_call_with_retry: LLMCall,
+        output_schema: type[DummyOutputSchema],
+        region: AWSRegion,
+        mock_bedrock_client: MagicMock,
+    ) -> None:
+        """When invoke raises ValidationError then returns valid, reask recovers."""
+        handler = StructuredLangChainHandler(llm_call_with_retry, output_schema, region)
+        valid_result = DummyOutputSchema(field1="ok", field2=1)
+
+        # Create a real ValidationError by trying to validate bad data
+        try:
+            DummyOutputSchema(field1=123, field2="not_an_int")
+        except ValidationError as e:
+            validation_err = e
+
+        with patch.object(StructuredLangChainHandler, "chain") as mock_chain:
+            mock_chain.invoke.side_effect = [validation_err, valid_result]
+            result = handler.query()
+
+        assert result == valid_result
+        assert mock_chain.invoke.call_count == 2
+        second_call_kwargs = mock_chain.invoke.call_args_list[1][0][0]
+        reask_msgs = second_call_kwargs["additional_messages"]
+        assert len(reask_msgs) == 1
+        assert "validation error" in reask_msgs[0].content.lower()
+
+    def test_query_exhausts_reask_none(
+        self,
+        llm_call_with_retry: LLMCall,
+        output_schema: type[DummyOutputSchema],
+        region: AWSRegion,
+        mock_bedrock_client: MagicMock,
+    ) -> None:
+        """When all attempts return None, raises OutputParserException."""
+        handler = StructuredLangChainHandler(llm_call_with_retry, output_schema, region)
+
+        with patch.object(StructuredLangChainHandler, "chain") as mock_chain:
+            mock_chain.invoke.return_value = None
+            with pytest.raises(OutputParserException, match="None"):
+                handler.query()
+
+        # 1 initial + 2 reasks = 3 total
+        assert mock_chain.invoke.call_count == 3
+
+    def test_query_exhausts_reask_validation_error(
+        self,
+        llm_call_with_retry: LLMCall,
+        output_schema: type[DummyOutputSchema],
+        region: AWSRegion,
+        mock_bedrock_client: MagicMock,
+    ) -> None:
+        """When all attempts raise ValidationError, re-raises the last one."""
+        handler = StructuredLangChainHandler(llm_call_with_retry, output_schema, region)
+
+        try:
+            DummyOutputSchema(field1=123, field2="not_an_int")
+        except ValidationError as e:
+            validation_err = e
+
+        with patch.object(StructuredLangChainHandler, "chain") as mock_chain:
+            mock_chain.invoke.side_effect = validation_err
+            with pytest.raises(ValidationError):
+                handler.query()
+
+        assert mock_chain.invoke.call_count == 3
+
+    def test_reask_messages_accumulate(
+        self,
+        llm_call_with_retry: LLMCall,
+        output_schema: type[DummyOutputSchema],
+        region: AWSRegion,
+        mock_bedrock_client: MagicMock,
+    ) -> None:
+        """Each reask appends a new message, so they accumulate."""
+        handler = StructuredLangChainHandler(llm_call_with_retry, output_schema, region)
+        valid_result = DummyOutputSchema(field1="ok", field2=1)
+
+        with patch.object(StructuredLangChainHandler, "chain") as mock_chain:
+            mock_chain.invoke.side_effect = [None, None, valid_result]
+            result = handler.query()
+
+        assert result == valid_result
+        assert mock_chain.invoke.call_count == 3
+        # Third call should have 2 accumulated reask messages
+        third_call_kwargs = mock_chain.invoke.call_args_list[2][0][0]
+        reask_msgs = third_call_kwargs["additional_messages"]
+        assert len(reask_msgs) == 2
 
 
 class TestGeminiLangChainHandler:
