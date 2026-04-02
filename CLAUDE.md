@@ -69,6 +69,7 @@ poetry run python manage.py collectstatic    # Collect static files
 - **E2E Testing:** Browser-Use with AWS Bedrock. Tests live in `tests/e2e/`. Config in `tests/e2e/config.yaml` (git-ignored; copy `config.yaml.example` to get started). Requires `make install-e2e` for first-time setup. WMS internal LLM calls are mocked; only the Browser-Use agent uses a real LLM.
 - **Tailwind CSS:** Theme defined in `core/tailwind/input.css`. Use `make tw-build` or `make tw-watch`.
 - **Tool versions:** Update `.tool-versions` — Makefile and Dockerfile propagate automatically.
+- **PR Feedback:** When asked to address a PR comment, do not default to accepting the comment's feedback. Consider the merit of the feedback, and provide your opinion on whether it should be implemented or not.
 
 ## Coding Practices
 
