@@ -11,15 +11,23 @@ from langchain.prompts import (
     SystemMessagePromptTemplate,
 )
 from langchain_aws.chat_models.bedrock import ChatBedrock
-from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.exceptions import OutputParserException
+from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.output_parsers import StrOutputParser
-from pydantic import ValidationError
 from langchain_google_genai import ChatGoogleGenerativeAI
+from pydantic import ValidationError
 
 from lib.llm.gemini_model_id import GeminiModelID
 
 logger = logging.getLogger(__name__)
+
+# Exceptions that warrant a *reask* — sending the error back to the model so it
+# can correct its output.  Everything else (throttling, network, etc.) gets a
+# naive retry with the same prompt.
+REASK_EXCEPTIONS: tuple[type[Exception], ...] = (
+    ValidationError,
+    OutputParserException,
+)
 
 if TYPE_CHECKING:
     from langchain.schema.runnable import Runnable
@@ -210,10 +218,9 @@ class StructuredLangChainHandler(LangChainHandler):
         super().__init__(llm_call=llm_call, region=region)
 
     def _configure_langchain_client(self) -> None:
-        # Apply retry BEFORE structured output so it only covers transport errors,
-        # not Pydantic validation failures from the output parser.
-        super()._configure_langchain_client()
-
+        # Do NOT call super() — the parent applies .with_retry() which wraps the
+        # client in RunnableRetry and hides .with_structured_output().
+        # Transport-level retry is handled in query() alongside reask logic.
         logger.info("[LLMHandler] Configuring structured output for schema: %s", self.output_schema.__name__)
         try:
             self.langchain_client = self.langchain_client.with_structured_output(self.output_schema)
@@ -245,8 +252,14 @@ class StructuredLangChainHandler(LangChainHandler):
             f"Please fix the following issues and try again:\n{exc!s}"
         ))
 
-    def _try_invoke(self, kwargs: dict[str, Any], attempt: int, reask_limit: int) -> BaseModel | None:
+    def _try_invoke(self, kwargs: dict[str, Any], attempt: int, retry_limit: int) -> BaseModel | None:
         """Attempt a single structured invocation.
+
+        Handles two retry strategies:
+        - *Reask*: For validation/parsing errors (REASK_EXCEPTIONS), sends the
+          error back to the model so it can correct its output.
+        - *Naive retry*: For transport/throttling errors (everything else),
+          retries with the same prompt unchanged.
 
         Returns:
             BaseModel on success, None to signal the caller should retry.
@@ -254,43 +267,54 @@ class StructuredLangChainHandler(LangChainHandler):
         Raises:
             OutputParserException: On the final attempt when the model returns None.
             ValidationError: On the final attempt when validation fails.
+            Exception: On the final attempt for transport errors.
         """
         try:
             result = self.chain.invoke(kwargs)
-        except (ValidationError, OutputParserException) as exc:
-            if attempt < reask_limit:
+        except REASK_EXCEPTIONS as exc:
+            if attempt < retry_limit:
                 logger.warning(
                     "[LLMHandler] Reask %d/%d — validation error: %s",
-                    attempt + 1, reask_limit, str(exc)[:200],
+                    attempt + 1, retry_limit, str(exc)[:200],
                 )
                 kwargs["additional_messages"] = kwargs["additional_messages"] + [
                     self._build_reask_message_for_error(exc)
                 ]
                 return None
             raise
+        except Exception as exc:
+            if attempt < retry_limit:
+                logger.warning(
+                    "[LLMHandler] Naive retry %d/%d — transport error: %s",
+                    attempt + 1, retry_limit, str(exc)[:200],
+                )
+                return None
+            raise
 
         if result is not None:
             return result
 
-        if attempt < reask_limit:
+        if attempt < retry_limit:
             logger.warning(
                 "[LLMHandler] Reask %d/%d — model returned None (no tool call)",
-                attempt + 1, reask_limit,
+                attempt + 1, retry_limit,
             )
             kwargs["additional_messages"] = kwargs["additional_messages"] + [
                 self._build_reask_message_for_none()
             ]
             return None
 
-        msg = "Structured output returned None after all reask attempts"
+        msg = "Structured output returned None after all retry attempts"
         raise OutputParserException(msg)
 
     def query(self, **kwargs: str) -> BaseModel:
-        """Process a query using the configured LLM, with optional reask on failure.
+        """Process a query using the configured LLM, with retry on failure.
 
-        When `retry_limit` is set on the LLM call, the method will retry up to
-        that many times if the model returns None (no tool call) or raises a
-        validation error, sending the specific error back to the model each time.
+        On each failed attempt the method checks the exception type:
+        - Reask exceptions (validation/parsing) → sends the error back to the
+          model so it can self-correct.
+        - All other exceptions (transport/throttling) → retries with the same
+          prompt unchanged.
 
         Args:
             **kwargs: Keyword arguments to be passed to the LLM prompt template.
@@ -306,10 +330,10 @@ class StructuredLangChainHandler(LangChainHandler):
         if self._additional_messages:
             kwargs["additional_messages"] = self._additional_messages + kwargs["additional_messages"]
 
-        reask_limit = self.llm_call.retry_limit or 0
+        retry_limit = self.llm_call.retry_limit or 0
 
-        for attempt in range(1 + reask_limit):
-            result = self._try_invoke(kwargs, attempt, reask_limit)
+        for attempt in range(1 + retry_limit):
+            result = self._try_invoke(kwargs, attempt, retry_limit)
             if result is not None:
                 return result
 
