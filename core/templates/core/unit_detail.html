@@ -404,7 +404,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 var canWrite = isOwner || isWriteAll || (isWriter && isItemOwner);
                 if (sheetEditBtn) sheetEditBtn.style.display = canWrite ? '' : 'none';
                 if (sheetDeleteBtn) sheetDeleteBtn.style.display = canWrite ? '' : 'none';
-                if (sheetMoveBtn) sheetMoveBtn.style.display = (isOwner || isWriter) ? '' : 'none';
+                if (sheetMoveBtn) sheetMoveBtn.style.display = canWrite ? '' : 'none';
             })
             .catch(function(err) {
                 closeDialog(sheet);
