@@ -723,7 +723,7 @@ def api_update_unit(request: HttpRequest, user_id: int, access_token: str) -> Js
         unit.parent_unit = None
     elif parent_unit_id:
         parent = get_object_or_404(Unit, id=parent_unit_id)
-        require_unit_access(parent, request.user)
+        require_unit_access(parent, request.user, require_write=True)
         unit.parent_unit = parent
         unit.location = None
     else:
