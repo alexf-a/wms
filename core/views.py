@@ -853,6 +853,7 @@ def add_items_to_unit_view(request: HttpRequest) -> HttpResponse:
         if form.is_valid():
             item = form.save(commit=False)
             item.user = request.user
+            require_unit_access(item.unit, request.user, require_write=True)
             try:
                 item.save()
                 messages.success(request, f"Item '{item.name}' has been added successfully!")
@@ -870,8 +871,8 @@ def add_items_to_unit_view(request: HttpRequest) -> HttpResponse:
             initial["unit"] = unit_id
         form = ItemForm(user=request.user, initial=initial)
 
-    # Get user's accessible units for the template
-    units = request.user.accessible_units()
+    # Get user's writable units for the template
+    units = request.user.writable_units()
     return render(request, "core/add_items_to_unit.html", {
         "form": form,
         "units": units,

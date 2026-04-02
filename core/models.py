@@ -107,6 +107,25 @@ class WMSUser(AbstractUser):
             | Q(unitsharedaccess__user=self)
         ).distinct()
 
+    def writable_units(self) -> QuerySet[Unit]:
+        """Return all units this user owns or has write access to.
+
+        Excludes units shared with read-only permission.
+
+        Returns:
+            QuerySet of Unit objects this user can write to.
+        """
+        return Unit.objects.filter(
+            Q(user=self)
+            | Q(
+                unitsharedaccess__user=self,
+                unitsharedaccess__permission__in=[
+                    Permission.WRITE,
+                    Permission.WRITE_ALL,
+                ],
+            )
+        ).distinct()
+
     def accessible_locations(self) -> QuerySet[Location]:
         """Return all locations this user owns or has shared access to.
 
