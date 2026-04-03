@@ -100,7 +100,7 @@ class LangChainHandler(LLMHandler):
 
     def _maybe_configure_retry(self) -> None:
         if self.llm_call.should_retry():
-            self.langchain_client = self.langchain_client.with_retry(stop_after_attempt=self.llm_call.retry_limit, wait_exponential_jitter=True)
+            self.langchain_client = self.langchain_client.with_retry(stop_after_attempt=self.llm_call.retry_limit + 1, wait_exponential_jitter=True)
 
     def _configure_langchain_client(self) -> None:
         """Configure the LangChain client with structured output and retry settings."""
@@ -330,7 +330,7 @@ class StructuredLangChainHandler(LangChainHandler):
         if self._additional_messages:
             kwargs["additional_messages"] = self._additional_messages + kwargs["additional_messages"]
 
-        retry_limit = self.llm_call.retry_limit or 0
+        retry_limit = self.llm_call.retry_limit if self.llm_call.should_retry() else 0
 
         for attempt in range(1 + retry_limit):
             result = self._try_invoke(kwargs, attempt, retry_limit)
