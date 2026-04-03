@@ -718,7 +718,7 @@ def api_update_unit(request: HttpRequest, user_id: int, access_token: str) -> Js
     # Set container
     if location_id:
         location = get_object_or_404(Location, id=location_id)
-        require_location_access(location, request.user)
+        require_location_access(location, request.user, require_write=True)
         unit.location = location
         unit.parent_unit = None
     elif parent_unit_id:
