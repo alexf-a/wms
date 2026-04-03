@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 from decimal import Decimal
+from enum import StrEnum
 from typing import ClassVar
 from urllib.parse import urljoin
 
@@ -9,6 +10,7 @@ from django.conf import settings
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.core.files.base import ContentFile
 from django.db import models
+from django.db.models import Q, QuerySet
 from django.urls import reverse
 from django.utils.text import slugify
 
@@ -90,6 +92,64 @@ class WMSUser(AbstractUser):
 
         app_label: ClassVar[str] = "core"
 
+    def accessible_units(self) -> QuerySet[Unit]:
+        """Return all units this user owns or has explicit shared access to.
+
+        Includes only units accessible via direct UnitSharedAccess.
+        LocationSharedAccess grants visibility of unit names within the
+        location but does NOT grant access to unit contents.
+
+        Returns:
+            QuerySet of Unit objects this user can access.
+        """
+        return Unit.objects.filter(
+            Q(user=self)
+            | Q(unitsharedaccess__user=self)
+        ).distinct()
+
+    def writable_units(self) -> QuerySet[Unit]:
+        """Return all units this user owns or has write access to.
+
+        Excludes units shared with read-only permission.
+
+        Returns:
+            QuerySet of Unit objects this user can write to.
+        """
+        return Unit.objects.filter(
+            Q(user=self)
+            | Q(
+                unitsharedaccess__user=self,
+                unitsharedaccess__permission__in=[
+                    Permission.WRITE,
+                    Permission.WRITE_ALL,
+                ],
+            )
+        ).distinct()
+
+    def accessible_locations(self) -> QuerySet[Location]:
+        """Return all locations this user owns or has shared access to.
+
+        Returns:
+            QuerySet of Location objects this user can access.
+        """
+        return Location.objects.filter(
+            Q(user=self) | Q(shared_access__user=self)
+        ).distinct()
+
+    def accessible_items(self) -> QuerySet[Item]:
+        """Return all items this user owns or can see via explicit unit sharing.
+
+        Only includes items in units with direct UnitSharedAccess.
+        LocationSharedAccess does NOT grant access to items within units.
+
+        Returns:
+            QuerySet of Item objects this user can access.
+        """
+        return Item.objects.filter(
+            Q(user=self)
+            | Q(unit__unitsharedaccess__user=self)
+        ).distinct()
+
 
 class StorageSpace(models.Model):
     """Abstract base class for storage containers.
@@ -117,15 +177,22 @@ class StorageSpace(models.Model):
 
 class Location(StorageSpace):
     """Organizational location (address, building, room).
-    
+
     Pure metadata - does not contain items directly. Items must be in Units.
-    
+
     Attributes:
         user (User): Inherited from StorageSpace.
         name (str): Inherited from StorageSpace.
         description (str): Inherited from StorageSpace.
         address (str): Physical address (optional).
+        shared_users (ManyToManyField): Users with shared access to the location.
     """
+    shared_users = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        through="LocationSharedAccess",
+        blank=True,
+        related_name="shared_locations"
+    )
     address = models.TextField(blank=True, null=True)
 
     class Meta:
@@ -176,12 +243,52 @@ class Location(StorageSpace):
 
         return unit
 
+    def get_user_permission(self, user: WMSUser) -> Permission | None:
+        """Return the effective permission level for a user on this Location.
+
+        Args:
+            user: The user to check.
+
+        Returns:
+            Permission member for the user, or None if no access.
+        """
+        if self.user_id == user.id:
+            return Permission.OWNER
+        access = LocationSharedAccess.objects.filter(
+            user=user, location=self
+        ).first()
+        return Permission(access.permission) if access else None
+
+
+class Permission(StrEnum):
+    """Sharing permission levels — single source of truth.
+
+    ``OWNER`` is computed at runtime (never stored in the database).
+    ``READ``, ``WRITE``, and ``WRITE_ALL`` are the storable permission levels.
+    """
+
+    OWNER = "owner"
+    READ = "read"
+    WRITE = "write"
+    WRITE_ALL = "write_all"
+
+    @classmethod
+    def storable(cls) -> tuple[Permission, ...]:
+        """Return the permission levels that can be stored in the database.
+
+        Excludes ``OWNER`` which is computed, not stored.
+        """
+        return (cls.READ, cls.WRITE, cls.WRITE_ALL)
+
 
 class LocationSharedAccess(models.Model):
     """Model to handle shared access to locations with specific permissions.
-    
-    Access to a Location grants transitive access to all Units within it.
-    
+
+    Access to a Location grants visibility of Unit names within it and
+    the ability to create new Units (with write permission). It does NOT
+    grant access to Unit contents (items, child units). Explicit
+    UnitSharedAccess is required for that.
+
     Attributes:
         user (User): The user with shared access.
         location (Location): The location to which access is shared.
@@ -189,12 +296,22 @@ class LocationSharedAccess(models.Model):
     """
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     location = models.ForeignKey(Location, related_name="shared_access", on_delete=models.CASCADE)
-    permission = models.CharField(max_length=50, default="read")
+    permission = models.CharField(
+        max_length=50,
+        default=Permission.READ,
+        choices={p.value: p.value for p in Permission.storable()},
+    )
 
     class Meta:
         """Model constraints for shared location access."""
 
         unique_together: ClassVar = ("user", "location")
+        constraints: ClassVar = [
+            models.CheckConstraint(
+                condition=Q(permission__in=[p.value for p in Permission.storable()]),
+                name="locationsharedaccess_valid_permission",
+            ),
+        ]
 
     def __str__(self) -> str:
         return f"{self.user.username} → {self.location.name} ({self.permission})"
@@ -492,16 +609,18 @@ class Unit(StorageSpace):
 
     def user_has_access(self, user: WMSUser) -> bool:
         """Check if a user has access to this Unit.
-        
+
         Checks:
         1. Direct ownership
         2. Direct UnitSharedAccess for this Unit
-        3. Transitive UnitSharedAccess through any parent Unit
-        4. Transitive LocationSharedAccess through root Location
-        
+
+        Note: Access does NOT inherit from parent Units or Locations.
+        LocationSharedAccess grants visibility of unit names but not
+        access to unit contents. Sharing must be explicit per unit.
+
         Args:
             user: The user to check access for.
-        
+
         Returns:
             bool: True if user is owner or has shared access, False otherwise.
         """
@@ -513,18 +632,29 @@ class Unit(StorageSpace):
         if UnitSharedAccess.objects.filter(user=user, unit=self).exists():
             return True
 
-        # Check transitive access through parent hierarchy
-        current = self.parent
-        while current:
-            if isinstance(current, Unit):
-                if UnitSharedAccess.objects.filter(user=user, unit=current).exists():
-                    return True
-            elif isinstance(current, Location):
-                if LocationSharedAccess.objects.filter(user=user, location=current).exists():
-                    return True
-            current = current.parent if isinstance(current, Unit) else None
-
         return False
+
+    def get_user_permission(self, user: WMSUser) -> Permission | None:
+        """Return the effective permission level for a user on this Unit.
+
+        Checks ownership and direct UnitSharedAccess only.
+        LocationSharedAccess does NOT grant unit-level permissions.
+
+        Args:
+            user: The user to check.
+
+        Returns:
+            Permission member for the user, or None if no access.
+        """
+        if self.user_id == user.id:
+            return Permission.OWNER
+
+        # Check direct unit access
+        access = UnitSharedAccess.objects.filter(user=user, unit=self).first()
+        if access:
+            return Permission(access.permission)
+
+        return None
 
     def get_qr_filename(self) -> str:
         """Return a deterministic filename for the unit's QR code image."""
@@ -553,20 +683,31 @@ class Unit(StorageSpace):
 
 class UnitSharedAccess(models.Model):
     """Model to handle shared access to units with specific permissions.
-    
+
     Attributes:
         user (User): The user with shared access.
         unit (Unit): The unit to which access is shared.
-        permission (str): The level of permission (e.g., "read", "write").
+        permission (str): The level of permission — ``"read"`` (view only),
+            ``"write"`` (CRUD own items), or ``"write_all"`` (CRUD any item).
     """
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     unit = models.ForeignKey(Unit, on_delete=models.CASCADE)
-    permission = models.CharField(max_length=50, default="read")
+    permission = models.CharField(
+        max_length=50,
+        default=Permission.READ,
+        choices={p.value: p.value for p in Permission.storable()},
+    )
 
     class Meta:
         """Model constraints for shared unit access."""
 
         unique_together: ClassVar = ("user", "unit")
+        constraints: ClassVar = [
+            models.CheckConstraint(
+                condition=Q(permission__in=[p.value for p in Permission.storable()]),
+                name="unitsharedaccess_valid_permission",
+            ),
+        ]
 
     def __str__(self) -> str:
         return f"{self.user.username} → {self.unit.name} ({self.permission})"
@@ -628,15 +769,18 @@ class Item(models.Model):
         return self.name
 
     def save(self, *args: object, **kwargs: object) -> None:
-        """Persist the item after verifying ownership alignment."""
+        """Persist the item after verifying the user has write access to the unit."""
         if self.unit is None:
             msg = f"Must assign a Unit before saving Item {self}"
             raise ValueError(msg)
         if self.user is None:
             self.user = self.unit.user
         elif self.user_id != self.unit.user_id:
-            msg = f"User for Unit {self.unit} and Item {self} must be the same"
-            raise ValueError(msg)
+            # Require write-level permission for shared users to mutate items
+            perm = self.unit.get_user_permission(self.user)
+            if perm is None or perm == Permission.READ:
+                msg = f"User {self.user} does not have write access to Unit {self.unit}"
+                raise ValueError(msg)
 
         super().save(*args, **kwargs)
 

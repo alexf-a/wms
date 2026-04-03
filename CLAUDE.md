@@ -60,6 +60,7 @@ poetry run python manage.py collectstatic    # Collect static files
 
 ## Development Guidelines
 
+- **State Management:** ALWAYS create Markdown files to manage complex tasks. These markdown files should include a detailed task description and the task plan (broken down into phases) as a check-list so that completed items can be checked off. If stored within the code-base, all planning files should be named according to the pattern `"*_PLAN.md"` so that they can get Git ignored.
 - **Python:** Type annotations on all parameters and return types. Ruff-compatible code. Google-style docstrings on public methods and classes.
 - **JavaScript:** JSDoc on all functions (`@param`/`@returns`) and file-level comments on new files.
 - **Templates:** Extend `base.html`. Use Tailwind utility classes with semantic tokens. No inline styles.
@@ -68,6 +69,7 @@ poetry run python manage.py collectstatic    # Collect static files
 - **E2E Testing:** Browser-Use with AWS Bedrock. Tests live in `tests/e2e/`. Config in `tests/e2e/config.yaml` (git-ignored; copy `config.yaml.example` to get started). Requires `make install-e2e` for first-time setup. WMS internal LLM calls are mocked; only the Browser-Use agent uses a real LLM.
 - **Tailwind CSS:** Theme defined in `core/tailwind/input.css`. Use `make tw-build` or `make tw-watch`.
 - **Tool versions:** Update `.tool-versions` — Makefile and Dockerfile propagate automatically.
+- **PR Feedback:** When asked to address a PR comment, do not default to accepting the comment's feedback. Consider the merit of the feedback, and provide your opinion on whether it should be implemented or not.
 
 ## Coding Practices
 
@@ -75,6 +77,11 @@ poetry run python manage.py collectstatic    # Collect static files
 2. Clean up all testing and debugging code after implementation.
 3. When debugging, search the web first (GitHub Issues, Stack Overflow).
 4. When using AWS CLI, ensure the cli-pager is disabled.
+
+## PR Feedback
+You will be provided with links to PR comments in Git Hub. Use the `gh api repos/alexf-a/wms/pulls/comments/{comment_id}` command to access the comment.
+
+When asked to address a PR comment, do not default to accepting the comment's feedback. Consider the merit of the feedback, and provide your opinion on whether it should be implemented or not.
 
 ## Additional Context
 

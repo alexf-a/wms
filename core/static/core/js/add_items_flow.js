@@ -83,6 +83,7 @@ function initAddItemsFlow() {
     console.log('[AddItems] Referrer:', document.referrer);
     
     const heroInput = document.getElementById('hero-image-input');
+    const galleryInput = document.getElementById('gallery-image-input');
     const skipBtn = document.getElementById('skip-to-manual');
     const formSection = document.getElementById('form-section');
     const imagePreviewContainer = document.getElementById('image-preview-container');
@@ -96,6 +97,7 @@ function initAddItemsFlow() {
     // Log element availability
     console.log('[AddItems] Elements found:', {
         heroInput: !!heroInput,
+        galleryInput: !!galleryInput,
         skipBtn: !!skipBtn,
         formSection: !!formSection,
         nameField: !!nameField
@@ -103,7 +105,8 @@ function initAddItemsFlow() {
 
     let currentObjectUrl = null;
     let isProcessing = false;
-    let lastFileTimestamp = 0;
+    /** @type {AbortController|null} */
+    let activeAbortController = null;
     
     /**
      * Revoke and clear the in-memory object URL used for the preview image.
@@ -127,14 +130,25 @@ function initAddItemsFlow() {
      */
     async function processImageFile(file) {
         debugLog('[AddItems] processImageFile called', file ? file.name : 'no file');
-        
-        // Prevent duplicate processing using timestamp-based debounce
-        const now = Date.now();
-        if (isProcessing || (now - lastFileTimestamp) < 500) {
+
+        // If a request is already in flight, abort it before starting a new one.
+        // This handles double-fire from mobile browsers and user retries.
+        if (activeAbortController) {
+            debugLog('[AddItems] Aborting previous in-flight request');
+            activeAbortController.abort();
+            activeAbortController = null;
+            isProcessing = false;
+        }
+
+        if (isProcessing) {
+            debugLog('[AddItems] Already processing, skipping');
             return;
         }
-        lastFileTimestamp = now;
         isProcessing = true;
+
+        const abortController = new AbortController();
+        activeAbortController = abortController;
+        const { signal } = abortController;
 
         try {
             // Show the form section with animation
@@ -192,7 +206,8 @@ function initAddItemsFlow() {
                 credentials: 'same-origin',
                 headers: {
                     'X-CSRFToken': csrfToken.value
-                }
+                },
+                signal: signal
             });
 
             console.log('[AddItems] API response status:', response.status);
@@ -211,12 +226,22 @@ function initAddItemsFlow() {
                 }
             }
         } catch (error) {
+            if (error.name === 'AbortError') {
+                debugLog('[AddItems] Request aborted (superseded by newer request)');
+                return;
+            }
             console.error('[AddItems] Exception during fetch:', error);
         } finally {
-            // Hide loading, show form
-            loadingIndicator.style.display = 'none';
-            formCard.style.display = 'block';
-            isProcessing = false;
+            // Only clear state if this is still the active request
+            if (activeAbortController === abortController) {
+                activeAbortController = null;
+                isProcessing = false;
+            }
+            // Only update UI if not aborted
+            if (!signal.aborted) {
+                loadingIndicator.style.display = 'none';
+                formCard.style.display = 'block';
+            }
         }
     }
 
@@ -224,17 +249,20 @@ function initAddItemsFlow() {
      * Handle a file input `change` event and begin processing the selected file.
      *
      * @param {Event} e - The input `change` event containing the FileList.
-     * @returns {void}
+     * @returns {Promise<void>}
      */
-    function handleImageSelect(e) {
+    async function handleImageSelect(e) {
         const files = e.target.files;
         if (files && files.length > 0 && files[0]) {
-            processImageFile(files[0]);
+            await processImageFile(files[0]);
         }
     }
 
     // Use 'change' event which is most reliable across browsers
     heroInput.addEventListener('change', handleImageSelect);
+    if (galleryInput) {
+        galleryInput.addEventListener('change', handleImageSelect);
+    }
 
     // Handle skip button - uses shared revealSection utility
     /**
@@ -262,3 +290,7 @@ function initAddItemsFlow() {
 }
 
 document.addEventListener('DOMContentLoaded', initAddItemsFlow);
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { compressImage: compressImage, initAddItemsFlow: initAddItemsFlow };
+}

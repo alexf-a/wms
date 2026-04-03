@@ -141,12 +141,12 @@ def build_container_choices(user: WMSUser, exclude_unit: Unit | None = None) -> 
     container_choices = [("", "--- None (standalone) ---")]
 
     # Add locations with 📍 prefix
-    locations = Location.objects.filter(user=user).order_by("name")
+    locations = user.accessible_locations().order_by("name")
     for loc in locations:
         container_choices.append((f"{ContainerType.LOCATION.value}_{loc.id}", f"📍 {loc.name}"))
 
     # Add units with 📦 prefix
-    units = Unit.objects.filter(user=user).order_by("name")
+    units = user.accessible_units().order_by("name")
 
     # Build exclusion set if editing a unit
     excluded_ids = set()
@@ -570,7 +570,7 @@ class ItemForm(forms.ModelForm):
         """
         super().__init__(*args, **kwargs)
         if user:
-            self.fields["unit"].queryset = Unit.objects.filter(user=user)
+            self.fields["unit"].queryset = user.writable_units()
 
         # Pre-populate quantity category when editing
         if self.instance and self.instance.pk and self.instance.quantity_unit:

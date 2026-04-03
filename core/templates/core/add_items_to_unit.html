@@ -25,7 +25,8 @@
     <!-- Hero: Choose Input Method -->
     <section class="mx-auto max-w-sm">
         <div class="space-y-3 py-4">
-            <input type="file" id="hero-image-input" name="image" accept="image/*" capture="environment" class="hidden" aria-label="Upload item image for AI analysis">
+            <input type="file" id="hero-image-input" name="image" accept="image/*" capture="environment" class="hidden" aria-label="Take a photo for AI analysis">
+            <input type="file" id="gallery-image-input" name="image" accept="image/*" class="hidden" aria-label="Upload item image for AI analysis">
 
             <!-- Take a Photo -->
             <label for="hero-image-input"
@@ -47,7 +48,7 @@
             </label>
 
             <!-- Upload Photo -->
-            <label for="hero-image-input"
+            <label for="gallery-image-input"
                    class="flex cursor-pointer items-center gap-4 rounded-lg border-2 border-border bg-card p-5 transition-colors hover:border-primary/50"
                    role="button" tabindex="0">
                 <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10">
@@ -116,7 +117,7 @@
             <div class="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
                 <img id="preview-image" src="" alt="Item preview" class="h-12 w-12 rounded-md object-cover">
                 <span class="flex-1 text-sm text-foreground">Image uploaded</span>
-                <label for="hero-image-input"
+                <label for="gallery-image-input"
                        class="cursor-pointer rounded-md border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent"
                        role="button" tabindex="0">
                     Change

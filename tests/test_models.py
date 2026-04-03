@@ -419,8 +419,8 @@ class TestUnitAccessControl:
         assert standalone_unit.user_has_access(other_user) is True
 
     @pytest.mark.django_db
-    def test_transitive_access_through_parent_unit(self, user: WMSUser, other_user: WMSUser):
-        """Test transitive access through parent unit."""
+    def test_no_transitive_access_through_parent_unit(self, user: WMSUser, other_user: WMSUser):
+        """Test that access to parent unit does NOT grant access to child."""
         parent = Unit.objects.create(user=user, name="Parent")
         child = Unit.objects.create(user=user, name="Child", parent_unit=parent)
 
@@ -431,12 +431,12 @@ class TestUnitAccessControl:
             permission="read"
         )
 
-        # Should have access to child via transitive access
-        assert child.user_has_access(other_user) is True
+        # Should NOT have access to child — sharing is explicit per unit
+        assert child.user_has_access(other_user) is False
 
     @pytest.mark.django_db
-    def test_transitive_access_through_location(self, user: WMSUser, other_user: WMSUser, location: Location):
-        """Test transitive access through LocationSharedAccess."""
+    def test_location_sharing_does_not_grant_unit_access(self, user: WMSUser, other_user: WMSUser, location: Location):
+        """Test that LocationSharedAccess does NOT grant access to units within the location."""
         unit = Unit.objects.create(user=user, name="Unit", location=location)
 
         # Grant access to location
@@ -446,12 +446,12 @@ class TestUnitAccessControl:
             permission="read"
         )
 
-        # Should have access to unit via location access
-        assert unit.user_has_access(other_user) is True
+        # Should NOT have access to unit — location sharing only grants name visibility
+        assert unit.user_has_access(other_user) is False
 
     @pytest.mark.django_db
-    def test_transitive_access_multi_level(self, user: WMSUser, other_user: WMSUser):
-        """Test transitive access through multiple levels of parent units."""
+    def test_no_transitive_access_multi_level(self, user: WMSUser, other_user: WMSUser):
+        """Test that access does NOT inherit through multiple levels of parent units."""
         grandparent = Unit.objects.create(user=user, name="Grandparent")
         parent = Unit.objects.create(user=user, name="Parent", parent_unit=grandparent)
         child = Unit.objects.create(user=user, name="Child", parent_unit=parent)
@@ -463,8 +463,8 @@ class TestUnitAccessControl:
             permission="read"
         )
 
-        # Should have access to child via transitive access
-        assert child.user_has_access(other_user) is True
+        # Should NOT have access to child — sharing is explicit per unit
+        assert child.user_has_access(other_user) is False
 
 
 class TestUnitHelperMethods:
@@ -541,17 +541,49 @@ class TestItemSave:
         assert item.user_id == user.id
 
     @pytest.mark.django_db
-    def test_item_save_raises_error_on_user_mismatch(self, user: WMSUser, other_user: WMSUser, standalone_unit: Unit):
-        """Test that saving an item with mismatched user raises ValueError."""
+    def test_item_save_raises_error_on_user_without_access(self, user: WMSUser, other_user: WMSUser, standalone_unit: Unit):
+        """Test that saving an item by a user without access raises ValueError."""
         item = Item(
-            user=other_user,  # Different user than unit.user
+            user=other_user,  # Different user than unit.user, no shared access
             name="Test Item",
             description="Test description",
             unit=standalone_unit  # owned by 'user'
         )
 
-        with pytest.raises(ValueError, match="User for Unit .* and Item .* must be the same"):
+        with pytest.raises(ValueError, match="does not have write access to Unit"):
             item.save()
+
+    @pytest.mark.django_db
+    def test_item_save_raises_error_for_read_only_shared_user(self, user: WMSUser, other_user: WMSUser, standalone_unit: Unit):
+        """Test that a read-only shared user cannot save an item."""
+        UnitSharedAccess.objects.create(
+            user=other_user, unit=standalone_unit, permission="read"
+        )
+        item = Item(
+            user=other_user,
+            name="Read Only Item",
+            description="Should not be saved",
+            unit=standalone_unit
+        )
+        with pytest.raises(ValueError, match="does not have write access to Unit"):
+            item.save()
+
+    @pytest.mark.django_db
+    def test_item_save_succeeds_for_shared_user(self, user: WMSUser, other_user: WMSUser, standalone_unit: Unit):
+        """Test that a shared user can save an item in a unit they have access to."""
+        UnitSharedAccess.objects.create(
+            user=other_user, unit=standalone_unit, permission="write"
+        )
+        item = Item(
+            user=other_user,
+            name="Shared Item",
+            description="Added by shared user",
+            unit=standalone_unit
+        )
+        item.save()
+        assert item.id is not None
+        assert item.user == other_user
+        assert item.unit == standalone_unit
 
     @pytest.mark.django_db
     def test_item_save_succeeds_with_matching_user(self, user: WMSUser, standalone_unit: Unit):
@@ -875,3 +907,156 @@ class TestQuantityUnitMappings:
                 assert unit in UNIT_2_NAME
                 assert isinstance(UNIT_2_NAME[unit], str)
                 assert len(UNIT_2_NAME[unit]) > 0
+
+
+class TestGetUserPermission:
+    """Tests for Unit.get_user_permission() and Location.get_user_permission()."""
+
+    @pytest.mark.django_db
+    def test_owner_gets_owner_permission(self, user: WMSUser, standalone_unit: Unit):
+        """Test that the unit owner gets 'owner' permission."""
+        assert standalone_unit.get_user_permission(user) == "owner"
+
+    @pytest.mark.django_db
+    def test_shared_read_gets_read(self, other_user: WMSUser, standalone_unit: Unit):
+        """Test that a user with read shared access gets 'read'."""
+        UnitSharedAccess.objects.create(
+            user=other_user, unit=standalone_unit, permission="read"
+        )
+        assert standalone_unit.get_user_permission(other_user) == "read"
+
+    @pytest.mark.django_db
+    def test_shared_write_gets_write(self, other_user: WMSUser, standalone_unit: Unit):
+        """Test that a user with write shared access gets 'write'."""
+        UnitSharedAccess.objects.create(
+            user=other_user, unit=standalone_unit, permission="write"
+        )
+        assert standalone_unit.get_user_permission(other_user) == "write"
+
+    @pytest.mark.django_db
+    def test_no_access_returns_none(self, other_user: WMSUser, standalone_unit: Unit):
+        """Test that a user with no access gets None."""
+        assert standalone_unit.get_user_permission(other_user) is None
+
+    @pytest.mark.django_db
+    def test_no_transitive_permission_through_parent(self, user: WMSUser, other_user: WMSUser):
+        """Test that permission does NOT inherit from parent unit."""
+        parent = Unit.objects.create(user=user, name="Parent")
+        child = Unit.objects.create(user=user, name="Child", parent_unit=parent)
+        UnitSharedAccess.objects.create(
+            user=other_user, unit=parent, permission="write"
+        )
+        assert child.get_user_permission(other_user) is None
+
+    @pytest.mark.django_db
+    def test_location_sharing_does_not_grant_unit_permission(self, user: WMSUser, other_user: WMSUser, location: Location):
+        """Test that permission does NOT inherit from location to unit."""
+        unit = Unit.objects.create(user=user, name="Unit", location=location)
+        LocationSharedAccess.objects.create(
+            user=other_user, location=location, permission="read"
+        )
+        assert unit.get_user_permission(other_user) is None
+
+    @pytest.mark.django_db
+    def test_location_owner_permission(self, user: WMSUser, location: Location):
+        """Test that location owner gets 'owner'."""
+        assert location.get_user_permission(user) == "owner"
+
+    @pytest.mark.django_db
+    def test_location_shared_permission(self, other_user: WMSUser, location: Location):
+        """Test that shared location user gets their permission level."""
+        LocationSharedAccess.objects.create(
+            user=other_user, location=location, permission="write"
+        )
+        assert location.get_user_permission(other_user) == "write"
+
+    @pytest.mark.django_db
+    def test_location_no_access(self, other_user: WMSUser, location: Location):
+        """Test that unshared user gets None for location."""
+        assert location.get_user_permission(other_user) is None
+
+
+class TestAccessibleQuerysets:
+    """Tests for WMSUser.accessible_units/locations/items() methods."""
+
+    @pytest.mark.django_db
+    def test_accessible_units_includes_owned(self, user: WMSUser, standalone_unit: Unit):
+        """Test that owned units are included."""
+        assert standalone_unit in user.accessible_units()
+
+    @pytest.mark.django_db
+    def test_accessible_units_includes_shared(self, user: WMSUser, other_user: WMSUser, standalone_unit: Unit):
+        """Test that units shared with the user are included."""
+        UnitSharedAccess.objects.create(
+            user=other_user, unit=standalone_unit, permission="read"
+        )
+        assert standalone_unit in other_user.accessible_units()
+
+    @pytest.mark.django_db
+    def test_accessible_units_excludes_unshared(self, other_user: WMSUser, standalone_unit: Unit):
+        """Test that unshared units are excluded."""
+        assert standalone_unit not in other_user.accessible_units()
+
+    @pytest.mark.django_db
+    def test_accessible_locations_includes_owned(self, user: WMSUser, location: Location):
+        """Test that owned locations are included."""
+        assert location in user.accessible_locations()
+
+    @pytest.mark.django_db
+    def test_accessible_locations_includes_shared(self, user: WMSUser, other_user: WMSUser, location: Location):
+        """Test that shared locations are included."""
+        LocationSharedAccess.objects.create(
+            user=other_user, location=location, permission="read"
+        )
+        assert location in other_user.accessible_locations()
+
+    @pytest.mark.django_db
+    def test_accessible_locations_excludes_unshared(self, other_user: WMSUser, location: Location):
+        """Test that unshared locations are excluded."""
+        assert location not in other_user.accessible_locations()
+
+    @pytest.mark.django_db
+    def test_accessible_items_includes_items_in_shared_units(self, user: WMSUser, other_user: WMSUser, standalone_unit: Unit, item: Item):
+        """Test that items in shared units are accessible."""
+        UnitSharedAccess.objects.create(
+            user=other_user, unit=standalone_unit, permission="read"
+        )
+        assert item in other_user.accessible_items()
+
+    @pytest.mark.django_db
+    def test_accessible_items_excludes_items_in_unshared_units(self, other_user: WMSUser, item: Item):
+        """Test that items in unshared units are not accessible."""
+        assert item not in other_user.accessible_items()
+
+    @pytest.mark.django_db
+    def test_accessible_units_excludes_location_transitive(self, user: WMSUser, other_user: WMSUser, location: Location):
+        """Test that units in shared locations are NOT in accessible_units()."""
+        unit = Unit.objects.create(user=user, name="Unit in Location", location=location)
+        LocationSharedAccess.objects.create(
+            user=other_user, location=location, permission="read"
+        )
+        assert unit not in other_user.accessible_units()
+
+    @pytest.mark.django_db
+    def test_accessible_items_excludes_location_transitive(self, user: WMSUser, other_user: WMSUser, location: Location):
+        """Test that items in shared-location units are NOT in accessible_items()."""
+        unit = Unit.objects.create(user=user, name="Unit in Location", location=location)
+        item = Item.objects.create(user=user, unit=unit, name="Hidden Item")
+        LocationSharedAccess.objects.create(
+            user=other_user, location=location, permission="read"
+        )
+        assert item not in other_user.accessible_items()
+
+    @pytest.mark.django_db
+    def test_explicit_unit_access_in_shared_location(self, user: WMSUser, other_user: WMSUser, location: Location):
+        """Test that explicit UnitSharedAccess works for units in shared locations."""
+        unit = Unit.objects.create(user=user, name="Shared Unit", location=location)
+        LocationSharedAccess.objects.create(
+            user=other_user, location=location, permission="read"
+        )
+        UnitSharedAccess.objects.create(
+            user=other_user, unit=unit, permission="write"
+        )
+        assert unit in other_user.accessible_units()
+        assert unit.user_has_access(other_user) is True
+        assert unit.get_user_permission(other_user) == "write"

@@ -64,5 +64,14 @@ urlpatterns = [
     path("api/item/<int:item_id>/update/", views.api_update_item, name="api_update_item"),
     path("api/item/<int:item_id>/delete/", views.api_delete_item, name="api_delete_item"),
     path("api/item/<int:item_id>/move/", views.api_move_item, name="api_move_item"),
+    # Sharing management
+    path("api/units/<int:user_id>/<slug:access_token>/sharing/", views.api_unit_sharing, name="api_unit_sharing"),
+    path("api/units/<int:user_id>/<slug:access_token>/sharing/add/", views.api_unit_sharing_add, name="api_unit_sharing_add"),
+    path("api/units/<int:user_id>/<slug:access_token>/sharing/<int:access_id>/remove/", views.api_unit_sharing_remove, name="api_unit_sharing_remove"),
+    path("api/units/<int:user_id>/<slug:access_token>/sharing/<int:access_id>/update/", views.api_unit_sharing_update, name="api_unit_sharing_update"),
+    path("api/locations/<int:location_id>/sharing/", views.api_location_sharing, name="api_location_sharing"),
+    path("api/locations/<int:location_id>/sharing/add/", views.api_location_sharing_add, name="api_location_sharing_add"),
+    path("api/locations/<int:location_id>/sharing/<int:access_id>/remove/", views.api_location_sharing_remove, name="api_location_sharing_remove"),
+    path("api/locations/<int:location_id>/sharing/<int:access_id>/update/", views.api_location_sharing_update, name="api_location_sharing_update"),
     path("caddy-ca/download/", views.caddy_ca_download_view, name="caddy_ca_download"),
 ]

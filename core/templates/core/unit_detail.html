@@ -44,7 +44,14 @@
             </div>
         </div>
         <!-- Unit actions -->
+        {% if permission == "owner" %}
         <div class="flex shrink-0 gap-1">
+            <button type="button" onclick="openUnitSharing({{ unit.user_id }}, '{{ unit.access_token }}', '{{ unit.name }}')"
+                    class="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground" aria-label="Share unit">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/>
+                </svg>
+            </button>
             <a href="{% url 'unit_edit' unit.user_id unit.access_token %}" class="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground" aria-label="Edit unit">
                 <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
@@ -56,7 +63,9 @@
                 </svg>
             </a>
         </div>
+        {% endif %}
     </div>
+    {% if permission != "read" %}
     <div class="mt-4">
         <a href="{% url 'add_items_to_unit' %}?unit={{ unit.id }}"
            class="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
@@ -66,6 +75,7 @@
             Add Items
         </a>
     </div>
+    {% endif %}
 </div>
 
 <!-- Child Units Section -->
@@ -73,6 +83,7 @@
 <h2 class="mb-3 mt-6 text-lg font-semibold text-foreground">Sub-units</h2>
 <div class="space-y-2">
     {% for child in unit.child_units.all %}
+    {% if permission == "owner" or child.id in accessible_child_ids %}
     <a href="{% url 'unit_detail' child.user_id child.access_token %}"
        class="flex items-center gap-3 rounded-lg border border-border bg-card p-4 no-underline transition-colors hover:border-primary/50">
         <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
@@ -88,13 +99,26 @@
         <span class="shrink-0 text-xs text-muted-foreground">{{ child.items.count }} item{{ child.items.count|pluralize:",s" }}</span>
         <svg class="h-4 w-4 shrink-0 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
     </a>
+    {% else %}
+    <div class="flex items-center gap-3 rounded-lg border border-border bg-muted/50 p-4 opacity-60 cursor-default">
+        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+            <svg class="h-5 w-5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+        </div>
+        <div class="min-w-0 flex-1">
+            <p class="truncate text-sm font-medium text-muted-foreground">{{ child.name }}</p>
+        </div>
+    </div>
+    {% endif %}
     {% endfor %}
 </div>
 {% endif %}
 
 <!-- Items Section -->
 {% csrf_token %}
-<h2 class="mb-3 mt-6 text-lg font-semibold text-foreground">Your Items</h2>
+<h2 class="mb-3 mt-6 text-lg font-semibold text-foreground">{% if permission == "owner" %}Your Items{% else %}Items{% endif %}</h2>
 
 {% if unit.items.all %}
 <div class="space-y-2">
@@ -137,12 +161,14 @@
     {% endfor %}
 
     <!-- Add more items -->
+    {% if permission != "read" %}
     <a href="{% url 'add_items_to_unit' %}?unit={{ unit.id }}" class="flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border py-4 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary">
         <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
             <path d="M19 13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
         </svg>
         Add Item
     </a>
+    {% endif %}
 </div>
 {% else %}
 <div class="rounded-lg border border-border bg-card py-12 text-center">
@@ -150,6 +176,7 @@
         <path d="M20 6h-2.18c.11-.31.18-.65.18-1 0-1.66-1.34-3-3-3-1.05 0-1.96.54-2.5 1.35l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM9 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm11 15H4v-2h16v2zm0-5H4V8h5.08L7 10.83 8.62 12 11 8.76l1-1.36 1 1.36L15.38 12 17 10.83 14.92 8H20v6z"/>
     </svg>
     <p class="mt-3 text-sm text-muted-foreground">This unit is empty</p>
+    {% if permission != "read" %}
     <a href="{% url 'add_items_to_unit' %}?unit={{ unit.id }}"
        class="mt-4 inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
@@ -157,6 +184,7 @@
         </svg>
         Add Item
     </a>
+    {% endif %}
 </div>
 {% endif %}
 
@@ -173,8 +201,13 @@
 
 {% block dialogs %}
 {% include "core/includes/dialogs/item_detail_sheet.html" %}
+{% if permission != "read" %}
 {% include "core/includes/dialogs/edit_item.html" %}
 {% include "core/includes/dialogs/move_item.html" %}
+{% endif %}
+{% if permission == "owner" %}
+{% include "core/includes/dialogs/sharing.html" %}
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}
@@ -199,10 +232,17 @@ function showErrorSnackbar(message) {
 window.WMS_UNIT_2_NAME = {{ unit_2_name_json|safe }};
 window.WMS_QUANTITY_DECIMAL_PLACES = {{ QUANTITY_DECIMAL_PLACES }};
 window.WMS_QUANTITY_NON_COUNT_STEP = {{ QUANTITY_NON_COUNT_STEP }};
+
+// Permission globals (used for permission-aware UI)
+window.WMS_UNIT_PERMISSION = '{{ permission }}';
+window.WMS_CURRENT_USER_ID = {{ request.user.id }};
 </script>
 <script src="{% static 'core/js/quantity_logic.js' %}"></script>
 <script src="{% static 'core/js/quantity_controls.js' %}"></script>
 <script src="{% static 'core/js/fetch_utils.js' %}"></script>
+{% if permission == "owner" %}
+<script src="{% static 'core/js/sharing.js' %}"></script>
+{% endif %}
 <script>
 /**
  * Unit detail page — item dialogs wiring.
@@ -354,6 +394,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 sheetUnit.textContent = data.unit_name;
                 sheetLoading.classList.add('hidden');
                 sheetContent.classList.remove('hidden');
+
+                // Permission-aware button visibility
+                var perm = window.WMS_UNIT_PERMISSION;
+                var isOwner = perm === 'owner';
+                var isWriteAll = perm === 'write_all';
+                var isWriter = perm === 'write';
+                var isItemOwner = data.user_id === window.WMS_CURRENT_USER_ID;
+                var canWrite = isOwner || isWriteAll || (isWriter && isItemOwner);
+                if (sheetEditBtn) sheetEditBtn.style.display = canWrite ? '' : 'none';
+                if (sheetDeleteBtn) sheetDeleteBtn.style.display = canWrite ? '' : 'none';
+                if (sheetMoveBtn) sheetMoveBtn.style.display = canWrite ? '' : 'none';
             })
             .catch(function(err) {
                 closeDialog(sheet);

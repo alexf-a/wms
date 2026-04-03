@@ -538,10 +538,12 @@ function initBrowseCrud(config) {
 
     if (entityType === 'location') {
       menu.innerHTML =
+        '<button type="button" class="entity-menu-action w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent" data-action="share">Share</button>' +
         '<button type="button" class="entity-menu-action w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent" data-action="edit">Edit</button>' +
         '<button type="button" class="entity-menu-action w-full px-4 py-2 text-left text-sm text-destructive hover:bg-destructive/10" data-action="delete">Delete</button>';
     } else {
       menu.innerHTML =
+        '<button type="button" class="entity-menu-action w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent" data-action="share">Share</button>' +
         '<button type="button" class="entity-menu-action w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent" data-action="edit">Edit</button>' +
         '<button type="button" class="entity-menu-action w-full px-4 py-2 text-left text-sm text-destructive hover:bg-destructive/10" data-action="delete">Delete</button>';
     }
@@ -566,7 +568,9 @@ function initBrowseCrud(config) {
         var locationId = btn.dataset.entityId;
         var locationName = btn.dataset.entityName;
         var locationAddress = btn.dataset.entityAddress || '';
-        if (action === 'edit') {
+        if (action === 'share' && typeof openLocationSharing === 'function') {
+          openLocationSharing(parseInt(locationId), locationName);
+        } else if (action === 'edit') {
           openEditLocationDialog(locationId, locationName, locationAddress);
         } else if (action === 'delete') {
           openDeleteLocationDialog(locationId, locationName);
@@ -575,7 +579,9 @@ function initBrowseCrud(config) {
         var userId = btn.dataset.entityUserId;
         var accessToken = btn.dataset.entityAccessToken;
         var unitName = btn.dataset.entityName;
-        if (action === 'edit') {
+        if (action === 'share' && typeof openUnitSharing === 'function') {
+          openUnitSharing(parseInt(userId), accessToken, unitName);
+        } else if (action === 'edit') {
           openEditUnitDialog(userId, accessToken);
         } else if (action === 'delete') {
           openDeleteUnitDialog(userId, accessToken, unitName);

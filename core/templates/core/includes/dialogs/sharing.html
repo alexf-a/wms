@@ -1,0 +1,43 @@
+{# Sharing dialog — invite users by email, manage access levels. #}
+<dialog id="sharing-dialog"
+        class="w-full max-w-md rounded-lg border border-border bg-card p-0 text-card-foreground shadow-xl backdrop:bg-foreground/40
+               open:animate-[dialog-in_200ms_ease-out]
+               [&.dialog--closing]:animate-[dialog-out_150ms_ease-in]">
+    <div class="px-6 py-5">
+        <h2 class="text-lg font-semibold text-foreground">Share Access</h2>
+        <p class="mt-1 text-xs text-muted-foreground" id="sharing-subtitle"></p>
+
+        <p id="sharing-error" class="mt-3 hidden rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive" role="alert"></p>
+        <p id="sharing-success" class="mt-3 hidden rounded-lg bg-primary/10 px-4 py-3 text-sm text-primary" role="status"></p>
+
+        {# Invite form #}
+        <div class="mt-4 flex gap-2">
+            <input type="email" id="sharing-email"
+                   class="min-w-0 flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                   placeholder="Email address">
+            <select id="sharing-permission"
+                    class="rounded-md border border-input bg-background px-2 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+                <option value="read">View</option>
+                <option value="write">Edit own</option>
+                <option value="write_all">Edit all</option>
+            </select>
+            <button type="button" id="sharing-invite-btn"
+                    class="shrink-0 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                Invite
+            </button>
+        </div>
+
+        {# Current shares list #}
+        <div id="sharing-list" class="mt-4 space-y-2">
+            <p id="sharing-empty" class="hidden py-4 text-center text-sm text-muted-foreground">Not shared with anyone yet</p>
+        </div>
+
+        {# Close #}
+        <div class="mt-5 flex justify-end">
+            <button type="button" id="sharing-close-btn"
+                    class="rounded-md border border-border bg-background px-4 py-2.5 text-sm font-medium text-foreground hover:bg-accent">
+                Done
+            </button>
+        </div>
+    </div>
+</dialog>
