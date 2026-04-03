@@ -78,6 +78,11 @@ poetry run python manage.py collectstatic    # Collect static files
 3. When debugging, search the web first (GitHub Issues, Stack Overflow).
 4. When using AWS CLI, ensure the cli-pager is disabled.
 
+## PR Feedback
+You will be provided with links to PR comments in Git Hub. Use the `gh api` command to access the comment.
+
+When asked to address a PR comment, do not default to accepting the comment's feedback. Consider the merit of the feedback, and provide your opinion on whether it should be implemented or not.
+
 ## Additional Context
 
 - UI/UX design system and component patterns: @core/CLAUDE.md
