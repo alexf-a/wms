@@ -777,3 +777,261 @@ class TestGeminiStructuredHandler:
         assert image_content["type"] == "image_url"
         assert image_content["image_url"]["url"] == "data:image/jpeg;base64,test_b64"
         assert result == expected_output
+
+
+class TestTransportRetry:
+    """Test cases for transport (non-reask) error retry in StructuredLangChainHandler."""
+
+    @pytest.fixture
+    def output_schema(self) -> type[DummyOutputSchema]:
+        return DummyOutputSchema
+
+    @pytest.fixture
+    def llm_call_with_retry(self, system_prompt: str, model_id: ClaudeModelID) -> LLMCall:
+        return LLMCall(
+            system_prompt_tmplt=system_prompt,
+            model_id=model_id,
+            retry_limit=2,
+        )
+
+    @pytest.fixture
+    def llm_call_no_retry(self, system_prompt: str, model_id: ClaudeModelID) -> LLMCall:
+        return LLMCall(
+            system_prompt_tmplt=system_prompt,
+            model_id=model_id,
+        )
+
+    def test_transport_error_then_success_no_reask_message(
+        self,
+        llm_call_with_retry: LLMCall,
+        output_schema: type[DummyOutputSchema],
+        region: AWSRegion,
+        mock_bedrock_client: MagicMock,
+    ) -> None:
+        """Transport errors retry with the same prompt — no reask message appended."""
+        handler = StructuredLangChainHandler(llm_call_with_retry, output_schema, region)
+        valid_result = DummyOutputSchema(field1="ok", field2=1)
+
+        with patch.object(StructuredLangChainHandler, "chain") as mock_chain:
+            mock_chain.invoke.side_effect = [RuntimeError("throttled"), valid_result]
+            result = handler.query()
+
+        assert result == valid_result
+        assert mock_chain.invoke.call_count == 2
+        # Key assertion: additional_messages must be empty on retry (no reask feedback)
+        second_call_kwargs = mock_chain.invoke.call_args_list[1][0][0]
+        assert second_call_kwargs["additional_messages"] == []
+
+    def test_transport_error_exhausted_reraises(
+        self,
+        llm_call_with_retry: LLMCall,
+        output_schema: type[DummyOutputSchema],
+        region: AWSRegion,
+        mock_bedrock_client: MagicMock,
+    ) -> None:
+        """When all attempts fail with transport errors, re-raises the last one."""
+        handler = StructuredLangChainHandler(llm_call_with_retry, output_schema, region)
+
+        with patch.object(StructuredLangChainHandler, "chain") as mock_chain:
+            mock_chain.invoke.side_effect = RuntimeError("service unavailable")
+            with pytest.raises(RuntimeError, match="service unavailable"):
+                handler.query()
+
+        # 1 initial + 2 retries = 3 total
+        assert mock_chain.invoke.call_count == 3
+
+    def test_transport_error_without_retry_raises_immediately(
+        self,
+        llm_call_no_retry: LLMCall,
+        output_schema: type[DummyOutputSchema],
+        region: AWSRegion,
+        mock_bedrock_client: MagicMock,
+    ) -> None:
+        """Without retry configured, transport errors raise immediately."""
+        handler = StructuredLangChainHandler(llm_call_no_retry, output_schema, region)
+
+        with patch.object(StructuredLangChainHandler, "chain") as mock_chain:
+            mock_chain.invoke.side_effect = RuntimeError("network error")
+            with pytest.raises(RuntimeError, match="network error"):
+                handler.query()
+
+        assert mock_chain.invoke.call_count == 1
+
+
+class TestConfigureEdgeCases:
+    """Test cases for initialization edge cases and configuration branches."""
+
+    @pytest.fixture
+    def output_schema(self) -> type[DummyOutputSchema]:
+        return DummyOutputSchema
+
+    def test_structured_handler_falls_back_to_bind_tools(
+        self,
+        system_prompt: str,
+        model_id: ClaudeModelID,
+        region: AWSRegion,
+        mock_bedrock_client: MagicMock,
+    ) -> None:
+        """When with_structured_output fails, falls back to bind_tools."""
+        mock_instance = mock_bedrock_client.return_value
+        mock_instance.with_structured_output.side_effect = NotImplementedError("not supported")
+
+        llm_call = LLMCall(system_prompt_tmplt=system_prompt, model_id=model_id)
+        handler = StructuredLangChainHandler(llm_call, DummyOutputSchema, region)
+
+        mock_instance.with_structured_output.assert_called_once_with(DummyOutputSchema)
+        mock_instance.bind_tools.assert_called_once_with([DummyOutputSchema])
+        assert handler.output_schema == DummyOutputSchema
+
+    def test_max_tokens_passed_to_bedrock_client(
+        self,
+        system_prompt: str,
+        human_prompt: str,
+        model_id: ClaudeModelID,
+        region: AWSRegion,
+        mock_bedrock_client: MagicMock,
+    ) -> None:
+        """When max_tokens is set, it is included in client parameters."""
+        llm_call = LLMCall(
+            system_prompt_tmplt=system_prompt,
+            human_prompt_tmplt=human_prompt,
+            model_id=model_id,
+            max_tokens=1024,
+        )
+        LangChainHandler(llm_call, region)
+
+        mock_bedrock_client.assert_called_once_with(
+            model_id=model_id.value,
+            temperature=llm_call.temp,
+            region=region.value,
+            max_tokens=1024,
+        )
+
+    def test_max_tokens_passed_to_gemini_client(
+        self,
+        system_prompt: str,
+        human_prompt: str,
+        mock_gemini_client: MagicMock,
+    ) -> None:
+        """When max_tokens is set on a Gemini call, it is included in client parameters."""
+        gemini_model = GeminiModelID.GEMINI_3_FLASH_PREVIEW
+        llm_call = LLMCall(
+            system_prompt_tmplt=system_prompt,
+            human_prompt_tmplt=human_prompt,
+            model_id=gemini_model,
+            max_tokens=2048,
+        )
+        LangChainHandler(llm_call)
+
+        mock_gemini_client.assert_called_once_with(
+            model=gemini_model.value,
+            temperature=llm_call.temp,
+            max_tokens=2048,
+        )
+
+    def test_prompt_template_with_no_human_prompt(
+        self,
+        system_prompt: str,
+        model_id: ClaudeModelID,
+        region: AWSRegion,
+        mock_bedrock_client: MagicMock,
+    ) -> None:
+        """When human_prompt_tmplt is None, template has only system + placeholder."""
+        llm_call = LLMCall(system_prompt_tmplt=system_prompt, model_id=model_id)
+        handler = LangChainHandler(llm_call, region)
+
+        template = handler.lc_prompt_tmplt
+        assert len(template.messages) == 2
+        assert isinstance(template.messages[0], SystemMessagePromptTemplate)
+        assert isinstance(template.messages[1], MessagesPlaceholder)
+
+
+class TestStructuredQueryWithImageException:
+    """Test the exception logging path in StructuredLangChainHandler.query_with_image."""
+
+    @pytest.fixture
+    def output_schema(self) -> type[DummyOutputSchema]:
+        return DummyOutputSchema
+
+    def test_query_with_image_logs_and_reraises_exception(
+        self,
+        system_prompt: str,
+        model_id: ClaudeModelID,
+        output_schema: type[DummyOutputSchema],
+        region: AWSRegion,
+        mock_bedrock_client: MagicMock,
+    ) -> None:
+        """When query fails inside query_with_image, the exception is logged and re-raised."""
+        llm_call = LLMCall(system_prompt_tmplt=system_prompt, model_id=model_id)
+        handler = StructuredLangChainHandler(llm_call, output_schema, region)
+
+        with (
+            patch.object(StructuredLangChainHandler, "chain") as mock_chain,
+            patch("lib.llm.llm_handler.logger") as mock_logger,
+        ):
+            mock_chain.invoke.side_effect = OutputParserException("bad output")
+            with pytest.raises(OutputParserException, match="bad output"):
+                handler.query_with_image(image_data="b64data")
+
+        mock_logger.exception.assert_called_once()
+        assert "FAILED" in mock_logger.exception.call_args[0][0]
+
+
+class TestOutputParserExceptionReask:
+    """Test that OutputParserException triggers reask (not naive retry)."""
+
+    @pytest.fixture
+    def output_schema(self) -> type[DummyOutputSchema]:
+        return DummyOutputSchema
+
+    @pytest.fixture
+    def llm_call_with_retry(self, system_prompt: str, model_id: ClaudeModelID) -> LLMCall:
+        return LLMCall(
+            system_prompt_tmplt=system_prompt,
+            model_id=model_id,
+            retry_limit=2,
+        )
+
+    def test_output_parser_exception_triggers_reask(
+        self,
+        llm_call_with_retry: LLMCall,
+        output_schema: type[DummyOutputSchema],
+        region: AWSRegion,
+        mock_bedrock_client: MagicMock,
+    ) -> None:
+        """OutputParserException is a reask exception — error feedback is appended."""
+        handler = StructuredLangChainHandler(llm_call_with_retry, output_schema, region)
+        valid_result = DummyOutputSchema(field1="recovered", field2=1)
+
+        with patch.object(StructuredLangChainHandler, "chain") as mock_chain:
+            mock_chain.invoke.side_effect = [
+                OutputParserException("malformed tool call"),
+                valid_result,
+            ]
+            result = handler.query()
+
+        assert result == valid_result
+        assert mock_chain.invoke.call_count == 2
+        # Reask message should contain the error, not be empty like a naive retry
+        second_call_kwargs = mock_chain.invoke.call_args_list[1][0][0]
+        reask_msgs = second_call_kwargs["additional_messages"]
+        assert len(reask_msgs) == 1
+        assert isinstance(reask_msgs[0], HumanMessage)
+        assert "validation error" in reask_msgs[0].content.lower()
+
+    def test_output_parser_exception_exhausted_reraises(
+        self,
+        llm_call_with_retry: LLMCall,
+        output_schema: type[DummyOutputSchema],
+        region: AWSRegion,
+        mock_bedrock_client: MagicMock,
+    ) -> None:
+        """When all attempts raise OutputParserException, re-raises the last one."""
+        handler = StructuredLangChainHandler(llm_call_with_retry, output_schema, region)
+
+        with patch.object(StructuredLangChainHandler, "chain") as mock_chain:
+            mock_chain.invoke.side_effect = OutputParserException("persistent parse error")
+            with pytest.raises(OutputParserException, match="persistent parse error"):
+                handler.query()
+
+        assert mock_chain.invoke.call_count == 3
