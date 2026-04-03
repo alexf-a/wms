@@ -225,7 +225,7 @@ class StructuredLangChainHandler(LangChainHandler):
         try:
             self.langchain_client = self.langchain_client.with_structured_output(self.output_schema)
             logger.info("[LLMHandler] Structured output configured successfully")
-        except (AttributeError, NotImplementedError, Exception) as e:
+        except (AttributeError, NotImplementedError) as e:
             # Fall back to tool binding if structured_output isn't supported
             logger.warning("[LLMHandler] Falling back to bind_tools: %s", str(e))
             self.langchain_client = self.langchain_client.bind_tools([self.output_schema])
