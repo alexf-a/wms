@@ -27,6 +27,7 @@ function initBrowse(config) {
   var originalSubtitle = '';
   var currentLocationId = null;
   var currentLocationName = null;
+  var currentPermission = null;
 
   // --- DOM refs ---
   var screenLocations = document.getElementById('screen-locations');
@@ -112,9 +113,10 @@ function initBrowse(config) {
    * @param {string} unit.name - Unit display name.
    * @param {number} [unit.item_count] - Number of items in the unit.
    * @param {boolean} [unit.accessible] - Whether the user can access this unit's contents.
+   * @param {string} permission - The user's permission level for the parent location ('owner', 'read', 'write', 'write_all').
    * @returns {string} HTML string for the unit card.
    */
-  function renderUnitCard(unit) {
+  function renderUnitCard(unit, permission) {
     if (unit.accessible === false) {
       return (
         '<div class="browse-unit-card browse-unit-card--restricted flex items-center gap-3 rounded-lg border border-border bg-muted/50 p-4 opacity-60 cursor-default">' +
@@ -146,6 +148,7 @@ function initBrowse(config) {
       '<span class="shrink-0 text-xs text-muted-foreground">' +
       unit.item_count + ' ' + pluralize(unit.item_count, 'item') +
       '</span>' +
+      (permission === 'owner' ?
       '<button type="button" class="entity-menu-btn shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"' +
       ' data-entity-type="unit"' +
       ' data-entity-user-id="' + escapeAttr(String(unit.user_id)) + '"' +
@@ -154,7 +157,7 @@ function initBrowse(config) {
       ' aria-label="Unit options">' +
       '<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
       '<circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/>' +
-      '</svg></button>' +
+      '</svg></button>' : '') +
       '<svg class="h-4 w-4 shrink-0 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>' +
       '</a>'
     );
@@ -183,14 +186,15 @@ function initBrowse(config) {
    * Populate the units screen with unit cards or an empty state.
    *
    * @param {Array<Object>} units - Array of unit objects from the API.
+   * @param {string} permission - The user's permission level for the parent location.
    */
-  function renderUnitsScreen(units) {
+  function renderUnitsScreen(units, permission) {
     var html = '';
     if (units.length === 0) {
       html = renderEmptyState('No units in this location');
     } else {
       for (var i = 0; i < units.length; i++) {
-        html += renderUnitCard(units[i]);
+        html += renderUnitCard(units[i], permission);
       }
     }
     screenUnits.innerHTML = html;
@@ -215,8 +219,9 @@ function initBrowse(config) {
     apiFetch(url).then(function (res) {
       return res.json();
     }).then(function (data) {
+      currentPermission = data.permission;
       browseSubtitle.textContent = data.units.length + ' ' + pluralize(data.units.length, 'unit');
-      renderUnitsScreen(data.units);
+      renderUnitsScreen(data.units, data.permission);
       showScreen('units');
     }).catch(function () {
       browseSubtitle.textContent = 'Failed to load';
@@ -245,6 +250,7 @@ function initBrowse(config) {
     if (prev.screen === 'locations') {
       currentLocationId = null;
       currentLocationName = null;
+      currentPermission = null;
     }
     showScreen(prev.screen);
   }
