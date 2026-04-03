@@ -570,7 +570,7 @@ class ItemForm(forms.ModelForm):
         """
         super().__init__(*args, **kwargs)
         if user:
-            self.fields["unit"].queryset = user.accessible_units()
+            self.fields["unit"].queryset = user.writable_units()
 
         # Pre-populate quantity category when editing
         if self.instance and self.instance.pk and self.instance.quantity_unit:

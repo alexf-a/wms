@@ -719,12 +719,12 @@ def api_update_unit(request: HttpRequest, user_id: int, access_token: str) -> Js
     # Set container
     if location_id:
         location = get_object_or_404(Location, id=location_id)
-        require_location_access(location, request.user)
+        require_location_access(location, request.user, require_write=True)
         unit.location = location
         unit.parent_unit = None
     elif parent_unit_id:
         parent = get_object_or_404(Unit, id=parent_unit_id)
-        require_unit_access(parent, request.user)
+        require_unit_access(parent, request.user, require_write=True)
         unit.parent_unit = parent
         unit.location = None
     else:
@@ -854,6 +854,7 @@ def add_items_to_unit_view(request: HttpRequest) -> HttpResponse:
         if form.is_valid():
             item = form.save(commit=False)
             item.user = request.user
+            require_unit_access(item.unit, request.user, require_write=True)
             try:
                 item.save()
                 messages.success(request, f"Item '{item.name}' has been added successfully!")
@@ -871,8 +872,8 @@ def add_items_to_unit_view(request: HttpRequest) -> HttpResponse:
             initial["unit"] = unit_id
         form = ItemForm(user=request.user, initial=initial)
 
-    # Get user's accessible units for the template
-    units = request.user.accessible_units()
+    # Get user's writable units for the template
+    units = request.user.writable_units()
     return render(request, "core/add_items_to_unit.html", {
         "form": form,
         "units": units,

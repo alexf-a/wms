@@ -107,6 +107,25 @@ class WMSUser(AbstractUser):
             | Q(unitsharedaccess__user=self)
         ).distinct()
 
+    def writable_units(self) -> QuerySet[Unit]:
+        """Return all units this user owns or has write access to.
+
+        Excludes units shared with read-only permission.
+
+        Returns:
+            QuerySet of Unit objects this user can write to.
+        """
+        return Unit.objects.filter(
+            Q(user=self)
+            | Q(
+                unitsharedaccess__user=self,
+                unitsharedaccess__permission__in=[
+                    Permission.WRITE,
+                    Permission.WRITE_ALL,
+                ],
+            )
+        ).distinct()
+
     def accessible_locations(self) -> QuerySet[Location]:
         """Return all locations this user owns or has shared access to.
 
@@ -750,16 +769,17 @@ class Item(models.Model):
         return self.name
 
     def save(self, *args: object, **kwargs: object) -> None:
-        """Persist the item after verifying the user has access to the unit."""
+        """Persist the item after verifying the user has write access to the unit."""
         if self.unit is None:
             msg = f"Must assign a Unit before saving Item {self}"
             raise ValueError(msg)
         if self.user is None:
             self.user = self.unit.user
         elif self.user_id != self.unit.user_id:
-            # Allow shared users to create/edit items in units they have access to
-            if not self.unit.user_has_access(self.user):
-                msg = f"User {self.user} does not have access to Unit {self.unit}"
+            # Require write-level permission for shared users to mutate items
+            perm = self.unit.get_user_permission(self.user)
+            if perm is None or perm == Permission.READ:
+                msg = f"User {self.user} does not have write access to Unit {self.unit}"
                 raise ValueError(msg)
 
         super().save(*args, **kwargs)

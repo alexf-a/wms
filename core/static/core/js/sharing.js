@@ -129,9 +129,12 @@
    */
   function loadShares() {
     apiFetch(baseUrl)
-      .then(function (r) { return r.json(); })
-      .then(function (data) { renderShares(data.shares); })
-      .catch(function () { showError('Failed to load shares'); });
+      .then(function (r) {
+        if (!r.ok) return r.json().then(function (d) { throw new Error(d.error || 'Failed to load shares'); });
+        return r.json();
+      })
+      .then(function (data) { if (data) renderShares(data.shares); })
+      .catch(function (err) { showError(err.message); });
   }
 
   /**

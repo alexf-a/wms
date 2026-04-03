@@ -550,7 +550,22 @@ class TestItemSave:
             unit=standalone_unit  # owned by 'user'
         )
 
-        with pytest.raises(ValueError, match="does not have access to Unit"):
+        with pytest.raises(ValueError, match="does not have write access to Unit"):
+            item.save()
+
+    @pytest.mark.django_db
+    def test_item_save_raises_error_for_read_only_shared_user(self, user: WMSUser, other_user: WMSUser, standalone_unit: Unit):
+        """Test that a read-only shared user cannot save an item."""
+        UnitSharedAccess.objects.create(
+            user=other_user, unit=standalone_unit, permission="read"
+        )
+        item = Item(
+            user=other_user,
+            name="Read Only Item",
+            description="Should not be saved",
+            unit=standalone_unit
+        )
+        with pytest.raises(ValueError, match="does not have write access to Unit"):
             item.save()
 
     @pytest.mark.django_db

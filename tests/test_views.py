@@ -2062,6 +2062,26 @@ class TestUpdateUnitAPI:
         assert standalone_unit.location == location
         assert standalone_unit.parent_unit is None
 
+    def test_update_with_read_only_shared_location_denied(
+        self, client: Client, user: User, other_user: User, standalone_unit: Unit
+    ):
+        """Test that moving a unit into a read-only shared location is denied."""
+        from core.models import Location, LocationSharedAccess
+
+        shared_location = Location.objects.create(user=other_user, name="Other Garage")
+        LocationSharedAccess.objects.create(
+            user=user, location=shared_location, permission="read"
+        )
+        client.force_login(user)
+        response = client.post(
+            self._url(standalone_unit.user_id, standalone_unit.access_token),
+            data=json.dumps({"name": standalone_unit.name, "location_id": shared_location.id}),
+            content_type="application/json",
+        )
+        assert response.status_code == http.HTTPStatus.NOT_FOUND
+        standalone_unit.refresh_from_db()
+        assert standalone_unit.location is None
+
     def test_dimensions_all_or_nothing(
         self, client: Client, user: User, standalone_unit: Unit
     ):
