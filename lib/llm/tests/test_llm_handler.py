@@ -78,20 +78,6 @@ class TestLangChainHandler:
             region=region.value,
         )
 
-        mock_instance = mock_bedrock_client.return_value
-        assert not mock_instance.with_retry.called
-
-    def test_init_with_retry(self, llm_call_with_retry: LLMCall, region: AWSRegion, mock_bedrock_client: MagicMock) -> None:
-        """Test that LangChainHandler initializes correctly with retry configuration."""
-        _ = LangChainHandler(llm_call_with_retry, region)
-
-        mock_bedrock_client.assert_called_once()
-        mock_instance = mock_bedrock_client.return_value
-        mock_instance.with_retry.assert_called_once_with(
-            stop_after_attempt=llm_call_with_retry.retry_limit,
-            wait_exponential_jitter=True,
-        )
-
     def test_lc_prompt_tmplt_property(self, llm_call: LLMCall, region: AWSRegion, mock_bedrock_client: MagicMock) -> None:
         """Test that the lc_prompt_tmplt property returns a correctly configured ChatPromptTemplate."""
         handler = LangChainHandler(llm_call, region)
@@ -291,6 +277,69 @@ class TestLangChainHandler:
         image_content = image_message.content[0]
         assert image_content["mime_type"] == "image/jpeg"
         assert result == "Default MIME type response"
+
+    @patch("lib.llm.llm_handler.time.sleep")
+    def test_query_transport_retry_success(
+        self, mock_sleep: MagicMock, region: AWSRegion, mock_bedrock_client: MagicMock, system_prompt: str, model_id: ClaudeModelID
+    ) -> None:
+        """Transport errors are retried and can recover."""
+        llm_call = LLMCall(system_prompt_tmplt=system_prompt, model_id=model_id, retry_limit=2)
+        handler = LangChainHandler(llm_call, region)
+
+        with patch.object(LangChainHandler, "chain") as mock_chain:
+            mock_chain.invoke.side_effect = [RuntimeError("throttled"), "recovered"]
+            result = handler.query(question="test")
+
+        assert result == "recovered"
+        assert mock_chain.invoke.call_count == 2
+        mock_sleep.assert_called_once()
+
+    @patch("lib.llm.llm_handler.time.sleep")
+    def test_query_transport_retry_exhausted(
+        self, mock_sleep: MagicMock, region: AWSRegion, mock_bedrock_client: MagicMock, system_prompt: str, model_id: ClaudeModelID
+    ) -> None:
+        """When all attempts fail with transport errors, re-raises the last one."""
+        llm_call = LLMCall(system_prompt_tmplt=system_prompt, model_id=model_id, retry_limit=2)
+        handler = LangChainHandler(llm_call, region)
+
+        with patch.object(LangChainHandler, "chain") as mock_chain:
+            mock_chain.invoke.side_effect = RuntimeError("service unavailable")
+            with pytest.raises(RuntimeError, match="service unavailable"):
+                handler.query(question="test")
+
+        assert mock_chain.invoke.call_count == 3
+
+    def test_query_no_retry_raises_immediately(
+        self, llm_call: LLMCall, region: AWSRegion, mock_bedrock_client: MagicMock
+    ) -> None:
+        """Without retry configured, transport errors raise immediately."""
+        handler = LangChainHandler(llm_call, region)
+
+        with patch.object(LangChainHandler, "chain") as mock_chain:
+            mock_chain.invoke.side_effect = RuntimeError("network error")
+            with pytest.raises(RuntimeError, match="network error"):
+                handler.query(question="test")
+
+        assert mock_chain.invoke.call_count == 1
+
+    @patch("lib.llm.llm_handler.time.sleep")
+    @patch("lib.llm.llm_handler.time.monotonic")
+    def test_query_timeout(
+        self, mock_monotonic: MagicMock, mock_sleep: MagicMock, region: AWSRegion, mock_bedrock_client: MagicMock, system_prompt: str, model_id: ClaudeModelID
+    ) -> None:
+        """TimeoutError is raised when retry_timeout is exceeded."""
+        llm_call = LLMCall(system_prompt_tmplt=system_prompt, model_id=model_id, retry_limit=5, retry_timeout=10.0)
+        handler = LangChainHandler(llm_call, region)
+
+        # First call: start=0.0, second: elapsed=11.0 > 10.0 timeout
+        mock_monotonic.side_effect = [0.0, 11.0]
+
+        with patch.object(LangChainHandler, "chain") as mock_chain:
+            mock_chain.invoke.side_effect = RuntimeError("throttled")
+            with pytest.raises(TimeoutError, match="10.0s timeout"):
+                handler.query(question="test")
+
+        assert mock_chain.invoke.call_count == 1
 
 
 class TestStructuredLangChainHandler:
@@ -530,6 +579,11 @@ class TestStructuredLangChainHandler:
 
 class TestStructuredReask:
     """Test cases for the reask loop in StructuredLangChainHandler."""
+
+    @pytest.fixture(autouse=True)
+    def _no_sleep(self) -> None:
+        with patch("lib.llm.llm_handler.time.sleep"):
+            yield
 
     @pytest.fixture
     def output_schema(self) -> type[DummyOutputSchema]:
@@ -782,6 +836,11 @@ class TestGeminiStructuredHandler:
 class TestTransportRetry:
     """Test cases for transport (non-reask) error retry in StructuredLangChainHandler."""
 
+    @pytest.fixture(autouse=True)
+    def _no_sleep(self) -> None:
+        with patch("lib.llm.llm_handler.time.sleep"):
+            yield
+
     @pytest.fixture
     def output_schema(self) -> type[DummyOutputSchema]:
         return DummyOutputSchema
@@ -979,6 +1038,11 @@ class TestStructuredQueryWithImageException:
 
 class TestOutputParserExceptionReask:
     """Test that OutputParserException triggers reask (not naive retry)."""
+
+    @pytest.fixture(autouse=True)
+    def _no_sleep(self) -> None:
+        with patch("lib.llm.llm_handler.time.sleep"):
+            yield
 
     @pytest.fixture
     def output_schema(self) -> type[DummyOutputSchema]:
