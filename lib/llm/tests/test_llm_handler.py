@@ -645,7 +645,7 @@ class TestStructuredReask:
         reask_msgs = second_call_kwargs["additional_messages"]
         assert len(reask_msgs) == 1
         assert isinstance(reask_msgs[0], HumanMessage)
-        assert "tool" in reask_msgs[0].content.lower()
+        assert "did not use the required tool" in reask_msgs[0].content
 
     def test_query_validation_error_with_retry_succeeds(
         self,
@@ -673,7 +673,8 @@ class TestStructuredReask:
         second_call_kwargs = mock_chain.invoke.call_args_list[1][0][0]
         reask_msgs = second_call_kwargs["additional_messages"]
         assert len(reask_msgs) == 1
-        assert "validation error" in reask_msgs[0].content.lower()
+        assert "validation errors" in reask_msgs[0].content.lower()
+        assert str(validation_err) in reask_msgs[0].content
 
     def test_query_exhausts_reask_none(
         self,
@@ -1081,7 +1082,8 @@ class TestOutputParserExceptionReask:
         reask_msgs = second_call_kwargs["additional_messages"]
         assert len(reask_msgs) == 1
         assert isinstance(reask_msgs[0], HumanMessage)
-        assert "validation error" in reask_msgs[0].content.lower()
+        assert "validation errors" in reask_msgs[0].content.lower()
+        assert "malformed tool call" in reask_msgs[0].content
 
     def test_output_parser_exception_exhausted_reraises(
         self,
