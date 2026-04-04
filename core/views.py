@@ -1204,8 +1204,11 @@ def extract_item_features_api(request: HttpRequest) -> JsonResponse:
     except ImageValidationError as validation_error:
         logger.warning("[ExtractAPI] Image validation error: %s", validation_error)
         return JsonResponse({"error": str(validation_error)}, status=400)
-    except OutputParserException:
-        logger.warning("[ExtractAPI] LLM failed to produce valid structured output after all attempts")
+    except OutputParserException as parser_error:
+        logger.exception(
+            "[ExtractAPI] LLM failed to produce valid structured output after all attempts: %s",
+            parser_error,
+        )
         return JsonResponse({"error": "Failed to process image"}, status=500)
     except Exception:
         logger.exception("[ExtractAPI] Exception during extraction")
