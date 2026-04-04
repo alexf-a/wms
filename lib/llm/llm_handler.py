@@ -50,7 +50,7 @@ class LLMHandler(ABC):
     llm_call: LLMCall
 
     @abstractmethod
-    def query(self, **kwargs: str) -> str | BaseModel:
+    def query(self, **kwargs: Any) -> str | BaseModel:
         """Process a query using the configured LLM.
 
         Args:
@@ -187,7 +187,7 @@ class LangChainHandler(LLMHandler):
                 return None
             raise
 
-    def query(self, **kwargs: str) -> str | BaseModel:
+    def query(self, **kwargs: Any) -> str | BaseModel:
         """Process a query using the configured LLM, with retry on failure.
 
         Transport errors (network, throttling) are retried with the same
@@ -240,7 +240,7 @@ class LangChainHandler(LLMHandler):
             return {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{image_data}"}}
         return {"type": "image", "source_type": "base64", "data": image_data, "mime_type": mime_type}
 
-    def query_with_image(self, image_data: str, mime_type: str = "image/jpeg", **kwargs: str) -> str:
+    def query_with_image(self, image_data: str, mime_type: str = "image/jpeg", **kwargs: Any) -> str:
         """Process a query with an image using the configured LLM.
 
         Args:
@@ -356,7 +356,7 @@ class StructuredLangChainHandler(LangChainHandler):
         msg = "Structured output returned None after all retry attempts"
         raise OutputParserException(msg)
 
-    def query_with_image(self, image_data: str, mime_type: str = "image/jpeg", **kwargs: str) -> BaseModel:
+    def query_with_image(self, image_data: str, mime_type: str = "image/jpeg", **kwargs: Any) -> BaseModel:
         """Process a query with an image using the configured LLM.
 
         Args:
