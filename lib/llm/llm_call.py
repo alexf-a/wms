@@ -22,6 +22,7 @@ class LLMCall(BaseModel):
     max_tokens: int | None = None
     retry_timeout: float | None = None
     retry_limit: int | None = None
+    max_wait_time: float | None = None
 
     model_config = {"arbitrary_types_allowed": True}
 

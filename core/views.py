@@ -15,6 +15,7 @@ from django.db.models import Count, F
 from django.db.models.functions import Greatest
 from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from langchain_core.exceptions import OutputParserException
 from PIL import Image, UnidentifiedImageError
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -1203,6 +1204,12 @@ def extract_item_features_api(request: HttpRequest) -> JsonResponse:
     except ImageValidationError as validation_error:
         logger.warning("[ExtractAPI] Image validation error: %s", validation_error)
         return JsonResponse({"error": str(validation_error)}, status=400)
+    except OutputParserException as parser_error:
+        logger.exception(
+            "[ExtractAPI] LLM failed to produce valid structured output after all attempts: %s",
+            parser_error,
+        )
+        return JsonResponse({"error": "Failed to process image"}, status=500)
     except Exception:
         logger.exception("[ExtractAPI] Exception during extraction")
         return JsonResponse({"error": "Failed to process image"}, status=500)

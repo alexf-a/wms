@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import logging
+import random
+import time
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any
 
@@ -11,13 +13,23 @@ from langchain.prompts import (
     SystemMessagePromptTemplate,
 )
 from langchain_aws.chat_models.bedrock import ChatBedrock
+from langchain_core.exceptions import OutputParserException
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_google_genai import ChatGoogleGenerativeAI
+from pydantic import ValidationError
 
 from lib.llm.gemini_model_id import GeminiModelID
 
 logger = logging.getLogger(__name__)
+
+# Exceptions that warrant a *reask* — sending the error back to the model so it
+# can correct its output.  Everything else (throttling, network, etc.) gets a
+# naive retry with the same prompt.
+REASK_EXCEPTIONS: tuple[type[Exception], ...] = (
+    ValidationError,
+    OutputParserException,
+)
 
 if TYPE_CHECKING:
     from langchain.schema.runnable import Runnable
@@ -38,7 +50,7 @@ class LLMHandler(ABC):
     llm_call: LLMCall
 
     @abstractmethod
-    def query(self, **kwargs: str) -> str | BaseModel:
+    def query(self, **kwargs: Any) -> str | BaseModel:
         """Process a query using the configured LLM.
 
         Args:
@@ -85,17 +97,6 @@ class LangChainHandler(LLMHandler):
             if self.llm_call.max_tokens is not None:
                 client_params["max_tokens"] = self.llm_call.max_tokens
             self.langchain_client = ChatBedrock(**client_params)
-
-        self._configure_langchain_client()
-
-    def _maybe_configure_retry(self) -> None:
-        if self.llm_call.should_retry():
-            self.langchain_client = self.langchain_client.with_retry(stop_after_attempt=self.llm_call.retry_limit, wait_exponential_jitter=True)
-
-    def _configure_langchain_client(self) -> None:
-        """Configure the LangChain client with structured output and retry settings."""
-        # Apply retry configuration if needed
-        self._maybe_configure_retry()
 
     def add_message(self, role: str, content: list[dict[str, Any]]) -> None:
         """Add a message to the handler's message chain.
@@ -144,23 +145,86 @@ class LangChainHandler(LLMHandler):
         """The runnable chain that calls the LLM."""
         return self.llm_chain | StrOutputParser()
 
-    def query(self, **kwargs: str) -> str:
-        """Process a query using the configured LLM.
+    def _retry_backoff(self, attempt: int) -> None:
+        """Sleep with exponential backoff + jitter, optionally capped at max_wait_time.
+
+        Args:
+            attempt: The zero-based attempt number that just failed.
+        """
+        base = 2 ** attempt
+        if self.llm_call.max_wait_time is not None:
+            base = min(base, self.llm_call.max_wait_time)
+        sleep_time = base * (0.5 + random.random() * 0.5)  # noqa: S311
+        logger.info("[LLMHandler] Backing off %.2fs before attempt %d", sleep_time, attempt + 2)
+        time.sleep(sleep_time)
+
+    def _try_invoke(self, kwargs: dict[str, Any], attempt: int, retry_limit: int) -> str | BaseModel | None:
+        """Attempt a single invocation of the chain.
+
+        On transport/throttling errors, returns None to signal the caller
+        should retry (unless this is the final attempt, in which case
+        the exception is re-raised).
+
+        Args:
+            kwargs: Keyword arguments for the chain invocation.
+            attempt: The zero-based current attempt number.
+            retry_limit: Maximum number of retries (0 means no retries).
+
+        Returns:
+            The chain result on success, or None to signal a retry.
+
+        Raises:
+            Exception: On the final attempt for transport errors.
+        """
+        try:
+            return self.chain.invoke(kwargs)
+        except Exception as exc:
+            if attempt < retry_limit:
+                logger.warning(
+                    "[LLMHandler] Transport retry %d/%d — %s",
+                    attempt + 1, retry_limit, str(exc)[:200],
+                )
+                return None
+            raise
+
+    def query(self, **kwargs: Any) -> str | BaseModel:
+        """Process a query using the configured LLM, with retry on failure.
+
+        Transport errors (network, throttling) are retried with the same
+        prompt. Subclasses may override ``_try_invoke`` to add additional
+        retry strategies (e.g. reask on validation errors).
 
         Args:
             **kwargs: Keyword arguments to be passed to the LLM prompt template.
 
         Returns:
-            str: The response from the LLM as a string.
+            str | BaseModel: The response from the LLM.
+
+        Raises:
+            TimeoutError: If retry_timeout is exceeded.
         """
-        # Ensure additional_messages is always present for the MessagesPlaceholder
         kwargs["additional_messages"] = kwargs.get("additional_messages", [])
         if self._additional_messages:
-            # Append handler's messages to any passed in via kwargs
             kwargs["additional_messages"] = self._additional_messages + kwargs["additional_messages"]
 
-        # Use the chain with the modified template that includes additional messages
-        return self.chain.invoke(kwargs)
+        retry_limit = self.llm_call.retry_limit or 0
+        timeout = self.llm_call.retry_timeout
+        start = time.monotonic()
+
+        for attempt in range(1 + retry_limit):
+            if timeout is not None and attempt > 0 and (time.monotonic() - start) >= timeout:
+                msg = f"LLM retry process exceeded {timeout}s timeout"
+                raise TimeoutError(msg)
+
+            result = self._try_invoke(kwargs, attempt, retry_limit)
+            if result is not None:
+                return result
+
+            if attempt < retry_limit:
+                self._retry_backoff(attempt)
+
+        msg = "LLM invocation returned None after all retry attempts"
+        raise RuntimeError(msg)
 
     def _build_image_content(self, image_data: str, mime_type: str) -> dict[str, Any]:
         """Build a provider-appropriate image content block.
@@ -176,7 +240,7 @@ class LangChainHandler(LLMHandler):
             return {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{image_data}"}}
         return {"type": "image", "source_type": "base64", "data": image_data, "mime_type": mime_type}
 
-    def query_with_image(self, image_data: str, mime_type: str = "image/jpeg", **kwargs: str) -> str:
+    def query_with_image(self, image_data: str, mime_type: str = "image/jpeg", **kwargs: Any) -> str:
         """Process a query with an image using the configured LLM.
 
         Args:
@@ -207,43 +271,92 @@ class StructuredLangChainHandler(LangChainHandler):
         self.output_schema = output_schema
         super().__init__(llm_call=llm_call, region=region)
 
-    def _configure_langchain_client(self) -> None:
-        # Always use structured_output for all models (disable Claude 4 XML fallback)
         logger.info("[LLMHandler] Configuring structured output for schema: %s", self.output_schema.__name__)
         try:
             self.langchain_client = self.langchain_client.with_structured_output(self.output_schema)
             logger.info("[LLMHandler] Structured output configured successfully")
-        except (AttributeError, NotImplementedError, Exception) as e:
-            # Fall back to tool binding if structured_output isn't supported
+        except (AttributeError, NotImplementedError) as e:
             logger.warning("[LLMHandler] Falling back to bind_tools: %s", str(e))
             self.langchain_client = self.langchain_client.bind_tools([self.output_schema])
-
-        super()._configure_langchain_client()
 
     @property
     def chain(self) -> Runnable[LanguageModelInput, BaseModel]:
         """The runnable chain that calls the LLM and parses the output to a structured format."""
         return self.llm_chain
 
-    def query(self, **kwargs: str) -> BaseModel:
-        """Process a query using the configured LLM.
+    @staticmethod
+    def _build_reask_message_for_none() -> HumanMessage:
+        """Build a reask message when the model fails to produce a tool call."""
+        return HumanMessage(content=(
+            "Your previous response did not use the required tool/function call. "
+            "You must respond by calling the provided tool with the appropriate arguments. "
+            "Please try again."
+        ))
 
-        Args:
-            **kwargs: Keyword arguments to be passed to the LLM prompt template.
+    @staticmethod
+    def _build_reask_message_for_error(exc: Exception) -> HumanMessage:
+        """Build a reask message with specific validation errors."""
+        return HumanMessage(content=(
+            "Your previous tool call had validation errors. "
+            f"Please fix the following issues and try again:\n{exc!s}"
+        ))
+
+    def _try_invoke(self, kwargs: dict[str, Any], attempt: int, retry_limit: int) -> BaseModel | None:
+        """Attempt a single structured invocation.
+
+        Handles two retry strategies:
+        - *Reask*: For validation/parsing errors (REASK_EXCEPTIONS), sends the
+          error back to the model so it can correct its output.
+        - *Naive retry*: For transport/throttling errors (everything else),
+          retries with the same prompt unchanged.
 
         Returns:
-            BaseModel: The response from the LLM as a structured Pydantic object.
+            BaseModel on success, None to signal the caller should retry.
+
+        Raises:
+            OutputParserException: On the final attempt when the model returns None.
+            ValidationError: On the final attempt when validation fails.
+            Exception: On the final attempt for transport errors.
         """
-        # Add additional messages to kwargs if they exist
-        kwargs["additional_messages"] = kwargs.get("additional_messages", [])
-        if self._additional_messages:
-            # Append new additional messages to existing ones
-            kwargs["additional_messages"] = self._additional_messages + kwargs["additional_messages"]
+        try:
+            result = self.chain.invoke(kwargs)
+        except REASK_EXCEPTIONS as exc:
+            if attempt < retry_limit:
+                logger.warning(
+                    "[LLMHandler] Reask %d/%d — validation error: %s",
+                    attempt + 1, retry_limit, str(exc)[:200],
+                )
+                kwargs["additional_messages"] = kwargs["additional_messages"] + [
+                    self._build_reask_message_for_error(exc)
+                ]
+                return None
+            raise
+        except Exception as exc:
+            if attempt < retry_limit:
+                logger.warning(
+                    "[LLMHandler] Naive retry %d/%d — transport error: %s",
+                    attempt + 1, retry_limit, str(exc)[:200],
+                )
+                return None
+            raise
 
-        # Use the chain with the modified template that includes additional messages
-        return self.chain.invoke(kwargs)
+        if result is not None:
+            return result
 
-    def query_with_image(self, image_data: str, mime_type: str = "image/jpeg", **kwargs: str) -> BaseModel:
+        if attempt < retry_limit:
+            logger.warning(
+                "[LLMHandler] Reask %d/%d — model returned None (no tool call)",
+                attempt + 1, retry_limit,
+            )
+            kwargs["additional_messages"] = kwargs["additional_messages"] + [
+                self._build_reask_message_for_none()
+            ]
+            return None
+
+        msg = "Structured output returned None after all retry attempts"
+        raise OutputParserException(msg)
+
+    def query_with_image(self, image_data: str, mime_type: str = "image/jpeg", **kwargs: Any) -> BaseModel:
         """Process a query with an image using the configured LLM.
 
         Args:
