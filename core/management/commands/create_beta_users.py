@@ -3,12 +3,15 @@
 This command reads BETA_USER_EMAILS and BETA_USER_DEFAULT_PASSWORD from environment
 variables and creates beta users for each email address.
 All users will be required to change their password on first login.
+A branded invitation email is sent to each newly created user.
 """
 
 import os
 
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
+
+from core.email import send_beta_invitation_email
 
 
 class Command(BaseCommand):
@@ -22,8 +25,9 @@ class Command(BaseCommand):
         Reads:
             BETA_USER_EMAILS: Comma-separated list of email addresses
             BETA_USER_DEFAULT_PASSWORD: Default password for all beta users
-        
+
         All created users will have must_change_password=True.
+        Each newly created user receives a branded invitation email.
         """
         User = get_user_model()
         emails_str = os.getenv("BETA_USER_EMAILS", "")
@@ -54,6 +58,8 @@ class Command(BaseCommand):
         # Create users
         created_count = 0
         skipped_count = 0
+        email_sent_count = 0
+        email_failed_count = 0
 
         for email in emails:
             if User.objects.filter(email=email).exists():
@@ -73,9 +79,22 @@ class Command(BaseCommand):
             )
             created_count += 1
 
+            # Send invitation email (failure is logged but does not block user creation)
+            if send_beta_invitation_email(email=email, password=password):
+                self.stdout.write(
+                    self.style.SUCCESS(f"  Sent invitation email to {email}")
+                )
+                email_sent_count += 1
+            else:
+                self.stdout.write(
+                    self.style.WARNING(f"  Failed to send invitation email to {email}")
+                )
+                email_failed_count += 1
+
         # Summary
         self.stdout.write(
             self.style.SUCCESS(
-                f"\nBeta user creation complete: {created_count} created, {skipped_count} skipped"
+                f"\nBeta user creation complete: {created_count} created, {skipped_count} skipped, "
+                f"{email_sent_count} emails sent, {email_failed_count} emails failed"
             )
         )

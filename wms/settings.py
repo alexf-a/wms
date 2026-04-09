@@ -333,3 +333,12 @@ if not DEBUG:
     SECURE_HSTS_PRELOAD = True
     # Trust the X-Forwarded-Proto header from Lightsail's load balancer
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# Email Configuration (AWS SES via django-ses)
+EMAIL_BACKEND = "django_ses.SESBackend"
+AWS_SES_REGION_NAME = os.getenv("AWS_SES_REGION", "us-west-2")
+AWS_SES_REGION_ENDPOINT = f"email.{AWS_SES_REGION_NAME}.amazonaws.com"
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@mystuff.tools")
+
+# App URL for email links
+APP_URL = os.getenv("APP_URL", "https://mystuff.tools")

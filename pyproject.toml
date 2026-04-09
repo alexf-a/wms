@@ -20,6 +20,7 @@ gunicorn = "^22.0.0"
 whitenoise = "^6.7.0"
 django-storages = {extras = ["boto3"], version = "^1.14.6"}
 pydantic = "^2.12.5"
+django-ses = "^4.3"
 
 
 [build-system]
