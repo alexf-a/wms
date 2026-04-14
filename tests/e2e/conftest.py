@@ -594,5 +594,9 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo) -> None:
 
 async def _capture_screenshot(browser: Browser, path: Path) -> None:
     """Take a screenshot from the browser's current page."""
-    if hasattr(browser, "page") and browser.page is not None:
-        await browser.page.screenshot(path=str(path))
+    import base64
+
+    page = await browser.get_current_page()
+    if page is not None:
+        b64_data = await page.screenshot()
+        path.write_bytes(base64.b64decode(b64_data))

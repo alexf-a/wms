@@ -21,7 +21,6 @@ from .conftest import (
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from pathlib import Path
 
     from browser_use import Agent, Browser
     from django.test.utils import LiveServer
@@ -318,13 +317,12 @@ async def test_qr_code_download(
     browser_instance: Browser,
     live_server: LiveServer,
     seeded_inventory: dict,  # noqa: ARG001
-    tmp_path: Path,
 ) -> None:
-    """Verify downloading a unit's QR code PNG from the detail page.
+    """Verify the QR code download link on the unit detail page.
 
-    Uses the agent to navigate to the unit detail page, then Playwright
-    directly to trigger the download and verify the file. ``tmp_path``
-    provides automatic cleanup of the downloaded file.
+    Uses the agent to navigate to the unit detail page, then the
+    browser-use CDP ``Page`` to verify the download link exists and
+    points to a valid PNG image via JavaScript evaluation.
     """
     agent = authenticated_agent_factory(
         task=(
@@ -337,22 +335,35 @@ async def test_qr_code_download(
     )
     await agent.run(max_steps=DEFAULT_MAX_STEPS)
 
-    # Use Playwright directly to trigger the QR code download
-    page = browser_instance.page
+    # Use CDP page to verify the QR code download link
+    page = await browser_instance.get_current_page()
     assert page is not None, "Browser page not available after agent run"
 
-    async with page.expect_download() as download_info:
-        await page.click('a[aria-label="Download QR code"]')
-    download = await download_info.value
+    # Verify the download link exists and has a valid href
+    import json
 
-    # Save to tmp_path (automatically cleaned up by pytest)
-    download_path = tmp_path / "qr_code.png"
-    await download.save_as(str(download_path))
+    link_info_raw = await page.evaluate(
+        """() => {
+            const link = document.querySelector('a[aria-label="Download QR code"]');
+            if (!link) return null;
+            return { href: link.href, download: link.download };
+        }"""
+    )
+    assert link_info_raw, "QR code download link not found on page"
+    link_info = json.loads(link_info_raw)
+    assert link_info["href"], "QR code download link has no href"
 
-    assert download_path.exists(), "QR code file was not downloaded"
-    assert download_path.stat().st_size > 0, "QR code file is empty"
-
-    # Verify PNG magic bytes
-    with download_path.open("rb") as f:
-        header = f.read(4)
-    assert header == b"\x89PNG", f"Downloaded file is not a valid PNG (header: {header!r})"
+    # Fetch the QR code image and verify it's a valid PNG
+    is_png_raw = await page.evaluate(
+        """(href) => fetch(href)
+            .then(r => r.arrayBuffer())
+            .then(buf => {
+                const b = new Uint8Array(buf);
+                return b[0] === 0x89 && b[1] === 0x50
+                    && b[2] === 0x4E && b[3] === 0x47;
+            })""",
+        link_info["href"],
+    )
+    assert is_png_raw in ("true", "True", True), (
+        "QR code URL does not serve a valid PNG image"
+    )
