@@ -1,0 +1,20 @@
+Welcome to WMS!
+
+You've been invited to the WMS beta -- a smart inventory app that helps you track where your stuff is stored.
+
+Your login credentials:
+  Email: {{ email }}
+  Password: {{ password }}
+
+You'll be asked to change your password on first login.
+
+Getting started:
+  1. Log in at {{ login_url }}
+  2. Change your password when prompted
+  3. Start organizing your belongings
+
+New to WMS? Read our Getting Started guide: {{ getting_started_url }}
+
+--
+WMS -- Know where it is
+{{ app_url }}
