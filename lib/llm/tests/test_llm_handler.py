@@ -278,65 +278,15 @@ class TestLangChainHandler:
         assert image_content["mime_type"] == "image/jpeg"
         assert result == "Default MIME type response"
 
-    @patch("lib.llm.llm_handler.time.sleep")
-    def test_query_transport_retry_success(
-        self, mock_sleep: MagicMock, region: AWSRegion, mock_bedrock_client: MagicMock, system_prompt: str, model_id: ClaudeModelID
-    ) -> None:
-        """Transport errors are retried and can recover."""
-        llm_call = LLMCall(system_prompt_tmplt=system_prompt, model_id=model_id, retry_limit=2)
-        handler = LangChainHandler(llm_call, region)
-
-        with patch.object(LangChainHandler, "chain") as mock_chain:
-            mock_chain.invoke.side_effect = [RuntimeError("throttled"), "recovered"]
-            result = handler.query(question="test")
-
-        assert result == "recovered"
-        assert mock_chain.invoke.call_count == 2
-        mock_sleep.assert_called_once()
-
-    @patch("lib.llm.llm_handler.time.sleep")
-    def test_query_transport_retry_exhausted(
-        self, mock_sleep: MagicMock, region: AWSRegion, mock_bedrock_client: MagicMock, system_prompt: str, model_id: ClaudeModelID
-    ) -> None:
-        """When all attempts fail with transport errors, re-raises the last one."""
-        llm_call = LLMCall(system_prompt_tmplt=system_prompt, model_id=model_id, retry_limit=2)
-        handler = LangChainHandler(llm_call, region)
-
-        with patch.object(LangChainHandler, "chain") as mock_chain:
-            mock_chain.invoke.side_effect = RuntimeError("service unavailable")
-            with pytest.raises(RuntimeError, match="service unavailable"):
-                handler.query(question="test")
-
-        assert mock_chain.invoke.call_count == 3
-
-    def test_query_no_retry_raises_immediately(
+    def test_query_transport_error_raises(
         self, llm_call: LLMCall, region: AWSRegion, mock_bedrock_client: MagicMock
     ) -> None:
-        """Without retry configured, transport errors raise immediately."""
+        """Transport errors propagate from query (retry is handled by with_retry on the client)."""
         handler = LangChainHandler(llm_call, region)
 
         with patch.object(LangChainHandler, "chain") as mock_chain:
             mock_chain.invoke.side_effect = RuntimeError("network error")
             with pytest.raises(RuntimeError, match="network error"):
-                handler.query(question="test")
-
-        assert mock_chain.invoke.call_count == 1
-
-    @patch("lib.llm.llm_handler.time.sleep")
-    @patch("lib.llm.llm_handler.time.monotonic")
-    def test_query_timeout(
-        self, mock_monotonic: MagicMock, mock_sleep: MagicMock, region: AWSRegion, mock_bedrock_client: MagicMock, system_prompt: str, model_id: ClaudeModelID
-    ) -> None:
-        """TimeoutError is raised when retry_timeout is exceeded."""
-        llm_call = LLMCall(system_prompt_tmplt=system_prompt, model_id=model_id, retry_limit=5, retry_timeout=10.0)
-        handler = LangChainHandler(llm_call, region)
-
-        # First call: start=0.0, second: elapsed=11.0 > 10.0 timeout
-        mock_monotonic.side_effect = [0.0, 11.0]
-
-        with patch.object(LangChainHandler, "chain") as mock_chain:
-            mock_chain.invoke.side_effect = RuntimeError("throttled")
-            with pytest.raises(TimeoutError, match="10.0s timeout"):
                 handler.query(question="test")
 
         assert mock_chain.invoke.call_count == 1
@@ -579,11 +529,6 @@ class TestStructuredLangChainHandler:
 
 class TestStructuredReask:
     """Test cases for the reask loop in StructuredLangChainHandler."""
-
-    @pytest.fixture(autouse=True)
-    def _no_sleep(self) -> None:
-        with patch("lib.llm.llm_handler.time.sleep"):
-            yield
 
     @pytest.fixture
     def output_schema(self) -> type[DummyOutputSchema]:
@@ -835,24 +780,14 @@ class TestGeminiStructuredHandler:
 
 
 class TestTransportRetry:
-    """Test cases for transport (non-reask) error retry in StructuredLangChainHandler."""
+    """Test that transport errors propagate from StructuredLangChainHandler.
 
-    @pytest.fixture(autouse=True)
-    def _no_sleep(self) -> None:
-        with patch("lib.llm.llm_handler.time.sleep"):
-            yield
+    Transport retry is handled by with_retry on the client, not the reask loop.
+    """
 
     @pytest.fixture
     def output_schema(self) -> type[DummyOutputSchema]:
         return DummyOutputSchema
-
-    @pytest.fixture
-    def llm_call_with_retry(self, system_prompt: str, model_id: ClaudeModelID) -> LLMCall:
-        return LLMCall(
-            system_prompt_tmplt=system_prompt,
-            model_id=model_id,
-            retry_limit=2,
-        )
 
     @pytest.fixture
     def llm_call_no_retry(self, system_prompt: str, model_id: ClaudeModelID) -> LLMCall:
@@ -861,53 +796,14 @@ class TestTransportRetry:
             model_id=model_id,
         )
 
-    def test_transport_error_then_success_no_reask_message(
-        self,
-        llm_call_with_retry: LLMCall,
-        output_schema: type[DummyOutputSchema],
-        region: AWSRegion,
-        mock_bedrock_client: MagicMock,
-    ) -> None:
-        """Transport errors retry with the same prompt — no reask message appended."""
-        handler = StructuredLangChainHandler(llm_call_with_retry, output_schema, region)
-        valid_result = DummyOutputSchema(field1="ok", field2=1)
-
-        with patch.object(StructuredLangChainHandler, "chain") as mock_chain:
-            mock_chain.invoke.side_effect = [RuntimeError("throttled"), valid_result]
-            result = handler.query()
-
-        assert result == valid_result
-        assert mock_chain.invoke.call_count == 2
-        # Key assertion: additional_messages must be empty on retry (no reask feedback)
-        second_call_kwargs = mock_chain.invoke.call_args_list[1][0][0]
-        assert second_call_kwargs["additional_messages"] == []
-
-    def test_transport_error_exhausted_reraises(
-        self,
-        llm_call_with_retry: LLMCall,
-        output_schema: type[DummyOutputSchema],
-        region: AWSRegion,
-        mock_bedrock_client: MagicMock,
-    ) -> None:
-        """When all attempts fail with transport errors, re-raises the last one."""
-        handler = StructuredLangChainHandler(llm_call_with_retry, output_schema, region)
-
-        with patch.object(StructuredLangChainHandler, "chain") as mock_chain:
-            mock_chain.invoke.side_effect = RuntimeError("service unavailable")
-            with pytest.raises(RuntimeError, match="service unavailable"):
-                handler.query()
-
-        # 1 initial + 2 retries = 3 total
-        assert mock_chain.invoke.call_count == 3
-
-    def test_transport_error_without_retry_raises_immediately(
+    def test_transport_error_propagates(
         self,
         llm_call_no_retry: LLMCall,
         output_schema: type[DummyOutputSchema],
         region: AWSRegion,
         mock_bedrock_client: MagicMock,
     ) -> None:
-        """Without retry configured, transport errors raise immediately."""
+        """Transport errors are not caught by the reask loop — they propagate directly."""
         handler = StructuredLangChainHandler(llm_call_no_retry, output_schema, region)
 
         with patch.object(StructuredLangChainHandler, "chain") as mock_chain:
@@ -1037,13 +933,110 @@ class TestStructuredQueryWithImageException:
         assert "FAILED" in mock_logger.exception.call_args[0][0]
 
 
+class TestRetryConfiguration:
+    """Test cases for _retry_stop_after_attempt, _retry_kwargs, and _maybe_configure_retry."""
+
+    def test_retry_stop_after_attempt_adds_one(
+        self,
+        system_prompt: str,
+        model_id: ClaudeModelID,
+        region: AWSRegion,
+        mock_bedrock_client: MagicMock,
+    ) -> None:
+        """stop_after_attempt = retry_limit + 1 (initial attempt + retries)."""
+        llm_call = LLMCall(
+            system_prompt_tmplt=system_prompt, model_id=model_id,
+            retry_limit=3, retry_timeout=30.0,
+        )
+        handler = LangChainHandler(llm_call, region)
+        assert handler._retry_stop_after_attempt() == 4
+
+    def test_retry_stop_after_attempt_raises_when_limit_is_none(
+        self,
+        system_prompt: str,
+        model_id: ClaudeModelID,
+        region: AWSRegion,
+        mock_bedrock_client: MagicMock,
+    ) -> None:
+        """ValueError is raised when retry_limit is None."""
+        llm_call = LLMCall(system_prompt_tmplt=system_prompt, model_id=model_id)
+        handler = LangChainHandler(llm_call, region)
+        with pytest.raises(ValueError, match="retry_limit must be set"):
+            handler._retry_stop_after_attempt()
+
+    def test_retry_kwargs_returns_correct_dict(
+        self,
+        system_prompt: str,
+        model_id: ClaudeModelID,
+        region: AWSRegion,
+        mock_bedrock_client: MagicMock,
+    ) -> None:
+        """_retry_kwargs includes stop_after_attempt, stop_after_delay, and jitter."""
+        llm_call = LLMCall(
+            system_prompt_tmplt=system_prompt, model_id=model_id,
+            retry_limit=2, retry_timeout=15.0,
+        )
+        handler = LangChainHandler(llm_call, region)
+        kwargs = handler._retry_kwargs()
+        assert kwargs == {
+            "stop_after_attempt": 3,
+            "stop_after_delay": 15.0,
+            "wait_exponential_jitter": True,
+        }
+
+    def test_retry_kwargs_raises_when_timeout_is_none(
+        self,
+        system_prompt: str,
+        model_id: ClaudeModelID,
+        region: AWSRegion,
+        mock_bedrock_client: MagicMock,
+    ) -> None:
+        """ValueError is raised when retry_timeout is None."""
+        llm_call = LLMCall(
+            system_prompt_tmplt=system_prompt, model_id=model_id,
+            retry_limit=2,
+        )
+        handler = LangChainHandler(llm_call, region)
+        with pytest.raises(ValueError, match="retry_timeout must be set"):
+            handler._retry_kwargs()
+
+    def test_maybe_configure_retry_calls_with_retry(
+        self,
+        system_prompt: str,
+        model_id: ClaudeModelID,
+        region: AWSRegion,
+        mock_bedrock_client: MagicMock,
+    ) -> None:
+        """When should_retry() is True, with_retry is called with correct kwargs."""
+        llm_call = LLMCall(
+            system_prompt_tmplt=system_prompt, model_id=model_id,
+            retry_limit=3, retry_timeout=20.0,
+        )
+        handler = LangChainHandler(llm_call, region)
+        # with_retry is called during __init__, verify via the mock
+        mock_instance = mock_bedrock_client.return_value
+        mock_instance.with_retry.assert_called_once_with(
+            stop_after_attempt=4,
+            stop_after_delay=20.0,
+            wait_exponential_jitter=True,
+        )
+
+    def test_maybe_configure_retry_skipped_without_retry_config(
+        self,
+        system_prompt: str,
+        model_id: ClaudeModelID,
+        region: AWSRegion,
+        mock_bedrock_client: MagicMock,
+    ) -> None:
+        """When should_retry() is False, with_retry is not called."""
+        llm_call = LLMCall(system_prompt_tmplt=system_prompt, model_id=model_id)
+        LangChainHandler(llm_call, region)
+        mock_instance = mock_bedrock_client.return_value
+        mock_instance.with_retry.assert_not_called()
+
+
 class TestOutputParserExceptionReask:
     """Test that OutputParserException triggers reask (not naive retry)."""
-
-    @pytest.fixture(autouse=True)
-    def _no_sleep(self) -> None:
-        with patch("lib.llm.llm_handler.time.sleep"):
-            yield
 
     @pytest.fixture
     def output_schema(self) -> type[DummyOutputSchema]:
