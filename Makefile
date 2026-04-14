@@ -169,7 +169,7 @@ local-down:
 	@echo "Local development server stopped."
 
 test-python:  ## Run Python tests (excludes E2E)
-	poetry run pytest tests/ -vvv --ignore=tests/e2e
+	poetry run pytest tests/ lib/ -vvv --ignore=tests/e2e
 
 test: test-python test-e2e test-js  ## Run all tests (Python + E2E + JS)
 
