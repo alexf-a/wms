@@ -338,7 +338,7 @@ class StructuredLangChainHandler(LangChainHandler):
                 return result
 
         msg = "Structured output returned None after all reask attempts"
-        raise OutputParserException(msg)  # unreachable
+        raise OutputParserException(msg)
 
     def query_with_image(self, image_data: str, mime_type: str = "image/jpeg", **kwargs: Any) -> BaseModel:
         """Process a query with an image using the configured LLM.
