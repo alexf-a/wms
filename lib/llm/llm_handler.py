@@ -90,9 +90,33 @@ class LangChainHandler(LLMHandler):
 
         self._configure_langchain_client()
 
+    def _retry_stop_after_attempt(self) -> int:
+        """Return the total number of attempts for LangChain retry configuration.
+
+        ``LLMCall.retry_limit`` represents the number of retries *after* the
+        initial attempt, while LangChain's ``stop_after_attempt`` expects the
+        total number of attempts.
+        """
+        if self.llm_call.retry_limit is None:
+            error_msg = "retry_limit must be set when retries are enabled"
+            raise ValueError(error_msg)
+        return self.llm_call.retry_limit + 1
+
+    def _retry_kwargs(self) -> dict[str, Any]:
+        """Build LangChain retry kwargs from ``LLMCall`` retry settings."""
+        if self.llm_call.retry_timeout is None:
+            error_msg = "retry_timeout must be set when retries are enabled"
+            raise ValueError(error_msg)
+
+        return {
+            "stop_after_attempt": self._retry_stop_after_attempt(),
+            "stop_after_delay": self.llm_call.retry_timeout,
+            "wait_exponential_jitter": True,
+        }
+
     def _maybe_configure_retry(self) -> None:
         if self.llm_call.should_retry():
-            self.langchain_client = self.langchain_client.with_retry(stop_after_attempt=self.llm_call.retry_limit, wait_exponential_jitter=True)
+            self.langchain_client = self.langchain_client.with_retry(**self._retry_kwargs())
 
     def _configure_langchain_client(self) -> None:
         """Configure the LangChain client with structured output and retry settings."""
