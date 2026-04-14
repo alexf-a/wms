@@ -46,10 +46,13 @@ async def test_screenshot_all_pages(
     ), f"Unexpected external URL in: {visited_urls}"
 
     # Capture a final screenshot for review
-    if hasattr(browser_instance, "page") and browser_instance.page is not None:
-        await browser_instance.page.screenshot(
-            path=str(SCREENSHOTS_DIR / "all_pages_final.png"),
-        )
+    page = await browser_instance.get_current_page()
+    if page is not None:
+        import base64
+
+        b64_data = await page.screenshot()
+        screenshot_path = SCREENSHOTS_DIR / "all_pages_final.png"
+        screenshot_path.write_bytes(base64.b64decode(b64_data))
 
 
 async def test_no_broken_internal_links(
@@ -100,11 +103,12 @@ async def test_form_labels_present(
     )
 
     # Check that form labels exist in the DOM
-    page = browser_instance.page
+    page = await browser_instance.get_current_page()
     assert page is not None, "Browser page not available after agent run"
-    label_count = await page.evaluate(
-        "document.querySelectorAll('label').length",
+    label_count_raw = await page.evaluate(
+        "() => document.querySelectorAll('label').length",
     )
+    label_count = int(label_count_raw)
     assert label_count >= 2, (
         f"Expected at least 2 form labels (email + password), found {label_count}"
     )
