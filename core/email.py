@@ -5,6 +5,7 @@ Provides functions for sending branded HTML emails to users.
 
 import logging
 from typing import Any
+from urllib.parse import urljoin
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
@@ -24,8 +25,8 @@ def send_beta_invitation_email(*, email: str, password: str) -> bool:
         True if the email was sent successfully, False otherwise.
     """
     app_url = getattr(settings, "APP_URL", "https://mystuff.tools")
-    login_url = f"{app_url}/login/"
-    getting_started_url = f"{app_url}/getting-started/"
+    login_url = urljoin(app_url, "/login/")
+    getting_started_url = urljoin(app_url, "/getting-started/")
 
     context: dict[str, Any] = {
         "email": email,
